@@ -1,0 +1,10 @@
+[workspace]
+authors = ["Sherry He <xh122@duke.edu>"]
+channels = ["conda-forge"]
+name = "CS390"
+platforms = ["osx-arm64"]
+version = "0.1.0"
+
+[tasks]
+
+[dependencies]

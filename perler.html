@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perler Bead Pattern Generator</title>
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --primary-hover: #4338CA;
+            --bg: #F9FAFB;
+            --surface: #FFFFFF;
+            --text: #111827;
+            --border: #E5E7EB;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background-color: var(--surface);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            margin-top: 0;
+            color: var(--primary);
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background-color: var(--bg);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        label {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        input[type="file"],
+        input[type="number"],
+        select {
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        button {
+            grid-column: span 2;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 1rem;
+            border-radius: 6px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        button:disabled {
+            background-color: #9CA3AF;
+            cursor: not-allowed;
+        }
+
+        .output-container {
+            margin-top: 2rem;
+            width: 100%;
+            height: 500px; /* 1. Locks the window to a fixed height */
+            overflow: auto; /* 2. Enables proper scrollbars */
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            background-color: var(--bg);
+            position: relative;
+            /* We removed the flexbox centering here, as it breaks scrollbars on large items */
+        }
+
+        /* 3. This wrapper dynamically resizes to fix the scrollbar bug */
+        #grid-wrapper {
+            overflow: hidden; 
+            margin: 0 auto; /* Centers the grid if it's smaller than the window */
+        }
+
+        #pattern-grid {
+            display: grid;
+            gap: 1px;
+            background-color: #ccc;
+            padding: 1px;
+            transform-origin: top left;
+        }
+
+        .pixel {
+            width: 30px;
+            height: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 10px;
+            font-weight: bold;
+            font-family: monospace;
+            text-align: center;
+            box-sizing: border-box;
+        }
+        
+        .zoom-controls {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 1rem;
+            display: none; /* Hidden until image is generated */
+        }
+        
+        .zoom-controls button {
+            grid-column: auto;
+            padding: 0.5rem 1rem;
+            width: auto;
+        }
+
+        #stats {
+            margin-top: 1rem;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .status-message {
+            margin: 1rem 0 0;
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        .status-message.error {
+            color: #991B1B;
+            background-color: #FEE2E2;
+            border: 1px solid #FCA5A5;
+        }
+
+        .status-message.info {
+            color: #1E3A8A;
+            background-color: #DBEAFE;
+            border: 1px solid #93C5FD;
+        }
+
+        .status-message.success {
+            color: #166534;
+            background-color: #DCFCE7;
+            border: 1px solid #86EFAC;
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+        /* Class to hide text on all pixels at once */
+        #pattern-grid.hide-text .pixel {
+            color: transparent !important;
+        }
+
+        /* Bead Counter Styles */
+        #beadCountsContainer {
+            margin-top: 2rem;
+            width: 100%;
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-sizing: border-box;
+            display: none; /* Hidden until generated */
+        }
+        
+        .count-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 0.75rem;
+        }
+
+        .count-header h3 {
+            margin: 0;
+            color: var(--text);
+        }
+
+        .bead-list {
+            max-height: 250px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            padding-right: 0.5rem; /* Room for scrollbar */
+        }
+
+        .bead-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.5rem 1rem;
+            background-color: var(--bg);
+            border-radius: 6px;
+            border: 1px solid var(--border);
+        }
+
+        .color-swatch {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            border: 1px solid rgba(0,0,0,0.2);
+            flex-shrink: 0;
+        }
+
+        .color-name {
+            flex-grow: 1;
+            font-weight: 500;
+        }
+
+        .color-count {
+            font-weight: 700;
+            background-color: var(--primary);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Pattern Generator</h1>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="imageUpload">Upload Image</label>
+                <input type="file" id="imageUpload" accept="image/*">
+            </div>
+
+            <div class="control-group">
+                <label for="targetWidth">Target Physical Width (Inches)</label>
+                <input type="number" id="targetWidth" value="10" min="1" step="0.5">
+            </div>
+
+            <div class="control-group" style="grid-column: span 2;">
+                <label for="beadSize">Bead Size</label>
+                <select id="beadSize">
+                    <option value="0.197">Standard (5mm / ~0.197 inches)</option>
+                    <option value="0.079">Mini (2mm / ~0.079 inches)</option>
+                </select>
+            </div>
+
+            <button id="generateBtn" disabled>Loading color palette...</button>
+            <div id="statusMessage" class="status-message info" role="status" aria-live="polite">Loading the default 221-color palette...</div>
+        </div>
+
+        <div id="stats"></div>
+
+        <div class="zoom-controls" id="zoomControls">
+            <button id="zoomOutBtn">- Zoom</button>
+            <button id="zoomInBtn">+ Zoom</button>
+            <div style="display: flex; align-items: center; margin-left: 1rem;">
+                <input type="checkbox" id="toggleTextBtn" checked style="width: auto; margin-right: 0.5rem; cursor: pointer;">
+                <label for="toggleTextBtn" style="margin: 0; cursor: pointer;">Show Codes</label>
+            </div>
+        </div>
+
+        <div class="output-container" id="outputContainer">
+            <div id="placeholderText" style="display: flex; justify-content: center; align-items: center; height: 100%; color: #6B7280;">
+                Pattern will appear here
+            </div>
+        </div>
+
+        <div id="beadCountsContainer">
+            <div class="count-header">
+                <h3>Required Beads</h3>
+                <select id="sortOption">
+                    <option value="count">Sort by Largest Count</option>
+                    <option value="name">Sort by Color Name</option>
+                </select>
+            </div>
+            <div id="beadList" class="bead-list"></div>
+        </div>
+
+    <canvas id="canvas" style="display: none;"></canvas>
+
+    <script>
+        // The default is the common 221-color Perler palette.
+        let perlerColors = [];
+        let paletteReady = false;
+
+        let uploadedImage = null;
+        let globalColorCounts = [];
+        let currentZoom = 1;
+        let baseGridWidth = 0;
+        let baseGridHeight = 0;
+
+        // DOM Elements
+        const imageUpload = document.getElementById('imageUpload');
+        const generateBtn = document.getElementById('generateBtn');
+        const targetWidthInput = document.getElementById('targetWidth');
+        const beadSizeSelect = document.getElementById('beadSize');
+        const outputContainer = document.getElementById('outputContainer');
+        const statsDiv = document.getElementById('stats');
+        const statusMessage = document.getElementById('statusMessage');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        const zoomControls = document.getElementById('zoomControls');
+
+        const MAX_PATTERN_DIMENSION = 500;
+        const MAX_PATTERN_CELLS = 100000;
+
+        function showStatus(message, type = 'info') {
+            statusMessage.textContent = message;
+            statusMessage.className = `status-message ${type}`;
+        }
+
+        function parseHexColor(hex) {
+            if (typeof hex !== 'string' || !/^#?[0-9a-f]{6}$/i.test(hex)) return null;
+            const normalized = hex.replace('#', '');
+            return [
+                Number.parseInt(normalized.slice(0, 2), 16),
+                Number.parseInt(normalized.slice(2, 4), 16),
+                Number.parseInt(normalized.slice(4, 6), 16)
+            ];
+        }
+
+        function normalizePalette(records) {
+            if (!Array.isArray(records)) throw new Error('Palette data must be an array.');
+            return records.map((record) => ({
+                ...record,
+                rgb: Array.isArray(record.rgb) ? [...record.rgb] : parseHexColor(record.hex)
+            }));
+        }
+
+        function validatePalette(records) {
+            const errors = [];
+            const names = new Set();
+            if (!Array.isArray(records) || records.length === 0) {
+                return ['Palette must contain at least one color.'];
+            }
+            records.forEach((color, index) => {
+                const entryLabel = `Palette entry ${index + 1}`;
+                if (!color || typeof color !== 'object') {
+                    errors.push(`${entryLabel} is not an object.`);
+                    return;
+                }
+                if (typeof color.name !== 'string' || color.name.trim() === '') {
+                    errors.push(`${entryLabel} is missing a color code/name.`);
+                } else if (names.has(color.name)) {
+                    errors.push(`Duplicate color code/name: ${color.name}.`);
+                } else {
+                    names.add(color.name);
+                }
+                if (!Array.isArray(color.rgb) || color.rgb.length !== 3 || color.rgb.some((channel) => (
+                    typeof channel !== 'number' || !Number.isInteger(channel) || channel < 0 || channel > 255
+                ))) {
+                    errors.push(`${entryLabel} (${color.name || 'unknown'}) has invalid RGB values.`);
+                }
+            });
+            return errors;
+        }
+
+        // Fetch and validate the default palette before enabling generation.
+        fetch('colors_221.json')
+            .then((response) => {
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return response.json();
+            })
+            .then((data) => {
+                const normalizedPalette = normalizePalette(data);
+                const validationErrors = validatePalette(normalizedPalette);
+                if (validationErrors.length > 0) {
+                    throw new Error(validationErrors.slice(0, 3).join(' '));
+                }
+                perlerColors = normalizedPalette;
+                paletteReady = true;
+                generateBtn.disabled = !uploadedImage;
+                generateBtn.textContent = 'Generate Pattern';
+                showStatus(`Default palette loaded (${perlerColors.length} colors). Upload an image to begin.`, 'success');
+            })
+            .catch((error) => {
+                console.error('Error loading colors_221.json:', error);
+                paletteReady = false;
+                generateBtn.disabled = true;
+                generateBtn.textContent = 'Palette unavailable';
+                showStatus('Unable to load the color palette. Start the app through a local server and refresh the page.', 'error');
+            });
+
+        // Handle Image Upload
+        imageUpload.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            if (!file.type.startsWith('image/')) {
+                uploadedImage = null;
+                generateBtn.disabled = true;
+                showStatus('Please choose a supported image file.', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onerror = function() {
+                uploadedImage = null;
+                generateBtn.disabled = true;
+                showStatus('The image could not be read. Please try another file.', 'error');
+            };
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onerror = function() {
+                    uploadedImage = null;
+                    generateBtn.disabled = true;
+                    showStatus('The image could not be decoded. Please try another file.', 'error');
+                };
+                img.onload = function() {
+                    uploadedImage = img;
+                    generateBtn.disabled = !paletteReady;
+                    showStatus(
+                        paletteReady
+                            ? 'Image ready. Choose dimensions and generate your pattern.'
+                            : 'Image ready; waiting for the color palette to finish loading.',
+                        paletteReady ? 'success' : 'info'
+                    );
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // Calculate dimensions and enforce a safe upper bound for DOM rendering.
+        function calculateDimensions(targetInches, beadSizeInches) {
+            if (!Number.isFinite(targetInches) || targetInches <= 0) {
+                throw new Error('Enter a target width greater than 0 inches.');
+            }
+            if (!Number.isFinite(beadSizeInches) || beadSizeInches <= 0) {
+                throw new Error('Choose a valid bead size.');
+            }
+            if (!uploadedImage || uploadedImage.width <= 0 || uploadedImage.height <= 0) {
+                throw new Error('The uploaded image has invalid dimensions.');
+            }
+
+            const pixelWidth = Math.round(targetInches / beadSizeInches);
+            const pixelHeight = Math.round(pixelWidth * (uploadedImage.height / uploadedImage.width));
+            const cellCount = pixelWidth * pixelHeight;
+            if (pixelWidth < 1 || pixelHeight < 1) {
+                throw new Error('The requested dimensions are too small to create a pattern.');
+            }
+            if (pixelWidth > MAX_PATTERN_DIMENSION || pixelHeight > MAX_PATTERN_DIMENSION || cellCount > MAX_PATTERN_CELLS) {
+                throw new Error(
+                    `Pattern is too large. Choose a smaller width or a different bead size `
+                    + `(maximum ${MAX_PATTERN_DIMENSION} × ${MAX_PATTERN_DIMENSION} beads and ${MAX_PATTERN_CELLS.toLocaleString()} cells).`
+                );
+            }
+            return { pixelWidth, pixelHeight, cellCount };
+        }
+
+        // Determine if text should be black or white based on background brightness
+        function getContrastColor(r, g, b) {
+            // Calculate relative luminance
+            const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+            return luminance > 0.5 ? '#000000' : '#FFFFFF';
+        }
+
+        // Main Generation Logic
+        generateBtn.addEventListener('click', function() {
+            if (!uploadedImage) {
+                showStatus('Upload an image before generating a pattern.', 'error');
+                return;
+            }
+            if (!paletteReady || perlerColors.length === 0) {
+                showStatus('The color palette is not ready yet. Please wait and try again.', 'error');
+                return;
+            }
+
+            let dimensions;
+            try {
+                dimensions = calculateDimensions(
+                    parseFloat(targetWidthInput.value),
+                    parseFloat(beadSizeSelect.value)
+                );
+            } catch (error) {
+                showStatus(error.message, 'error');
+                return;
+            }
+
+            outputContainer.innerHTML = 'Processing...';
+            const { pixelWidth, pixelHeight } = dimensions;
+
+            // Update canvas dimensions
+            canvas.width = pixelWidth;
+            canvas.height = pixelHeight;
+
+            // 2. Resize Image (Draw to canvas)
+            // Turn off anti-aliasing to preserve hard edges for pixel art
+            ctx.imageSmoothingEnabled = false;
+            ctx.mozImageSmoothingEnabled = false; // Firefox fallback
+            ctx.webkitImageSmoothingEnabled = false; // Safari fallback
+            ctx.msImageSmoothingEnabled = false; // IE fallback
+
+            // Clear the canvas first (prevents transparency ghosting)
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw the image without blurring
+            ctx.drawImage(uploadedImage, 0, 0, pixelWidth, pixelHeight);
+
+            // 3. Process Pixels (Color Quantization)
+            const imageData = ctx.getImageData(0, 0, pixelWidth, pixelHeight);
+            const data = imageData.data;
+            
+            // Create the grid container
+            const grid = document.createElement('div');
+            grid.id = 'pattern-grid';
+            grid.style.gridTemplateColumns = `repeat(${pixelWidth}, 30px)`;
+
+            let colorTallies = {};
+            let beadCount = 0;
+
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+                const a = data[i + 3];
+
+                // Skip transparent pixels
+                if (a < 128) {
+                    const emptyPixel = document.createElement('div');
+                    emptyPixel.className = 'pixel';
+                    emptyPixel.style.backgroundColor = 'transparent';
+                    grid.appendChild(emptyPixel);
+                    continue;
+                }
+
+                beadCount++;
+
+                // Find closest color
+                const matchedColor = findClosestColor(r, g, b);
+                
+                // Track this color in our tally
+                if (!colorTallies[matchedColor.name]) {
+                    colorTallies[matchedColor.name] = {
+                        name: matchedColor.name,
+                        rgb: matchedColor.rgb,
+                        count: 0
+                    };
+                }
+                colorTallies[matchedColor.name].count++;
+                
+                // Create pixel DOM element
+                const pixel = document.createElement('div');
+                pixel.className = 'pixel';
+                pixel.style.backgroundColor = `rgb(${matchedColor.rgb[0]}, ${matchedColor.rgb[1]}, ${matchedColor.rgb[2]})`;
+                pixel.style.color = getContrastColor(matchedColor.rgb[0], matchedColor.rgb[1], matchedColor.rgb[2]);
+                pixel.textContent = matchedColor.name;
+                
+                grid.appendChild(pixel);
+            }
+
+            // 4. Output
+            outputContainer.innerHTML = '';
+            showStatus('Pattern generated successfully.', 'success');
+
+            // Create the wrapper that prevents the scrollbar bug
+            const wrapper = document.createElement('div');
+            wrapper.id = 'grid-wrapper';
+            
+            wrapper.appendChild(grid);
+            outputContainer.appendChild(wrapper);
+
+            // Get raw pixel dimensions before applying any scaling
+            // We have to append it to the DOM first so offsetWidth calculates correctly
+            baseGridWidth = grid.scrollWidth;
+            baseGridHeight = grid.scrollHeight;
+            
+            zoomControls.style.display = 'flex';
+            
+            // Apply zoom of 1x
+            applyZoom(1);
+            
+            // Automatically center the scrollbars on the newly generated image
+            outputContainer.scrollLeft = (wrapper.offsetWidth - outputContainer.clientWidth) / 2;
+            outputContainer.scrollTop = (wrapper.offsetHeight - outputContainer.clientHeight) / 2;
+
+            statsDiv.textContent = `Pattern Size: ${pixelWidth} x ${pixelHeight} beads | Total Beads Required: ${beadCount}`;
+
+            // Save our tracked tallies to the global array and render the window
+            globalColorCounts = Object.values(colorTallies);
+            renderBeadCounts();
+        });
+
+        // Zoom Controls
+        // New Smart Zoom Logic
+        function applyZoom(newZoom) {
+            const container = document.getElementById('outputContainer');
+            const wrapper = document.getElementById('grid-wrapper');
+            const grid = document.getElementById('pattern-grid');
+            
+            if (!wrapper || !grid) return;
+            
+            // 1. Find the current center coordinate of the window
+            const centerX = container.scrollLeft + (container.clientWidth / 2);
+            const centerY = container.scrollTop + (container.clientHeight / 2);
+            
+            // 2. Calculate the ratio of that center point relative to the current scaled grid
+            const currentScaledWidth = baseGridWidth * currentZoom;
+            const currentScaledHeight = baseGridHeight * currentZoom;
+            const ratioX = currentScaledWidth > 0 ? centerX / currentScaledWidth : 0.5;
+            const ratioY = currentScaledHeight > 0 ? centerY / currentScaledHeight : 0.5;
+            
+            // 3. Update Zoom values
+            currentZoom = newZoom;
+            const newScaledWidth = baseGridWidth * currentZoom;
+            const newScaledHeight = baseGridHeight * currentZoom;
+            
+            // 4. Scale the grid, and explicitly change the wrapper size so scrollbars update perfectly
+            grid.style.transform = `scale(${currentZoom})`;
+            wrapper.style.width = `${newScaledWidth}px`;
+            wrapper.style.height = `${newScaledHeight}px`;
+            
+            // 5. Instantly jump the scrollbars to match the new scale, keeping the center pixel identical
+            container.scrollLeft = (ratioX * newScaledWidth) - (container.clientWidth / 2);
+            container.scrollTop = (ratioY * newScaledHeight) - (container.clientHeight / 2);
+        }
+
+        // Zoom Controls
+        document.getElementById('zoomInBtn').addEventListener('click', () => {
+            applyZoom(currentZoom + 0.2);
+        });
+
+        document.getElementById('zoomOutBtn').addEventListener('click', () => {
+            applyZoom(Math.max(0.2, currentZoom - 0.2)); // Prevents zooming out past 20%
+        });
+
+        // Toggle Text Codes
+        document.getElementById('toggleTextBtn').addEventListener('change', (e) => {
+            const grid = document.getElementById('pattern-grid');
+            if (grid) {
+                if (e.target.checked) {
+                    // Checkbox is checked: show text
+                    grid.classList.remove('hide-text');
+                } else {
+                    // Checkbox is unchecked: hide text
+                    grid.classList.add('hide-text');
+                }
+            }
+        });
+
+        // Render Bead Inventory List
+        function renderBeadCounts() {
+            const container = document.getElementById('beadCountsContainer');
+            const listElement = document.getElementById('beadList');
+            const sortOption = document.getElementById('sortOption').value;
+
+            if (globalColorCounts.length === 0) {
+                container.style.display = 'none';
+                return;
+            }
+            
+            container.style.display = 'block';
+            listElement.innerHTML = ''; // Clear previous list
+
+            // Clone array so we don't mutate the original during sort
+            let sortedCounts = [...globalColorCounts];
+            
+            if (sortOption === 'count') {
+                // Sort by highest count to lowest
+                sortedCounts.sort((a, b) => b.count - a.count);
+            } else {
+                // Sort alphabetically by name
+                sortedCounts.sort((a, b) => a.name.localeCompare(b.name));
+            }
+
+            // Build DOM elements for each color
+            sortedCounts.forEach(item => {
+                const row = document.createElement('div');
+                row.className = 'bead-item';
+                
+                const swatch = document.createElement('div');
+                swatch.className = 'color-swatch';
+                swatch.style.backgroundColor = `rgb(${item.rgb[0]}, ${item.rgb[1]}, ${item.rgb[2]})`;
+                
+                const nameLabel = document.createElement('span');
+                nameLabel.className = 'color-name';
+                nameLabel.textContent = item.name;
+                
+                const countBadge = document.createElement('span');
+                countBadge.className = 'color-count';
+                countBadge.textContent = item.count;
+                
+                row.appendChild(swatch);
+                row.appendChild(nameLabel);
+                row.appendChild(countBadge);
+                
+                listElement.appendChild(row);
+            });
+        }
+
+        // Re-render when the user changes the sorting dropdown
+        document.getElementById('sortOption').addEventListener('change', renderBeadCounts);
+
+    </script>
+</body>
+</html>

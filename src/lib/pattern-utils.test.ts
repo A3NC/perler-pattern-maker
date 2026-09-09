@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import { test } from 'vitest';
 import {
     MAX_PATTERN_CELLS,
     addColorTally,
@@ -10,7 +10,7 @@ import {
     normalizePalette,
     parseHexColor,
     validatePalette
-} from './pattern-utils.mjs';
+} from './pattern-utils';
 
 test('parseHexColor converts six-digit hex strings', () => {
     assert.deepEqual(parseHexColor('#0aB2ff'), [10, 178, 255]);

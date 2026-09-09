@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perler Bead Pattern Generator</title>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Pattern Generator</h1>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="imageUpload">Upload Image</label>
+                <input type="file" id="imageUpload" accept="image/*">
+            </div>
+
+            <div class="control-group">
+                <label for="targetWidth">Target Physical Width (Inches)</label>
+                <input type="number" id="targetWidth" value="10" min="1" step="0.5">
+            </div>
+
+            <div class="control-group span-full">
+                <label for="beadSize">Bead Size</label>
+                <select id="beadSize">
+                    <option value="0.197">Standard (5mm / ~0.197 inches)</option>
+                    <option value="0.102">Mini (2.6mm / ~0.102 inches)</option>
+                </select>
+            </div>
+
+            <button id="generateBtn" disabled>Loading color palette...</button>
+            <div id="statusMessage" class="status-message info" role="status" aria-live="polite">Loading the default 221-color palette...</div>
+        </div>
+
+        <div id="stats"></div>
+
+        <div class="zoom-controls" id="zoomControls">
+            <button id="zoomOutBtn">- Zoom</button>
+            <button id="zoomInBtn">+ Zoom</button>
+            <div style="display: flex; align-items: center; margin-left: 1rem;">
+                <input type="checkbox" id="toggleTextBtn" checked style="width: auto; margin-right: 0.5rem; cursor: pointer;">
+                <label for="toggleTextBtn" style="margin: 0; cursor: pointer;">Show Codes</label>
+            </div>
+        </div>
+
+        <div class="output-container" id="outputContainer">
+            <div id="placeholderText" style="display: flex; justify-content: center; align-items: center; height: 100%; color: #6B7280;">
+                Pattern will appear here
+            </div>
+        </div>
+
+        <div id="beadCountsContainer">
+            <div class="count-header">
+                <h3>Required Beads</h3>
+                <select id="sortOption">
+                    <option value="count">Sort by Largest Count</option>
+                    <option value="name">Sort by Color Name</option>
+                </select>
+            </div>
+            <div id="beadList" class="bead-list"></div>
+        </div>
+
+    <canvas id="canvas" style="display: none;"></canvas>
+    </div>
+
+    <!--
+        Boot guard (PAL-3). The module below cannot report its own failure to
+        start: opened as a file:// URL the browser blocks module scripts
+        outright, and served by a plain static file server src/main.ts comes
+        back with a non-JS MIME type the browser refuses to execute. In both
+        cases no app code runs at all, main.ts's own .catch() never fires, and
+        the page sits on "Loading color palette..." forever with no error. This
+        is a classic script, so it always runs, and it is what turns that dead
+        end into an instruction. Keep it inline and non-module.
+    -->
+    <script>
+        (function () {
+            var BOOT_TIMEOUT_MS = 4000;
+            var scriptBlocked = false;
+            var runtimeError = '';
+
+            function fail(message) {
+                var button = document.getElementById('generateBtn');
+                var status = document.getElementById('statusMessage');
+                if (button) {
+                    button.disabled = true;
+                    button.textContent = 'App failed to start';
+                }
+                if (status) {
+                    status.textContent = message;
+                    status.className = 'status-message error';
+                }
+            }
+
+            if (location.protocol === 'file:') {
+                fail('This page was opened directly from disk, so the browser blocked the app from '
+                    + 'starting. It has to be served over HTTP: run "npm run dev" and open the URL it prints.');
+                return;
+            }
+
+            // Fires when a script fails to load or is rejected for its MIME
+            // type; capture phase, because resource errors do not bubble.
+            window.addEventListener('error', function (event) {
+                if (event.target && event.target !== window && event.target.tagName === 'SCRIPT') {
+                    scriptBlocked = true;
+                } else if (event.message) {
+                    runtimeError = event.message;
+                }
+            }, true);
+
+            window.addEventListener('load', function () {
+                setTimeout(function () {
+                    if (window.__perlerBooted) return;
+
+                    if (scriptBlocked) {
+                        fail('The browser refused to run the app\'s script. Serve the project through '
+                            + 'Vite -- run "npm run dev" and open the URL it prints -- rather than through a '
+                            + 'plain static file server, which cannot compile TypeScript.');
+                    } else {
+                        fail('The app failed to start'
+                            + (runtimeError ? ' (' + runtimeError + ')' : '')
+                            + '. Check the browser console for details.');
+                    }
+                }, BOOT_TIMEOUT_MS);
+            });
+        })();
+    </script>
+    <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

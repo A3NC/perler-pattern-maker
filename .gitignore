@@ -1,3 +1,7 @@
 # pixi environments
 .pixi/*
 !.pixi/config.toml
+
+# node / vite
+node_modules/
+dist/

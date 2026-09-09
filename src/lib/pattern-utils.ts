@@ -1,9 +1,11 @@
+import type { ColorTally, PaletteColor, PatternDimensions } from '../types';
+
 const HEX_COLOR_PATTERN = /^#?[0-9a-f]{6}$/i;
 
 export const MAX_PATTERN_DIMENSION = 500;
 export const MAX_PATTERN_CELLS = 100000;
 
-export function parseHexColor(hex) {
+export function parseHexColor(hex: unknown): number[] | null {
     if (typeof hex !== 'string' || !HEX_COLOR_PATTERN.test(hex)) {
         return null;
     }
@@ -16,7 +18,12 @@ export function parseHexColor(hex) {
     ];
 }
 
-export function normalizePalette(records) {
+/**
+ * Adds an `rgb` triple to each record, from the record's own `rgb` or its `hex`.
+ * Records that yield no usable RGB keep a null here and are reported by
+ * validatePalette, which is the guard every caller must run before use.
+ */
+export function normalizePalette(records: unknown): PaletteColor[] {
     if (!Array.isArray(records)) {
         throw new Error('Palette data must be an array.');
     }
@@ -30,13 +37,13 @@ export function normalizePalette(records) {
         return {
             ...record,
             rgb
-        };
+        } as PaletteColor;
     });
 }
 
-export function validatePalette(records) {
-    const errors = [];
-    const names = new Set();
+export function validatePalette(records: unknown): string[] {
+    const errors: string[] = [];
+    const names = new Set<string>();
 
     if (!Array.isArray(records) || records.length === 0) {
         return ['Palette must contain at least one color.'];
@@ -57,7 +64,7 @@ export function validatePalette(records) {
             names.add(color.name);
         }
 
-        if (!Array.isArray(color.rgb) || color.rgb.length !== 3 || color.rgb.some((channel) => (
+        if (!Array.isArray(color.rgb) || color.rgb.length !== 3 || color.rgb.some((channel: unknown) => (
             typeof channel !== 'number' || !Number.isInteger(channel) || channel < 0 || channel > 255
         ))) {
             errors.push(`${entryLabel} (${color.name || 'unknown'}) has invalid RGB values.`);
@@ -67,7 +74,13 @@ export function validatePalette(records) {
     return errors;
 }
 
-export function calculateDimensions(targetInches, beadSizeInches, sourceWidth, sourceHeight, options = {}) {
+export function calculateDimensions(
+    targetInches: number,
+    beadSizeInches: number,
+    sourceWidth: number,
+    sourceHeight: number,
+    options: { maxDimension?: number; maxCells?: number } = {}
+): PatternDimensions {
     const maxDimension = options.maxDimension ?? MAX_PATTERN_DIMENSION;
     const maxCells = options.maxCells ?? MAX_PATTERN_CELLS;
 
@@ -98,24 +111,27 @@ export function calculateDimensions(targetInches, beadSizeInches, sourceWidth, s
     return { pixelWidth, pixelHeight, cellCount };
 }
 
-export function isTransparentAlpha(alpha, threshold = 128) {
+export function isTransparentAlpha(alpha: unknown, threshold = 128): boolean {
     return typeof alpha !== 'number' || alpha < threshold;
 }
 
-export function colorDistanceSquared(r1, g1, b1, r2, g2, b2) {
+export function colorDistanceSquared(
+    r1: number, g1: number, b1: number,
+    r2: number, g2: number, b2: number
+): number {
     return (r2 - r1) ** 2 + (g2 - g1) ** 2 + (b2 - b1) ** 2;
 }
 
-export function findClosestColor(r, g, b, palette) {
+export function findClosestColor(r: number, g: number, b: number, palette: PaletteColor[]): PaletteColor {
     if (!Array.isArray(palette) || palette.length === 0) {
         throw new Error('No palette is available for color matching.');
     }
 
     let minDistance = Infinity;
-    let closestColor = null;
+    let closestColor: PaletteColor | null = null;
 
     for (const color of palette) {
-        const [colorR, colorG, colorB] = color.rgb;
+        const [colorR, colorG, colorB] = color.rgb as [number, number, number];
         const distance = colorDistanceSquared(r, g, b, colorR, colorG, colorB);
         if (distance < minDistance) {
             minDistance = distance;
@@ -123,10 +139,10 @@ export function findClosestColor(r, g, b, palette) {
         }
     }
 
-    return closestColor;
+    return closestColor as PaletteColor;
 }
 
-export function addColorTally(tallies, color) {
+export function addColorTally(tallies: Record<string, ColorTally>, color: PaletteColor): void {
     if (!tallies[color.name]) {
         tallies[color.name] = {
             name: color.name,

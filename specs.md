@@ -106,8 +106,8 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
 - [ ] **SET-2 [v1]** User selects bead size from a fixed list: Standard and Mini, each labeled with
   its millimeter pitch.
   **Check:** Switching from Standard to Mini at a fixed target width increases bead count per side
-  by the inverse ratio of the two pitches, within one bead. _(Partially implemented; see Q1 —
-  the Mini pitch currently used may be wrong.)_
+  by the inverse ratio of the two pitches, within one bead. _(Partially implemented; Q1 resolved —
+  Mini is 2.6 mm / 0.102 in as of M0.)_
 - [ ] **SET-3 [v1]** Display the computed grid dimensions (width × height in beads) and total bead
   count before generating.
   **Check:** Changing target width or bead size updates the displayed dimensions immediately,
@@ -290,6 +290,47 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
   work. No outbound requests appear in the network log during those actions.
 - [ ] **SAVE-3 [later]** A library of multiple named projects the user can browse and return to.
 
+### User interface — UI
+
+Covers the application shell — controls, status, layout, and chrome. The pattern view itself is
+VIEW. Appearance is split deliberately: UI-1 … UI-6 are mechanical and checkable, UI-7 is the
+subjective half and is held to v2. See Decision log D14.
+
+- [ ] **UI-1 [v1]** No content is clipped, and the page never scrolls horizontally, at 390 px or
+  1280 px wide.
+  **Check:** At both widths, in each screen state U1–U5, no element is cut off and
+  `document.documentElement.scrollWidth` does not exceed the viewport width. _(Currently failing at
+  390 px: the heading, the Generate button, and the target-width control are clipped.)_
+- [ ] **UI-2 [v1]** Controls reflow to a single full-width column when two columns no longer fit,
+  and status messages span the control panel rather than occupying an arbitrary grid cell.
+  **Check:** At 390 px every control is full-width and in document order; at 1280 px the
+  two-column layout is preserved; the status message spans the panel width at both.
+- [ ] **UI-3 [v1]** Spacing, corner radii, and font sizes come from defined scales rather than
+  per-rule literals.
+  **Check:** `src/styles.css` defines spacing, radius, and type scales as custom properties in
+  `:root`, and no `border-radius`, `font-size`, `padding`, `margin`, or `gap` literal appears
+  outside `:root` except where no scale value applies. _(Currently five unrelated radii, four font
+  sizes mixing px and rem, six ad-hoc spacing values.)_
+  **Keep the token set minimal and descriptive.** Name what the app already does — roughly four
+  spacing steps, three radii, three type sizes — not what a future design system might want.
+  Structure is what survives a v2 change of direction; speculative structure built for a direction
+  nobody has chosen yet is the one part of this work that can genuinely be wasted.
+- [ ] **UI-4 [v1]** Every interactive control has a visible keyboard focus indicator, distinct
+  from its hover state.
+  **Check:** Tab through upload, target width, bead size, Generate, the zoom controls, the code
+  toggle, and the inventory sort; each shows a clearly visible focus ring.
+- [ ] **UI-5 [v1]** App text meets WCAG AA contrast — 4.5:1 for normal text, 3:1 for large text.
+  **Check:** Measure each text-on-background pair — body, labels, buttons in both enabled and
+  disabled states, and all three status variants — with a contrast checker. Note that
+  `src/contrast.ts` does **not** answer this: it uses a perceptual-brightness approximation to pick
+  black-or-white text on bead cells (VIEW-4), not WCAG relative luminance.
+- [ ] **UI-6 [v1]** Interactive controls are at least 44 × 44 px at 390 px wide.
+  **Check:** Measure each control's rendered box at 390 px.
+- [ ] **UI-7 [v2]** The interface reads as intentionally designed rather than as an unstyled form.
+  Verified by human review against the fixed screen states in "Done looks like," not by automated
+  test.
+  **Check:** See the interface review procedure in "Done looks like."
+
 ### Non-functional — NFR
 
 - [ ] **NFR-1 [v1]** Free to run and free to host: a static site with no backend and no paid
@@ -305,9 +346,13 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
 - [ ] **NFR-4 [v1]** Deterministic logic is covered by automated tests that run without a browser.
   **Check:** The test suite covers palette validation, dimension calculation, OkLab matching, color
   reduction, and inventory tallying, and passes from a single command.
+  _(Partially implemented as of M0: `npm test` is the single command and covers palette validation,
+  dimension calculation, palette matching, transparency, and inventory tallying — 12 tests. Still
+  missing OkLab matching and color reduction, which do not exist until M2.)_
 - [ ] **NFR-5 [v1]** Usable in a current desktop browser at 1280 px wide and in a phone browser at
   390 px wide.
-  **Check:** At both widths, all v1 controls are reachable and the pattern view is usable.
+  **Check:** At both widths, all v1 controls are reachable and the pattern view is usable. UI-1 and
+  UI-2 carry the concrete failure conditions for this. _(Currently failing at 390 px — see UI-1.)_
 
 ## Won't build
 
@@ -343,6 +388,28 @@ Additional pass conditions for all six: distinct color count is within the SET-4
 region of the source is broken into three or more colors that read as noise; no visible checkerboard
 or moiré artifacts.
 
+**Interface review (UI-7) — gates v2, not v1.** The same procedure as above, applied to the app's
+own appearance. v1 only has to pass the mechanical UI-1 … UI-6 Checks; this review is what "looks
+designed" means, and it is deliberately held to v2 so it cannot become an open-ended tuning loop
+inside v1 (D14). Walk these five fixed screen states at 1280 px, and U5 at 390 px.
+
+| # | Screen state | Passing result |
+|---|---|---|
+| U1 | First load, nothing uploaded | Reads as a finished tool at rest, not an empty form. The primary action is obvious and its disabled state is clearly deliberate rather than broken. |
+| U2 | Image uploaded, before generating | The chosen file and the settings that will be applied are both legible at a glance. Nothing shifts position jarringly from U1. |
+| U3 | Pattern generated — canvas, stats, inventory | The pattern is the visual focus. Stats and inventory support it without competing for attention. |
+| U4 | An error state (unsupported file, or dimensions over the NFR-3 cap) | The message is the most prominent thing on screen, reads as informative rather than alarming, and says what to do next. |
+| U5 | U3 at 390 px wide | Same hierarchy as U3, reflowed. Nothing feels like a desktop layout squeezed. |
+
+Additional pass conditions for all five: spacing follows a consistent rhythm; one accent color used
+consistently for primary actions; no control visually orphaned or misaligned; type hierarchy
+clearly distinguishes headings, labels, and body text.
+
+**Stopping rule, as for R1–R6: when U1–U5 pass, stop, even if it feels improvable.**
+
+The state list is finalized once the UI surface is settled — U3 depends on M1's canvas view, and an
+editor state would depend on M5. Do not fix screenshots of these states before then.
+
 ## Constraints and hunches
 
 - Free, static, no backend. Data stays local (SAVE-2, NFR-1).
@@ -364,9 +431,10 @@ or moiré artifacts.
 
 ## Open questions
 
-- **Q1 — Mini bead pitch.** The app currently uses 2 mm for Mini beads (0.079 in). Mini Perler
-  beads are commonly specified at 2.6 mm. If 2.6 is correct, every Mini pattern is currently ~30%
-  too many beads wide. Measure a real bead strip and fix SET-2.
+- **Q1 — Mini bead pitch. RESOLVED (2026-09-08).** Set to 2.6 mm (0.102 in) in M0, the commonly
+  published Mini Perler pitch. Was 2 mm (0.079 in), which made every Mini pattern ~30% too many
+  beads wide. At a 10 in target width, Mini now yields 98 beads across rather than 127. Worth
+  confirming against a real bead strip, but no longer blocking.
 - **Q2 — Default color limit.** SET-4 defaults to 30. Artwork and photos likely want very different
   values — a flat-color drawing may need only 8, while a photo portrait wants every one of the 30.
   Validate against R1–R6 and decide whether one default serves both or the limit should adapt to
@@ -391,6 +459,11 @@ or moiré artifacts.
   outlining everything; too loose eats the subject's own light edges. Whether a single tolerance
   value can serve both clean PNG exports and re-compressed JPEGs is unknown. This is the part of
   SET-7 most likely to be harder than it looks.
+- **Q9 — Visual identity for the v2 redesign.** The current palette is Tailwind's defaults
+  (indigo-600, gray-50, gray-200) carried over from the original single-file build, and the type is
+  the bare system stack. Whether the v2 redesign keeps that and merely tightens it, or adopts an
+  identity of its own, is undecided — and it is the choice most likely to turn UI-7 into the tuning
+  loop D14 is trying to avoid.
 
 ## Decision log
 
@@ -449,3 +522,26 @@ or moiré artifacts.
   case, border-touching subjects, and anti-aliased edge halos are all specified as Checks under
   SET-7, and the tolerance question is open as Q8. And removal without SET-8's auto-trim would
   silently shrink the finished piece, so the two ship together.
+- **D14 (2026-09-08) — Appearance is split into a mechanical v1 floor and a subjective v2 review.**
+  Leaving appearance out of the spec entirely rested on it not being checkable, but most of what
+  currently reads as "crude" is not a design problem — it is inconsistency and breakage. Five
+  unrelated corner radii, four font sizes mixing units, six ad-hoc spacing values, a status box
+  orphaned at half-width, and content clipped off-screen at 390 px. Fixing those requires no taste,
+  only one decision applied consistently, so they become ordinary Checks (UI-1 … UI-6) in v1.
+  Choosing a point of view — typography, a real color story, empty states, motion — does require
+  taste and has the same open-ended shape as M2's color tuning, so it is held to v2 as UI-7 and
+  given M2's treatment: a fixed review set (U1–U5) with an explicit stopping rule. The subjective
+  half is never split in two; it moves whole into v2. Two consequences recorded deliberately:
+  - **NFR-5 is currently failing** and was untracked until now. At 390 px the heading, the Generate
+    button, and the target-width control are clipped, because `src/styles.css` has no media queries
+    and a hardcoded two-column control grid. This is an existing [v1] obligation, not new scope.
+  - **The UI-7 review set cannot be fixed yet.** U3 depends on M1's canvas view and an editor state
+    would depend on M5, so the screen states are finalized only once the UI surface stops moving.
+  - **The v1 floor is not invalidated by whatever v2 decides.** Tokenizing changes *structure*; a
+    change of aesthetic direction changes *values*. Swapping the font, the radii, or the whole
+    palette in v2 is a handful of edits in `:root` precisely because UI-3 happened first — without
+    it, the same change means hunting scattered literals across the file. UI-1, UI-2, UI-4, and
+    UI-6 are direction-independent outright: no redesign makes "content must not be clipped" or
+    "focus must be visible" obsolete. UI-5's threshold is permanent even though the colors it
+    measures are not. The floor is also what makes the UI-7 review answerable at all — "is spacing
+    consistent" cannot be judged against values that were never systematic.

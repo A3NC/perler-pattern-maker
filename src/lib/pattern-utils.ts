@@ -2,8 +2,11 @@ import type { ColorTally, PaletteColor, PatternDimensions } from '../types';
 
 const HEX_COLOR_PATTERN = /^#?[0-9a-f]{6}$/i;
 
-export const MAX_PATTERN_DIMENSION = 500;
-export const MAX_PATTERN_CELLS = 100000;
+// NFR-3 hard limits (D15). These are the reject thresholds, not the size the
+// app is tuned for -- that is the 10,000-cell design target, which is a
+// performance target rather than something to enforce here.
+export const MAX_PATTERN_DIMENSION = 300;
+export const MAX_PATTERN_CELLS = 50000;
 
 export function parseHexColor(hex: unknown): number[] | null {
     if (typeof hex !== 'string' || !HEX_COLOR_PATTERN.test(hex)) {
@@ -101,10 +104,20 @@ export function calculateDimensions(
     if (!Number.isFinite(pixelWidth) || !Number.isFinite(pixelHeight) || pixelWidth < 1 || pixelHeight < 1) {
         throw new Error('The requested dimensions are too small to create a pattern.');
     }
-    if (pixelWidth > maxDimension || pixelHeight > maxDimension || cellCount > maxCells) {
+    // SET-5 wants the message to name the limit that was actually hit, so these
+    // are separate. Reporting them together would also advertise an impossible
+    // combination: maxDimension squared is well over maxCells.
+    if (pixelWidth > maxDimension || pixelHeight > maxDimension) {
         throw new Error(
-            `Pattern is too large. Choose a smaller width or a different bead size `
-            + `(maximum ${maxDimension} × ${maxDimension} beads and ${maxCells.toLocaleString()} cells).`
+            `Pattern is too large: ${pixelWidth} × ${pixelHeight} beads exceeds the limit of `
+            + `${maxDimension} beads per side. Choose a smaller width or a larger bead size.`
+        );
+    }
+    if (cellCount > maxCells) {
+        throw new Error(
+            `Pattern is too large: ${pixelWidth} × ${pixelHeight} is ${cellCount.toLocaleString()} `
+            + `beads, over the limit of ${maxCells.toLocaleString()}. Choose a smaller width or a `
+            + `larger bead size.`
         );
     }
 

@@ -5,7 +5,7 @@ import { calculateDimensions } from './lib/pattern-utils';
 import { loadPalette } from './palette';
 import { generatePattern } from './pipeline/generate';
 import { imageToPixels } from './rasterize';
-import { clearPattern, initPatternViewControls, renderPattern, showProcessing } from './render/dom-grid';
+import { clearPattern, initPatternViewControls, renderPattern, showProcessing } from './render/canvas-view';
 import { initInventoryControls, renderBeadCounts, setBeadCounts } from './render/inventory';
 import { showStatus } from './status';
 import { readImageFile } from './upload';

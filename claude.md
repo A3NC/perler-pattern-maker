@@ -62,7 +62,7 @@ In all three failure cases the module never executes, so `main.ts`'s own error h
 - `src/types.ts` — `PaletteColor`, `Palette`, `Pattern`, `PatternDimensions`, `ColorTally`, `SourcePixels`. `Pattern` is the durable contract: M1 renders it, M5 edits it, M6 exports it, M7 serializes it.
 - `src/rasterize.ts` — hidden canvas: image → `SourcePixels`. Still point-sampled; GEN-4's area averaging is M2.
 - `src/palette.ts`, `src/upload.ts`, `src/status.ts`, `src/dom.ts`, `src/contrast.ts` — palette loading, file decoding, status messages, `requireElement`, and text-contrast choice.
-- `src/render/dom-grid.ts` — **M0-only.** The element-per-bead grid with CSS-transform zoom that D1 rules out. M1 deletes this file; don't invest in it.
+- `src/render/canvas-view.ts` — the canvas pattern view (D1), which replaced the M0-only `dom-grid.ts` in M1 step 1. Currently draws one filled rect per cell at a fixed scale; zoom, pan, and bead codes arrive in steps 2–4.
 - `src/render/inventory.ts` — the bead-count list (OUT-4).
 - `src/styles.css` — all styling, moved verbatim out of the original single file. Still carries that origin: 8-space base indent, ad-hoc spacing/radius/type literals, and no media queries. M8 (UI-3) replaces the literals with scales; don't hand-tidy it before then.
 - `colors.json` — a 291-record palette with `name` and `hex` only. Not loaded by the app and it would fail PAL-4 validation as-is; it is an input to `helper.py`, kept for PAL-6.

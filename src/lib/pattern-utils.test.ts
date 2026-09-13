@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import {
     MAX_PATTERN_CELLS,
+    MAX_PATTERN_DIMENSION,
     addColorTally,
     calculateDimensions,
     colorDistanceSquared,
@@ -54,12 +55,19 @@ test('calculateDimensions preserves aspect ratio', () => {
     });
 });
 
-test('calculateDimensions rejects patterns beyond the safe cell limit', () => {
+test('calculateDimensions rejects patterns beyond the NFR-3 hard limits', () => {
+    // Over the per-side limit: 508 × 508.
     assert.throws(
         () => calculateDimensions(100, 0.197, 1, 1),
-        new RegExp('maximum 500 × 500 beads and 100,000 cells')
+        /508 × 508 beads exceeds the limit of 300 beads per side/
     );
-    assert.equal(MAX_PATTERN_CELLS, 100000);
+    // Within the per-side limit but over the cell limit: 250 × 250 = 62,500.
+    assert.throws(
+        () => calculateDimensions(49.25, 0.197, 1, 1),
+        /250 × 250 is .* beads, over the limit of/
+    );
+    assert.equal(MAX_PATTERN_DIMENSION, 300);
+    assert.equal(MAX_PATTERN_CELLS, 50000);
 });
 
 test('isTransparentAlpha identifies transparent pixels', () => {

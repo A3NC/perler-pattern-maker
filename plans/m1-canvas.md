@@ -29,9 +29,21 @@ toggle, and hide code text automatically when cells get too small to read.
 
 ## Size targets
 
-NFR-3 caps the pattern at **500 beads per side and 100,000 cells** (largest square 316 × 316).
-VIEW-1's Check is **300 × 300 rendering and panning smoothly**, so use 300 × 300 as the working
-test case and 500 × 200 as the non-square case.
+NFR-3 (revised by D15 on 2026-09-10) now gives two numbers: a **design target of 10,000 cells
+(100 × 100)** and a **hard limit of 50,000 cells / 300 per side**. Use **100 × 100** as the working
+test case and **300 × 160** as the non-square case near the hard limit.
+
+**The canvas cannot be sized to the whole pattern — decide this at step 2, not step 6.** The
+binding constraint is cells × max zoom, not cell count. At VIEW-2's readable max zoom (~30 px per
+cell) even the 100 × 100 design target is a 3,000 × 3,000 CSS-pixel surface: ~36M device pixels and
+~144 MB of backing store at DPR 2, over mobile Safari's canvas area cap, and NFR-5 puts 390 px in
+scope. Step 6 below describes drawing only the visible cell range as a performance fallback; that
+is wrong, it is a precondition, and it changes what steps 2 and 3 take as inputs.
+
+The cheapest container model that keeps the scrollbars you already have: leave `#grid-wrapper` in
+place as an **empty spacer** sized to `cols × cell` to drive native scroll, size the canvas to the
+container, pin it over the scroll region, and redraw the visible range on scroll. Pure drag-pan
+with no scrollbars is the simpler alternative — step 3 has you tracking an offset either way.
 
 ---
 
@@ -47,14 +59,15 @@ generate and display a pattern.
 Delete `dom-grid.ts` in this step rather than leaving it beside the new file. It is marked
 **M0-only** in `claude.md` precisely so this deletion is uncontroversial.
 
-Also remove the now-dead CSS: `#grid-wrapper`, `#pattern-grid`, `.pixel`, and
-`#pattern-grid.hide-text .pixel` (`src/styles.css:102`, `:107`, `:115`, `:186`). Keep
-`.output-container` and `.zoom-controls`.
+Also remove the now-dead CSS: `#pattern-grid`, `.pixel`, and `#pattern-grid.hide-text .pixel`
+(`src/styles.css:107`, `:115`, `:186`). Keep `.output-container` and `.zoom-controls`. **Leave
+`#grid-wrapper` alone for now** (`src/styles.css:117`) — whether it survives as the scroll spacer
+is the step-2 container decision above, and deleting it here just to re-add it is churn.
 
 **Touches:** `src/render/canvas-view.ts` (new), `src/render/dom-grid.ts` (deleted), `src/main.ts`
 (imports), `src/styles.css`, `index.html` if the container markup changes.
 
-**Done when:** A 300 × 300 pattern renders as colored cells on a canvas, empty cells show as empty,
+**Done when:** A 100 × 100 pattern renders as colored cells on a canvas, empty cells show as empty,
 and the bead inventory is unchanged. `npm run check` green.
 
 > **Watch:** this is the step that changes the DOM contract between `index.html` and `src/`. If an
@@ -68,15 +81,18 @@ and the bead inventory is unchanged. `npm run check` green.
 Zoom changes the cell size and triggers a full redraw. It must **not** use a CSS transform — that
 is exactly what D1 rules out.
 
+**Settle the container model first** — see Size targets. Everything below assumes a canvas sized to
+the container, not to the pattern.
+
 VIEW-2's Check sets both ends: at maximum zoom cells and codes are comfortably readable; at minimum
 zoom the whole pattern fits the viewport. Derive the minimum from the pattern and container size
-rather than hardcoding it, so a 500-wide pattern can still zoom out to fit.
+rather than hardcoding it, so a 300-wide pattern can still zoom out to fit.
 
 Keep the zoom math pure and tested: given current scale, container size, scroll offset, and a new
 scale, return the new scroll offset that holds the viewport center fixed. That function belongs in
 a testable module; the canvas call sites do not.
 
-**Done when:** Zooming in and out holds the center point; minimum zoom fits a 300 × 300 pattern
+**Done when:** Zooming in and out holds the center point; minimum zoom fits a 100 × 100 pattern
 entirely; maximum zoom is comfortably readable. Zoom math has unit tests.
 
 > **Watch:** `plan-v1.md` flags off-center zoom drift as a standard canvas pitfall. The old
@@ -96,7 +112,7 @@ M1 only needs this mapping to exist and be correct. **M5 is what consumes it** �
 seam that makes the editor a normal-sized milestone instead of a rewrite, which is why D1 calls
 canvas a prerequisite for all of EDIT.
 
-**Done when:** A 300 × 300 pattern pans smoothly by drag (VIEW-1's Check). The coordinate mapping
+**Done when:** A 100 × 100 pattern pans smoothly by drag (VIEW-1's Check). The coordinate mapping
 round-trips correctly at several zoom levels and returns `null` outside the pattern, under test.
 
 > **Watch:** pan and the future brush both start with a mousedown on the canvas. Don't solve that
@@ -136,13 +152,19 @@ back in restores it (VIEW-5's Check). The threshold helper has tests.
 Size the canvas backing store by `devicePixelRatio` and scale the context, so text and cell edges
 are crisp on a Retina display.
 
-Then verify the milestone's actual acceptance bar: a 300 × 300 pattern rendering and panning
-smoothly, and a redraw fast enough that zoom and pan don't feel laggy. If a full redraw per frame
-is too slow at 100,000 cells, the first thing to try is drawing only the visible cell range, not
-caching bitmaps.
+Keep every drawing calculation in CSS pixels and apply density once with
+`ctx.setTransform(dpr, 0, 0, dpr, 0, 0)` per resize. Done that way this step is a few lines and
+step 3's coordinate mapping is untouched; fold `dpr` into the cell size instead and you are back
+through steps 2, 3, and 5.
 
-**Done when:** Text is sharp on a HiDPI display; 300 × 300 pans smoothly; zoom and pan stay
-responsive at the NFR-3 cap.
+Then verify the milestone's actual acceptance bar: a 100 × 100 pattern rendering and panning
+smoothly, and a redraw fast enough that zoom and pan don't feel laggy. Visible-range drawing is
+already a precondition from step 2, so the worst case here is bounded by container area rather than
+pattern area — `fillRect` is cheap, `fillText` is not, and step 5's threshold means text only draws
+when cells are large enough that few of them fit on screen.
+
+**Done when:** Text is sharp on a HiDPI display; 100 × 100 pans smoothly; zoom and pan stay
+responsive at NFR-3's 50,000-cell hard limit.
 
 > **Watch:** `plan-v1.md` names blurry text from ignoring pixel density as the second standard
 > canvas pitfall. Doing this last means every earlier step's visual judgment was made at 1x —
@@ -153,7 +175,7 @@ responsive at the NFR-3 cap.
 
 ## Milestone exit
 
-M1 is done when `plan-v1.md`'s **Done when** holds: a 300 × 300 pattern renders and pans smoothly;
+M1 is done when `plan-v1.md`'s **Done when** holds: a 100 × 100 pattern renders and pans smoothly;
 zoom keeps the viewport center fixed; codes are legible on the darkest and lightest palette colors
 and vanish when cells shrink below the legibility threshold.
 

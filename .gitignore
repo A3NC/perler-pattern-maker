@@ -8,3 +8,6 @@ dist/
 
 # macOS
 .DS_Store
+
+# personal working calendar; specs.md and plan-v1.md are authoritative
+schedule.md

@@ -118,8 +118,10 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
   distinct colors. See Decision log D3.
 - [ ] **SET-5 [v1]** Reject dimension settings that exceed the limits in NFR-3, with a message
   saying which limit was hit and what to change.
-  **Check:** A setting that would produce more than the cell cap shows an error naming the cap and
-  suggesting a smaller width or larger bead. _(Implemented in `pattern-utils.mjs`.)_
+  **Check:** A setting that would produce more than NFR-3's hard limit shows an error naming the
+  limit and suggesting a smaller width or larger bead. _(Implemented in
+  `src/lib/pattern-utils.ts`; the per-side and cell limits report separately so the message names
+  the one actually hit.)_
 - [ ] **SET-6 [v2]** Optional advanced settings panel, collapsed by default, containing the
   background-removal and pixel-art options below.
   **Check:** Panel is hidden until opened; all v1 behavior is unchanged when it is never opened.
@@ -217,8 +219,9 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
 
 - [ ] **VIEW-1 [v1]** Render the pattern on a single drawing surface (canvas), not as one page
   element per bead.
-  **Check:** A 300 × 300 pattern renders and pans smoothly. _(Current build uses one element per
-  bead and must be rewritten. See Decision log D1.)_
+  **Check:** A 100 × 100 pattern (NFR-3's design target) renders and pans smoothly, and a pattern
+  at NFR-3's 50,000-cell hard limit stays usable. _(Current build uses one element per bead and
+  must be rewritten. See Decision log D1.)_
 - [ ] **VIEW-2 [v1]** Zoom in and out, and pan when the pattern exceeds the viewport.
   **Check:** At maximum zoom individual cells and codes are comfortably readable; at minimum zoom
   the whole pattern fits the viewport. Zoom keeps the viewport center fixed.
@@ -337,12 +340,19 @@ subjective half and is held to v2. See Decision log D14.
   services.
   **Check:** The built app runs correctly when served as plain static files.
 - [ ] **NFR-2 [v1]** Generation completes without freezing the page.
-  **Check:** At the NFR-3 cell cap, the page stays responsive; if generation exceeds ~150 ms of
+  **Check:** At NFR-3's hard limit, the page stays responsive; if generation exceeds ~150 ms of
   blocking, move the pipeline off the main thread. See Decision log D8.
-- [ ] **NFR-3 [v1]** Hard limits: 500 beads maximum per side, 100,000 cells maximum (so the largest
-  square is 316 × 316). Source images above 8000 px on a side are rejected per IN-6.
-  **Check:** Settings above these limits are refused with the message required by SET-5.
-  _(Implemented in `pattern-utils.mjs`.)_
+- [ ] **NFR-3 [v1]** Two size numbers, deliberately different. See Decision log D15.
+  - **Design target — 10,000 cells (100 × 100).** What the app is tuned and tested against: M1's
+    render and pan performance, M2's generation time, and the R1–R6 review all use a pattern of
+    this size. At Standard 5 mm that is a 50 cm piece; at Mini 2.6 mm, 26 cm.
+  - **Hard limit — 50,000 cells, 300 beads maximum per side** (so the largest square is
+    223 × 223). Settings above this are refused.
+
+  Source images above 8000 px on a side are rejected per IN-6.
+  **Check:** Settings above the hard limit are refused with the message required by SET-5; a
+  pattern at the design target meets the performance Checks in VIEW-1 and NFR-2.
+  _(Enforced in `src/lib/pattern-utils.ts`.)_
 - [ ] **NFR-4 [v1]** Deterministic logic is covered by automated tests that run without a browser.
   **Check:** The test suite covers palette validation, dimension calculation, OkLab matching, color
   reduction, and inventory tallying, and passes from a single command.
@@ -377,7 +387,7 @@ regression guard.
 
 | # | Image | Passing result |
 |---|---|---|
-| R1 | Flat-color illustration or logo, transparent background | Near-exact reproduction. Flat regions stay single-colored. |
+| R1 | Flat-color illustration, transparent background | Near-exact reproduction. Flat regions stay single-colored. |
 | R2 | Flat-color drawing of an object on a solid white canvas | Subject as R1. The canvas must come out as **one** uniform color, never speckled into several near-whites — that speckle would also defeat SET-7 later. |
 | R3 | Shaded or painted digital artwork — soft gradients, dark outlines | Outlines survive as continuous lines, not dashes. Shading resolves into a few clean bands, not noise. |
 | R4 | High-contrast photo, one subject, plain background (dog portrait) | Subject clearly identifiable from ~60 cm away. Eyes and silhouette intact. |
@@ -416,8 +426,9 @@ editor state would depend on M5. Do not fix screenshots of these states before t
 - The realistic constraint on quality is the user's actual bead inventory: most people own on the
   order of 25 colors, not 221. Output that needs 80 colors is unbuildable, which is why SET-4/GEN-3
   exist.
-- Small patterns are the common case. At 5 mm beads, a 10-inch piece is only ~51 beads wide, so the
-  NFR-3 caps are far above typical use.
+- Small patterns are the common case. At 5 mm beads, a 10-inch piece is only ~51 beads wide — about
+  2,600 cells, roughly a quarter of NFR-3's design target. The original caps (500 per side, 100,000
+  cells) were far above anything physically buildable and were revised down in D15.
 - **The majority input is the easy input.** Flat-color artwork is what this pipeline handles best:
   it already consists of large uniform regions, so downscaling and palette-snapping lose little.
   Photos are the hard case — fine texture (fur, foliage, hair) does not survive at bead resolution.
@@ -464,6 +475,12 @@ editor state would depend on M5. Do not fix screenshots of these states before t
   the bare system stack. Whether the v2 redesign keeps that and merely tightens it, or adopts an
   identity of its own, is undecided — and it is the choice most likely to turn UI-7 into the tuning
   loop D14 is trying to avoid.
+- **Q10 — Are D15's revised size numbers right?** They are reasoned from bead pitch and plausible
+  finished dimensions, not from real projects. Mini is where the hard limit is most likely to bind:
+  a 78 cm mural at 2.6 mm pitch is 300 beads per side and 90,000 cells, which D15 refuses on the
+  cell count even though it passes the per-side limit. Decide before M9 ticks NFR-3 whether the
+  50,000-cell limit should be higher for Mini specifically, or whether refusing that piece is the
+  correct answer for v1.
 
 ## Decision log
 
@@ -490,10 +507,11 @@ editor state would depend on M5. Do not fix screenshots of these states before t
 - **D7 (2026-09-07) — No undo in v1, and therefore no flood fill.** With a one-cell brush a mistake
   is self-correcting: paint it again. Undo is expensive to build correctly and becomes mandatory
   only once a tool can change many cells at once. (EDIT-6, EDIT-8)
-- **D8 (2026-09-07) — Keep the pipeline on the main thread for now.** At the NFR-3 cell cap the
-  work is roughly 100,000 cells against 221 colors, which should complete in well under a second
-  with palette values precomputed. Move to a background thread only if measurement shows visible
-  jank. (NFR-2)
+- **D8 (2026-09-07) — Keep the pipeline on the main thread for now.** At NFR-3's hard limit the
+  work is 50,000 cells against 221 colors, and 10,000 at the design target, which should complete
+  in well under a second with palette values precomputed. Move to a background thread only if
+  measurement shows visible jank. (NFR-2) _(Cell counts updated by D15; the conclusion holds with
+  more margin than before.)_
 - **D9 (2026-09-07) — v1 export is a PNG with codes baked into every cell.** A printable, paginated
   PDF is what serious builders eventually need, but it is roughly a week of work hidden behind one
   sentence. Deferred to OUT-6.
@@ -545,3 +563,28 @@ editor state would depend on M5. Do not fix screenshots of these states before t
     "focus must be visible" obsolete. UI-5's threshold is permanent even though the colors it
     measures are not. The floor is also what makes the UI-7 review answerable at all — "is spacing
     consistent" cannot be judged against values that were never systematic.
+- **D15 (2026-09-10) — Size limits split into a design target and a hard limit, and both lowered.**
+  NFR-3's original numbers (500 per side, 100,000 cells) were not derived from physical beads. 500
+  beads at Standard 5 mm pitch is a 2.5 m piece; the 316 × 316 largest square is 1.58 m. A cap no
+  user can reach is not a safety limit, and it also made every performance target in the plan an
+  exercise against a fictional worst case. Replaced with two numbers that answer two different
+  questions — **10,000 cells (100 × 100)** for what we tune and test against, **50,000 cells and
+  300 per side** for what we refuse. Four consequences recorded deliberately:
+  - **M1 and M2 test against 100 × 100, not 300 × 300.** VIEW-1's Check and
+    `plans/m1-canvas.md`'s size targets move with it, and M2's per-pixel OkLab conversion gets
+    roughly 10× cheaper — which matters because NFR-2's 150 ms threshold is what decides whether
+    D8's "main thread for now" holds.
+  - **SET-5's error becomes real guidance.** Naming a threshold users actually hit is a usable
+    message; naming one nobody reaches is decoration.
+  - **This does not change M1's canvas architecture, which is the reason it is worth writing
+    down.** The binding constraint on canvas size is cells × max zoom, not cell count. At VIEW-2's
+    readable max zoom (~30 px per cell) even the 100 × 100 design target is a 3,000 × 3,000
+    CSS-pixel surface — about 36M device pixels and ~144 MB of backing store at DPR 2, over mobile
+    Safari's canvas area cap, and NFR-5 puts 390 px in scope. So a canvas sized to the whole
+    pattern remains the wrong shape at the revised numbers, and M1 still needs a viewport-sized
+    canvas drawing only the visible cell range. Lowering the cap looks like it should retire that
+    problem; it does not.
+  - **Code updated 2026-09-10.** `src/lib/pattern-utils.ts` now enforces 300 / 50,000, and the
+    per-side and cell limits throw separately so SET-5's message names the limit actually hit —
+    the combined message advertised `maxDimension × maxDimension`, a combination both the old and
+    the new numbers reject.

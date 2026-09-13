@@ -86,7 +86,7 @@ code text automatically when cells get too small to read.
 **Why here:** It unblocks both the size requirements and the entire editor. It is also the single
 biggest piece of new work — do it while the rest of the app is still simple.
 
-**Done when:** A 300 × 300 pattern renders and pans smoothly; zoom keeps the viewport center fixed;
+**Done when:** A 100 × 100 pattern renders and pans smoothly; zoom keeps the viewport center fixed;
 codes are legible on the darkest and lightest palette colors and vanish when cells shrink below the
 legibility threshold. *(VIEW-1 … VIEW-5)*
 

@@ -120,33 +120,27 @@
             /* We removed the flexbox centering here, as it breaks scrollbars on large items */
         }
 
-        /* 3. This wrapper dynamically resizes to fix the scrollbar bug */
+        /* An empty spacer, sized in JS to the pattern at the current zoom. It
+           holds no beads -- its whole job is to give .output-container a
+           scrollable area of the right size. `overflow: hidden` used to live
+           here and cannot: it would make this a scroll container of its own,
+           which is the one thing that stops the sticky canvas below from
+           tracking the scroll. */
         #grid-wrapper {
-            overflow: hidden; 
-            margin: 0 auto; /* Centers the grid if it's smaller than the window */
+            margin: 0 auto; /* Centers the pattern while it is smaller than the window */
         }
 
-        #pattern-grid {
-            display: grid;
-            gap: 1px;
-            background-color: #ccc;
-            padding: 1px;
-            transform-origin: top left;
+        #pattern-canvas {
+            /* Sticky, so the viewport-sized canvas stays pinned over the
+               visible corner of the spacer as it scrolls -- the compositor
+               keeps it in place and JS only repaints what moved under it.
+               Block because an inline box cannot be sticky. */
+            position: sticky;
+            top: 0;
+            left: 0;
+            display: block;
         }
 
-        .pixel {
-            width: 30px;
-            height: 30px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 10px;
-            font-weight: bold;
-            font-family: monospace;
-            text-align: center;
-            box-sizing: border-box;
-        }
-        
         .zoom-controls {
             display: flex;
             justify-content: center;
@@ -206,10 +200,6 @@
             clip: rect(0, 0, 0, 0);
             white-space: nowrap;
             border: 0;
-        }
-        /* Class to hide text on all pixels at once */
-        #pattern-grid.hide-text .pixel {
-            color: transparent !important;
         }
 
         /* Bead Counter Styles */

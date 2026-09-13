@@ -39,7 +39,17 @@ interface View {
     minCellSize: number;
 }
 
+/** An in-flight drag, anchored at the offsets the pointer went down on. */
+interface Pan {
+    pointerId: number;
+    clientX: number;
+    clientY: number;
+    scrollLeft: number;
+    scrollTop: number;
+}
+
 let view: View | null = null;
+let pan: Pan | null = null;
 let redrawHandle = 0;
 
 export function showProcessing(): void {
@@ -178,6 +188,57 @@ function setCellSize(nextCellSize: number): void {
     draw();
 }
 
+/**
+ * Drag to pan (VIEW-1). The drag moves the container's scroll offset rather
+ * than any drawing state, so it reuses the scroll -> redraw path already built
+ * for the scrollbars, and native scrolling keeps working alongside it.
+ */
+function beginPan(event: PointerEvent): void {
+    // Touch already pans: the canvas lives in a native scroll container, so
+    // handling touch here would move the view twice per drag. Mouse and pen
+    // have no such default, and that gap is what VIEW-1 is asking us to fill.
+    if (!view || event.pointerType === 'touch' || event.button !== 0) return;
+
+    // Only the pattern itself starts a pan. The listener is on the container,
+    // and a pointerdown on its native scrollbar targets the container too --
+    // without this, dragging the scrollbar would move the scroll offset twice,
+    // once by the browser and once by us.
+    if (event.target !== view.canvas) return;
+
+    pan = {
+        pointerId: event.pointerId,
+        clientX: event.clientX,
+        clientY: event.clientY,
+        scrollLeft: outputContainer.scrollLeft,
+        scrollTop: outputContainer.scrollTop
+    };
+
+    outputContainer.setPointerCapture(event.pointerId);
+    outputContainer.classList.add('panning');
+    // Suppresses the browser's own drag-select of the canvas mid-pan.
+    event.preventDefault();
+}
+
+function updatePan(event: PointerEvent): void {
+    if (!pan || event.pointerId !== pan.pointerId) return;
+
+    // Measured from where the pointer went down rather than from the previous
+    // move, so rounding cannot accumulate into drift over a long drag.
+    outputContainer.scrollLeft = pan.scrollLeft - (event.clientX - pan.clientX);
+    outputContainer.scrollTop = pan.scrollTop - (event.clientY - pan.clientY);
+    // The resulting scroll event drives the repaint through queueRedraw.
+}
+
+function endPan(event: PointerEvent): void {
+    if (!pan || event.pointerId !== pan.pointerId) return;
+
+    if (outputContainer.hasPointerCapture(pan.pointerId)) {
+        outputContainer.releasePointerCapture(pan.pointerId);
+    }
+    outputContainer.classList.remove('panning');
+    pan = null;
+}
+
 /** Coalesce the scroll event stream into one redraw per frame. */
 function queueRedraw(): void {
     if (!view || redrawHandle) return;
@@ -214,6 +275,17 @@ export function initPatternViewControls(): void {
 
     outputContainer.addEventListener('scroll', queueRedraw);
     window.addEventListener('resize', handleResize);
+
+    // Bound to the container, not the canvas: the canvas is replaced on every
+    // generate, the container is not. Pointer capture keeps a drag alive when
+    // the cursor leaves the container mid-pan.
+    //
+    // The brush will also start with a pointerdown here. That conflict is
+    // EDIT-5's to resolve, once there is a brush to conflict with.
+    outputContainer.addEventListener('pointerdown', beginPan);
+    outputContainer.addEventListener('pointermove', updatePan);
+    outputContainer.addEventListener('pointerup', endPan);
+    outputContainer.addEventListener('pointercancel', endPan);
 
     // Step 4 wires toggleTextBtn, once there are codes to toggle.
 }

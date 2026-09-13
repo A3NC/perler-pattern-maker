@@ -24,6 +24,30 @@ export interface CellRange {
     end: number;
 }
 
+/** A cell address in the pattern. */
+export interface CellPosition {
+    col: number;
+    row: number;
+}
+
+/**
+ * Everything cellAtClientPoint needs to place a screen point in the pattern.
+ * `canvasLeft`/`canvasTop` are the canvas's client-space corner -- structurally
+ * the two fields of a DOMRect this module cares about, deliberately not the
+ * type itself, so the mapping stays DOM-free and testable in Node.
+ */
+export interface CellLookup {
+    clientX: number;
+    clientY: number;
+    canvasLeft: number;
+    canvasTop: number;
+    scrollLeft: number;
+    scrollTop: number;
+    cellSize: number;
+    patternWidth: number;
+    patternHeight: number;
+}
+
 export function clampCellSize(
     cellSize: number,
     minCellSize = MIN_CELL_SIZE_PX,
@@ -96,4 +120,34 @@ export function visibleCellRange(
     const start = Math.max(0, Math.floor(scrollOffset / cellSize));
     const end = Math.min(cellCount - 1, Math.ceil((scrollOffset + viewportLength) / cellSize) - 1);
     return start > end ? { start: 0, end: -1 } : { start, end };
+}
+
+/**
+ * The bead under a screen point, or null when the point falls outside the
+ * pattern. The inverse of the draw loop's cell -> screen placement.
+ *
+ * The canvas is pinned to the visible corner of the scroll area, so its
+ * top-left corner is always the pattern coordinate (scrollLeft, scrollTop) --
+ * which is what makes this a single formula rather than a case analysis over
+ * whether the pattern is larger or smaller than the container.
+ *
+ * M1 only needs this to exist and be correct. M5 is what consumes it: this is
+ * the seam that keeps the editor a normal-sized milestone (D1).
+ */
+export function cellAtClientPoint(lookup: CellLookup): CellPosition | null {
+    const { cellSize, patternWidth, patternHeight } = lookup;
+    if (cellSize <= 0) return null;
+
+    const patternX = (lookup.clientX - lookup.canvasLeft) + lookup.scrollLeft;
+    const patternY = (lookup.clientY - lookup.canvasTop) + lookup.scrollTop;
+
+    // Math.floor, not Math.trunc: a point just left of or above the pattern
+    // must land outside it, and trunc would fold that onto cell 0.
+    const col = Math.floor(patternX / cellSize);
+    const row = Math.floor(patternY / cellSize);
+
+    if (col < 0 || row < 0 || col >= patternWidth || row >= patternHeight) {
+        return null;
+    }
+    return { col, row };
 }

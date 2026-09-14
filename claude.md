@@ -1,18 +1,20 @@
 # Project Development Context
 
-_Last reviewed: 2026-09-08_
+_Last reviewed: 2026-09-13_
 
 ## Project summary
 
 This directory contains a client-side web application that converts an uploaded image into a Perler bead pattern. The user chooses a target physical width and bead size; the app calculates the required bead-grid dimensions, resizes the image, maps each visible pixel to the nearest color in a Perler palette, and displays an interactive pattern with bead codes and an inventory count.
 
-`specs.md` holds the requirements (each with an ID, a version marker, and a verification Check) and the decision log. `plan-v1.md` breaks v1 into milestones M0–M9. **M0 is complete**: the app was moved from a single HTML file onto Vite + TypeScript with no behavior change, and the Mini bead pitch was corrected to 2.6 mm (spec Q1). The next milestone is **M1 — replacing the element-per-bead grid with canvas rendering** (decision D1); the pipeline is still nearest-RGB, so M2's perceptual matching (D2), the color limit, crop, the correction editor, PNG export, and autosave are all still ahead.
+`specs.md` holds the requirements (each with an ID, a version marker, and a verification Check) and the decision log. `plan-v1.md` breaks v1 into milestones M0–M9. **M0 is complete**: the app was moved from a single HTML file onto Vite + TypeScript with no behavior change, and the Mini bead pitch was corrected to 2.6 mm (spec Q1). **M1 — replacing the element-per-bead grid with canvas rendering (decision D1) — is in flight**: steps 1–4 of its tactical plan are done (canvas rendering, zoom by redraw, drag-pan plus the screen → cell mapping, bead codes with the toggle), leaving step 5 (hide codes below a legibility threshold) and step 6 (device pixel ratio, plus the performance check). The pipeline is still nearest-RGB, so M2's perceptual matching (D2), the color limit, crop, the correction editor, PNG export, and autosave are all still ahead.
 
 Appearance is tracked as the **UI** requirement group, split by D14: UI-1 … UI-6 are **[v1]**
 mechanical Checks built in M8 (Interface floor), while UI-7 — deliberate visual design — is
-**[v2]** and gated by the U1–U5 interface review. **NFR-5 is currently failing**: `src/styles.css`
-has no media queries, so at 390 px the heading, Generate button, and target-width control are
-clipped off-screen.
+**[v2]** and gated by the U1–U5 interface review. NFR-5 and UI-1 stay unticked until M8 verifies
+them, but **the specific 390 px clipping they were written against is gone**: `src/styles.css` has
+carried an `@media (max-width: 640px)` block since M0, and measured in a real 390 px viewport the
+page has zero horizontal overflow with nothing clipped. Earlier text here and in `specs.md` said
+the file had no media queries; that was never true of the committed CSS.
 
 ### Planning docs — three layers
 
@@ -56,15 +58,16 @@ In all three failure cases the module never executes, so `main.ts`'s own error h
 
 - `index.html` — markup, plus the inline classic-script boot guard described above; loads `src/main.ts` as a module.
 - `public/colors_221.json` — the default 221-color palette (`name`, `hex`, `rgb`), fetched at startup. It lives in `public/` because that is the only directory `vite build` copies into `dist/`; moving it back to the project root would work in `npm run dev` and 404 in the build.
-- `src/main.ts` — the only wiring: DOM references, palette load, the six event listeners.
+- `src/main.ts` — startup wiring: DOM references, palette load, and the upload/generate listeners. The view and inventory modules attach their own.
 - `src/lib/pattern-utils.ts` — dependency-free palette normalization/validation, dimension calculation, RGB matching, inventory tallying. Covered by `pattern-utils.test.ts`.
 - `src/pipeline/generate.ts` — **the GEN-6 boundary**: pixels in, `Pattern` out, no DOM, so it stays testable in Node. M2 replaces the matching inside this module. Covered by `generate.test.ts`.
 - `src/types.ts` — `PaletteColor`, `Palette`, `Pattern`, `PatternDimensions`, `ColorTally`, `SourcePixels`. `Pattern` is the durable contract: M1 renders it, M5 edits it, M6 exports it, M7 serializes it.
 - `src/rasterize.ts` — hidden canvas: image → `SourcePixels`. Still point-sampled; GEN-4's area averaging is M2.
 - `src/palette.ts`, `src/upload.ts`, `src/status.ts`, `src/dom.ts`, `src/contrast.ts` — palette loading, file decoding, status messages, `requireElement`, and text-contrast choice.
-- `src/render/canvas-view.ts` — the canvas pattern view (D1), which replaced the M0-only `dom-grid.ts` in M1 step 1. Currently draws one filled rect per cell at a fixed scale; zoom, pan, and bead codes arrive in steps 2–4.
+- `src/lib/viewport.ts` — pure viewport math for the canvas view: zoom limits, the centre-fixed scroll offset on zoom, the visible cell range, and the screen-point → cell mapping M5 will consume. DOM-free, so it tests in Node. Covered by `viewport.test.ts`.
+- `src/render/canvas-view.ts` — the canvas pattern view (D1), which replaced the M0-only `dom-grid.ts`. Draws the visible cell range with zoom, drag-pan, and bead codes. The canvas is sized to the *container*, never the pattern: `#grid-wrapper` is an empty spacer sized to the pattern that drives the native scrollbars, and the canvas is a `position: sticky` overlay pinned to the visible corner. Remaining M1 work: the code-legibility threshold and `devicePixelRatio`.
 - `src/render/inventory.ts` — the bead-count list (OUT-4).
-- `src/styles.css` — all styling, moved verbatim out of the original single file. Still carries that origin: 8-space base indent, ad-hoc spacing/radius/type literals, and no media queries. M8 (UI-3) replaces the literals with scales; don't hand-tidy it before then.
+- `src/styles.css` — all styling, moved out of the original single file. Still carries that origin: 8-space base indent and ad-hoc spacing/radius/type literals. It does have a `@media (max-width: 640px)` block for the narrow-width layout. M8 (UI-3) replaces the literals with scales; don't hand-tidy it before then.
 - `colors.json` — a 291-record palette with `name` and `hex` only. Not loaded by the app and it would fail PAL-4 validation as-is; it is an input to `helper.py`, kept for PAL-6.
 - `helper.py` — adds RGB tuples to a hex-only palette JSON.
 - `pixi.toml` — conda workspace for the Python side only. npm owns the web app; don't try to make pixi manage Node.

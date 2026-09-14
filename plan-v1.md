@@ -78,7 +78,7 @@ failure recurs. Revisit at M9 and delete it if it has stopped earning its keep.
 
 ---
 
-### M1 — Canvas pattern view · L
+### M1 — Canvas pattern view · L — 🔄 **In flight**
 **Do:** Replace the element-per-bead grid with canvas rendering. Implement zoom and pan by
 redrawing rather than CSS scaling. Draw bead codes onto cells, keep the on/off toggle, and hide
 code text automatically when cells get too small to read.
@@ -220,7 +220,7 @@ M0 → M1 → M2 → M5 → M6 are sequential; each genuinely needs the one befo
 any point** — slot it in whenever you want a quick, satisfying win. M4 needs M2 done. M7 needs the
 pattern data settled by M5.
 
-**M0 is done; M1 is next.**
+**M0 is done; M1 is in flight** — see `plans/m1-canvas.md` for where it stands.
 
 The two large items, **M1 and M2, are the project.** If time runs short, everything after them can
 be trimmed; neither of them can be.

@@ -1,3 +1,4 @@
+import { getContrastColor } from '../contrast';
 import { requireElement } from '../dom';
 import {
     MAX_CELL_SIZE_PX,
@@ -26,6 +27,13 @@ import type { Pattern } from '../types';
 
 const outputContainer = requireElement('outputContainer');
 const zoomControls = requireElement('zoomControls');
+const toggleTextBtn = requireElement<HTMLInputElement>('toggleTextBtn');
+
+/** Code text height, as a fraction of the cell. 1/3 is the old grid's 10px in 30px. */
+const CODE_FONT_RATIO = 1 / 3;
+
+/** How much of a cell's width a code may fill before the font is shrunk to fit. */
+const CODE_MAX_WIDTH_RATIO = 0.86;
 
 interface View {
     pattern: Pattern;
@@ -37,6 +45,8 @@ interface View {
     cellSize: number;
     /** Fit-to-container cell size: VIEW-2's zoom-out floor. */
     minCellSize: number;
+    /** Longest bead code in this pattern, which is what the code font has to fit. */
+    widestCode: string;
 }
 
 /** An in-flight drag, anchored at the offsets the pointer went down on. */
@@ -84,7 +94,15 @@ export function renderPattern(pattern: Pattern): void {
         outputContainer.clientHeight
     );
 
-    view = { pattern, spacer, canvas, ctx, cellSize: minCellSize, minCellSize };
+    view = {
+        pattern,
+        spacer,
+        canvas,
+        ctx,
+        cellSize: minCellSize,
+        minCellSize,
+        widestCode: widestCodeIn(pattern)
+    };
 
     layout();
     outputContainer.scrollLeft = 0;
@@ -115,13 +133,47 @@ function layout(): void {
     canvas.height = height;
 }
 
+function widestCodeIn(pattern: Pattern): string {
+    let widest = '';
+    for (const cell of pattern.cells) {
+        if (cell && cell.name.length > widest.length) widest = cell.name;
+    }
+    return widest;
+}
+
+/**
+ * Size the code font to the cell, shrinking it if the pattern's widest code
+ * would spill past its cell. The default palette's codes are two or three
+ * characters and never trigger the shrink; a palette loaded under PAL-6 might.
+ */
+function setCodeFont(ctx: CanvasRenderingContext2D, cellSize: number, widestCode: string): void {
+    const fontSize = cellSize * CODE_FONT_RATIO;
+    ctx.font = `bold ${fontSize}px monospace`;
+
+    const maxWidth = cellSize * CODE_MAX_WIDTH_RATIO;
+    const width = ctx.measureText(widestCode).width;
+    // Text width scales linearly with font size, so one correction is exact.
+    if (width > maxWidth) {
+        ctx.font = `bold ${fontSize * (maxWidth / width)}px monospace`;
+    }
+}
+
 /** Repaint the cells under the canvas at the current scroll offset. */
 function draw(): void {
     if (!view) return;
-    const { pattern, canvas, ctx, cellSize } = view;
+    const { pattern, canvas, ctx, cellSize, widestCode } = view;
 
     const scrollLeft = outputContainer.scrollLeft;
     const scrollTop = outputContainer.scrollTop;
+
+    // VIEW-3: the checkbox is the single source of truth, read fresh each
+    // redraw. Step 5 adds the independent size threshold on top of it.
+    const showCodes = toggleTextBtn.checked && widestCode !== '';
+    if (showCodes) {
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        setCodeFont(ctx, cellSize, widestCode);
+    }
 
     // Cleared rather than filled: an unpainted cell was transparent in the
     // source (GEN-1) and should read as a hole, not as a bead.
@@ -147,6 +199,13 @@ function draw(): void {
             const [r, g, b] = cell.rgb;
             ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
             ctx.fillRect(left, top, right - left, bottom - top);
+
+            if (showCodes) {
+                // Black or white by luminance (VIEW-4), the same choice the
+                // DOM grid made and the same one M6's export will make.
+                ctx.fillStyle = getContrastColor(r, g, b);
+                ctx.fillText(cell.name, (left + right) / 2, (top + bottom) / 2);
+            }
         }
     }
 }
@@ -287,5 +346,7 @@ export function initPatternViewControls(): void {
     outputContainer.addEventListener('pointerup', endPan);
     outputContainer.addEventListener('pointercancel', endPan);
 
-    // Step 4 wires toggleTextBtn, once there are codes to toggle.
+    // VIEW-3. A redraw, not a CSS class: the codes are pixels on the canvas
+    // now, so there is no text node left to hide.
+    toggleTextBtn.addEventListener('change', () => draw());
 }

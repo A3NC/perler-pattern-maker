@@ -302,8 +302,10 @@ subjective half and is held to v2. See Decision log D14.
 - [ ] **UI-1 [v1]** No content is clipped, and the page never scrolls horizontally, at 390 px or
   1280 px wide.
   **Check:** At both widths, in each screen state U1–U5, no element is cut off and
-  `document.documentElement.scrollWidth` does not exceed the viewport width. _(Currently failing at
-  390 px: the heading, the Generate button, and the target-width control are clipped.)_
+  `document.documentElement.scrollWidth` does not exceed the viewport width. _(Measured 2026-09-13
+  on the empty state at 390 px: `scrollWidth` equals the viewport and no element overflows. The
+  clipping originally recorded here did not reproduce — `src/styles.css` has had a narrow-width
+  media query since M0. Unticked because the Check covers all of U1–U5, which M8 verifies.)_
 - [ ] **UI-2 [v1]** Controls reflow to a single full-width column when two columns no longer fit,
   and status messages span the control panel rather than occupying an arbitrary grid cell.
   **Check:** At 390 px every control is full-width and in document order; at 1280 px the
@@ -356,13 +358,17 @@ subjective half and is held to v2. See Decision log D14.
 - [ ] **NFR-4 [v1]** Deterministic logic is covered by automated tests that run without a browser.
   **Check:** The test suite covers palette validation, dimension calculation, OkLab matching, color
   reduction, and inventory tallying, and passes from a single command.
-  _(Partially implemented as of M0: `npm test` is the single command and covers palette validation,
-  dimension calculation, palette matching, transparency, and inventory tallying — 12 tests. Still
-  missing OkLab matching and color reduction, which do not exist until M2.)_
+  _(Partially implemented as of M1 step 4: `npm test` is the single command and covers palette
+  validation, dimension calculation, palette matching, transparency, inventory tallying, and the
+  canvas view's zoom/visible-range/cell-mapping math — 23 tests. Still missing OkLab matching and
+  color reduction, which do not exist until M2.)_
 - [ ] **NFR-5 [v1]** Usable in a current desktop browser at 1280 px wide and in a phone browser at
   390 px wide.
   **Check:** At both widths, all v1 controls are reachable and the pattern view is usable. UI-1 and
-  UI-2 carry the concrete failure conditions for this. _(Currently failing at 390 px — see UI-1.)_
+  UI-2 carry the concrete failure conditions for this. _(The 390 px clipping this was written
+  against is gone — `src/styles.css` has had a narrow-width media query since M0, and the page
+  measures zero horizontal overflow at 390 px. Left unticked because M8 verifies it properly,
+  including with a pattern on screen.)_
 
 ## Won't build
 
@@ -553,6 +559,12 @@ editor state would depend on M5. Do not fix screenshots of these states before t
   - **NFR-5 is currently failing** and was untracked until now. At 390 px the heading, the Generate
     button, and the target-width control are clipped, because `src/styles.css` has no media queries
     and a hardcoded two-column control grid. This is an existing [v1] obligation, not new scope.
+    _[Correction, 2026-09-13 — this premise was false when written, and is kept only because the
+    rest of D14 was reasoned from it. `src/styles.css` already carried an `@media (max-width:
+    640px)` block collapsing the control grid to one column; it landed in M0 (`fdaec7c`), the
+    commit before this entry, which touched documentation only. Measured at a real 390 px viewport
+    the page has zero horizontal overflow and nothing clipped. D14's actual decision — splitting
+    mechanical UI-1 … UI-6 from subjective UI-7 — does not rest on this and stands unchanged.]_
   - **The UI-7 review set cannot be fixed yet.** U3 depends on M1's canvas view and an editor state
     would depend on M5, so the screen states are finalized only once the UI surface stops moving.
   - **The v1 floor is not invalidated by whatever v2 decides.** Tokenizing changes *structure*; a

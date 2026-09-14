@@ -45,11 +45,15 @@ place as an **empty spacer** sized to `cols × cell` to drive native scroll, siz
 container, pin it over the scroll region, and redraw the visible range on scroll. Pure drag-pan
 with no scrollbars is the simpler alternative — step 3 has you tracking an offset either way.
 
+**Settled in step 2: the spacer.** Drag-pan-only was rejected because it leaves steps 2 and 3 with
+no way to reach anything off-screen, breaking the every-step-works ground rule. See step 2 for what
+that decision commits the later steps to.
+
 ---
 
 ## Steps
 
-### 1. Draw the pattern to a canvas at fixed scale
+### ~~1. Draw the pattern to a canvas at fixed scale~~ — done
 
 Replace `src/render/dom-grid.ts` with `src/render/canvas-view.ts`. Draw one filled rect per cell at
 a fixed cell size; skip `null` cells so they read as empty (GEN-1). No zoom, no pan, no codes yet —
@@ -76,7 +80,15 @@ and the bead inventory is unchanged. `npm run check` green.
 
 ---
 
-### 2. Zoom by redraw, viewport center fixed
+### ~~2. Zoom by redraw, viewport center fixed~~ — done
+
+**Container model settled here, as this step required:** the spacer option, not pure drag-pan.
+`#grid-wrapper` survives as an empty spacer sized to `cols × cell`, the canvas is sized to the
+container and pinned over the scroll region with `position: sticky`, and each scroll redraws the
+visible cell range. Drag-pan-only was rejected because it would have left steps 2 and 3 with no way
+to reach anything off-screen, breaking the every-step-works ground rule. One consequence for later
+steps: `#grid-wrapper` can no longer carry `overflow: hidden`, which would make it a scroll
+container of its own and stop the sticky canvas tracking the scroll.
 
 Zoom changes the cell size and triggers a full redraw. It must **not** use a CSS transform — that
 is exactly what D1 rules out.
@@ -102,7 +114,7 @@ entirely; maximum zoom is comfortably readable. Zoom math has unit tests.
 
 ---
 
-### 3. Pan by drag, and the cell coordinate mapping
+### ~~3. Pan by drag, and the cell coordinate mapping~~ — done
 
 Drag to pan. Add the screen-point → cell-index mapping here, as a pure tested function: given a
 client point, the canvas rect, the current scale, and the scroll offset, return `{col, row}` or
@@ -121,7 +133,7 @@ round-trips correctly at several zoom levels and returns `null` outside the patt
 
 ---
 
-### 4. Draw bead codes on cells, with the toggle
+### ~~4. Draw bead codes on cells, with the toggle~~ — done
 
 Draw each cell's code, centered, using the existing `getContrastColor` from `src/contrast.ts` so
 VIEW-4 keeps passing for free. Rewire the existing `toggleTextBtn` checkbox to trigger a redraw
@@ -137,6 +149,17 @@ unchanged; toggling on restores it (VIEW-3's Check).
 
 Below a legibility threshold, skip drawing text entirely — not smaller text, no text. Make the
 threshold a named constant with a pure `shouldDrawCodes(cellSizePx)` helper, and test it.
+
+> **Going in:** step 4 left codes drawing at *every* zoom, and the view opens at fit — about 5 px
+> cells for a 100 × 100 in the current container, where the code font (`cellSize / 3`) is roughly
+> 1.6 px. So the unreadable state is not an edge case to go hunting for: it is the first thing on
+> screen after every Generate. That is the condition this step removes.
+>
+> **Calibrate the threshold, but expect to revisit it in step 6.** The judgment is made at 1x,
+> where text is upscaled on a HiDPI display and blurry (see step 6) — so text looks illegible
+> *sooner* than it will once the backing store is DPR-scaled, and a threshold picked now will be
+> biased toward hiding codes too eagerly. Pick one that looks right, then re-check it after step 6
+> lands rather than treating it as settled here. Step 6's Watch note is the other half of this.
 
 **Done when:** Zooming out past the threshold makes text disappear while colors remain; zooming
 back in restores it (VIEW-5's Check). The threshold helper has tests.
@@ -156,6 +179,14 @@ Keep every drawing calculation in CSS pixels and apply density once with
 `ctx.setTransform(dpr, 0, 0, dpr, 0, 0)` per resize. Done that way this step is a few lines and
 step 3's coordinate mapping is untouched; fold `dpr` into the cell size instead and you are back
 through steps 2, 3, and 5.
+
+> **Known before you start:** `draw()` currently reads `canvas.width` / `canvas.height` as the
+> viewport length (`canvas-view.ts`, the two `visibleCellRange` calls and the `clearRect` above
+> them). Those are the *backing store* dimensions, which this step makes device pixels while
+> `cellSize` stays CSS pixels. Left alone, the visible range comes out twice as wide and twice as
+> tall at DPR 2 — four times the cells drawn per frame, which would quietly eat the performance
+> margin this same step is supposed to verify. `layout()` already computes the CSS width and
+> height; keep them on the view state and use those at the three call sites.
 
 Then verify the milestone's actual acceptance bar: a 100 × 100 pattern rendering and panning
 smoothly, and a redraw fast enough that zoom and pan don't feel laggy. Visible-range drawing is

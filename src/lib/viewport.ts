@@ -18,6 +18,28 @@ export const MIN_CELL_SIZE_PX = 1;
 /** Multiplicative change per zoom click. */
 export const ZOOM_STEP = 1.25;
 
+/** Code text height, as a fraction of the cell. 1/3 is the old grid's 10px in 30px. */
+export const CODE_FONT_RATIO = 1 / 3;
+
+/**
+ * The smallest code font still worth drawing, in CSS px. Below this, bold
+ * monospace glyphs are a smudge rather than a code, and drawing them costs a
+ * fillText per cell to make the pattern harder to read.
+ *
+ * Calibrated by eye at 1x, where a HiDPI display upscales the canvas and text
+ * looks worse than it will once step 6 scales the backing store by
+ * devicePixelRatio -- so this is biased toward hiding codes too eagerly and is
+ * due a re-check after that lands.
+ */
+const MIN_CODE_FONT_PX = 6;
+
+/**
+ * VIEW-5's legibility threshold: cells smaller than this are drawn as color
+ * only. Derived from the font floor rather than chosen separately, so changing
+ * CODE_FONT_RATIO cannot leave the two silently disagreeing.
+ */
+export const MIN_CODE_CELL_SIZE_PX = MIN_CODE_FONT_PX / CODE_FONT_RATIO;
+
 /** Inclusive cell index range. `end < start` means nothing is visible. */
 export interface CellRange {
     start: number;
@@ -55,6 +77,18 @@ export function clampCellSize(
 ): number {
     if (!Number.isFinite(cellSize)) return minCellSize;
     return Math.min(Math.max(cellSize, minCellSize), maxCellSize);
+}
+
+/**
+ * Whether cells are large enough for their codes to be readable (VIEW-5).
+ *
+ * This is only the size half of the condition: the user's toggle (VIEW-3) is
+ * the other, and the two are independent -- a pattern zoomed out past this
+ * threshold draws no text but must leave the checkbox exactly as the user set
+ * it, so that zooming back in restores the codes.
+ */
+export function shouldDrawCodes(cellSize: number): boolean {
+    return cellSize >= MIN_CODE_CELL_SIZE_PX;
 }
 
 /**

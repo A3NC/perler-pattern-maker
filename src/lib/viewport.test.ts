@@ -1,10 +1,14 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import {
+    CODE_FONT_RATIO,
     MAX_CELL_SIZE_PX,
+    MIN_CODE_CELL_SIZE_PX,
+    ZOOM_STEP,
     cellAtClientPoint,
     clampCellSize,
     fitCellSize,
+    shouldDrawCodes,
     visibleCellRange,
     zoomedScrollOffset
 } from './viewport';
@@ -64,6 +68,47 @@ test('clampCellSize holds the zoom range', () => {
     assert.equal(clampCellSize(2, 5, 30), 5);
     assert.equal(clampCellSize(90, 5, 30), 30);
     assert.equal(clampCellSize(Number.NaN, 5, 30), 5);
+});
+
+test('shouldDrawCodes switches at the threshold', () => {
+    assert.equal(shouldDrawCodes(MIN_CODE_CELL_SIZE_PX), true);
+    assert.equal(shouldDrawCodes(MIN_CODE_CELL_SIZE_PX - 0.01), false);
+    assert.equal(shouldDrawCodes(MAX_CELL_SIZE_PX), true);
+    assert.equal(shouldDrawCodes(0), false);
+});
+
+test('shouldDrawCodes hides the codes the fit view cannot render', () => {
+    // VIEW-5's Check, at the zoom every Generate opens on: a 100 × 100 fit to a
+    // 760 × 500 container is 5px per cell, where the code font would be under
+    // 2px. Colors still draw -- only the text is skipped.
+    assert.equal(shouldDrawCodes(fitCellSize(100, 100, 760, 500)), false);
+    // And the 300 × 160 case near NFR-3's hard limit, fit to a 390px viewport.
+    assert.equal(shouldDrawCodes(fitCellSize(300, 160, 390, 500)), false);
+});
+
+test('the code threshold sits inside the zoom range', () => {
+    // A threshold at or above the maximum zoom would hide codes permanently,
+    // which would fail VIEW-3 rather than satisfy VIEW-5.
+    assert.ok(MIN_CODE_CELL_SIZE_PX < MAX_CELL_SIZE_PX);
+
+    // Zooming in from the 100 × 100 fit must actually cross it, and zooming
+    // back out must return below it (VIEW-5's Check, both directions).
+    let cellSize = fitCellSize(100, 100, 760, 500);
+    let clicks = 0;
+    while (cellSize < MAX_CELL_SIZE_PX && !shouldDrawCodes(cellSize)) {
+        cellSize = clampCellSize(cellSize * ZOOM_STEP, 5, MAX_CELL_SIZE_PX);
+        clicks++;
+    }
+    assert.equal(shouldDrawCodes(cellSize), true);
+    assert.ok(clicks <= 10, `codes appeared after ${clicks} zoom clicks`);
+
+    assert.equal(shouldDrawCodes(clampCellSize(cellSize / ZOOM_STEP, 5, MAX_CELL_SIZE_PX)), false);
+});
+
+test('the threshold is the font floor in cell terms', () => {
+    // The threshold is derived from a minimum font size, so the font at the
+    // threshold is exactly that floor -- 6px -- and never smaller above it.
+    assert.equal(MIN_CODE_CELL_SIZE_PX * CODE_FONT_RATIO, 6);
 });
 
 test('zoomedScrollOffset holds the viewport center fixed', () => {

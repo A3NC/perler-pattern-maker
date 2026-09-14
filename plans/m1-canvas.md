@@ -145,7 +145,7 @@ unchanged; toggling on restores it (VIEW-3's Check).
 
 ---
 
-### 5. Level-of-detail: hide codes when cells get too small
+### ~~5. Level-of-detail: hide codes when cells get too small~~ — done
 
 Below a legibility threshold, skip drawing text entirely — not smaller text, no text. Make the
 threshold a named constant with a pure `shouldDrawCodes(cellSizePx)` helper, and test it.
@@ -163,6 +163,13 @@ threshold a named constant with a pure `shouldDrawCodes(cellSizePx)` helper, and
 
 **Done when:** Zooming out past the threshold makes text disappear while colors remain; zooming
 back in restores it (VIEW-5's Check). The threshold helper has tests.
+
+**Landed as:** `shouldDrawCodes(cellSize)` in `src/lib/viewport.ts`, with the threshold derived
+from a `MIN_CODE_FONT_PX = 6` floor rather than chosen as a cell size directly — so
+`MIN_CODE_CELL_SIZE_PX` is 18 px and cannot drift out of step with `CODE_FONT_RATIO`, which moved
+into the same module to make that derivation possible. `draw()` ANDs it with the checkbox and
+never writes back to it. From the 100 × 100 fit view (5 px cells) codes appear on the sixth zoom
+click, at ~19 px.
 
 > **Watch:** the toggle (VIEW-3) and the automatic hide (VIEW-5) are separate conditions. Text
 > draws only when the user has codes on **and** cells are large enough. Don't let the automatic

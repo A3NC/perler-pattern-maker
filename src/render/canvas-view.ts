@@ -1,10 +1,12 @@
 import { getContrastColor } from '../contrast';
 import { requireElement } from '../dom';
 import {
+    CODE_FONT_RATIO,
     MAX_CELL_SIZE_PX,
     ZOOM_STEP,
     clampCellSize,
     fitCellSize,
+    shouldDrawCodes,
     visibleCellRange,
     zoomedScrollOffset
 } from '../lib/viewport';
@@ -23,14 +25,12 @@ import type { Pattern } from '../types';
 // not a later optimization.
 //
 // Drag-pan and the screen -> cell mapping are step 3; bead codes and the
-// toggle are step 4; devicePixelRatio is step 6.
+// toggle are step 4; the level-of-detail threshold is step 5;
+// devicePixelRatio is step 6.
 
 const outputContainer = requireElement('outputContainer');
 const zoomControls = requireElement('zoomControls');
 const toggleTextBtn = requireElement<HTMLInputElement>('toggleTextBtn');
-
-/** Code text height, as a fraction of the cell. 1/3 is the old grid's 10px in 30px. */
-const CODE_FONT_RATIO = 1 / 3;
 
 /** How much of a cell's width a code may fill before the font is shrunk to fit. */
 const CODE_MAX_WIDTH_RATIO = 0.86;
@@ -166,9 +166,11 @@ function draw(): void {
     const scrollLeft = outputContainer.scrollLeft;
     const scrollTop = outputContainer.scrollTop;
 
-    // VIEW-3: the checkbox is the single source of truth, read fresh each
-    // redraw. Step 5 adds the independent size threshold on top of it.
-    const showCodes = toggleTextBtn.checked && widestCode !== '';
+    // Two independent conditions, both read fresh each redraw: the user's
+    // checkbox (VIEW-3) and whether cells are big enough to read (VIEW-5).
+    // shouldDrawCodes never writes back to the checkbox -- zooming out hides
+    // the codes, it does not turn the user's setting off.
+    const showCodes = toggleTextBtn.checked && widestCode !== '' && shouldDrawCodes(cellSize);
     if (showCodes) {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';

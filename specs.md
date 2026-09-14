@@ -62,7 +62,7 @@ the palette code with S1–S3. See Decision log D6.
 
 **Planned for v2:** the advanced settings panel and everything in it — background removal (SET-7),
 subject auto-trim (SET-8), pixel-art passthrough (SET-9) — plus palette switching, undo/redo, flood
-fill, gridlines, and a legend in the export.
+fill, and a legend in the export. _(Gridlines were on this list until D16 moved them into v1.)_
 
 **Later, undated:** drawing from scratch (S4), user-facing algorithm selection, a multi-project
 library, printable multi-page PDF export.
@@ -106,8 +106,8 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
 - [ ] **SET-2 [v1]** User selects bead size from a fixed list: Standard and Mini, each labeled with
   its millimeter pitch.
   **Check:** Switching from Standard to Mini at a fixed target width increases bead count per side
-  by the inverse ratio of the two pitches, within one bead. _(Partially implemented; see Q1 —
-  the Mini pitch currently used may be wrong.)_
+  by the inverse ratio of the two pitches, within one bead. _(Partially implemented; Q1 resolved —
+  Mini is 2.6 mm / 0.102 in as of M0.)_
 - [ ] **SET-3 [v1]** Display the computed grid dimensions (width × height in beads) and total bead
   count before generating.
   **Check:** Changing target width or bead size updates the displayed dimensions immediately,
@@ -118,8 +118,10 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
   distinct colors. See Decision log D3.
 - [ ] **SET-5 [v1]** Reject dimension settings that exceed the limits in NFR-3, with a message
   saying which limit was hit and what to change.
-  **Check:** A setting that would produce more than the cell cap shows an error naming the cap and
-  suggesting a smaller width or larger bead. _(Implemented in `pattern-utils.mjs`.)_
+  **Check:** A setting that would produce more than NFR-3's hard limit shows an error naming the
+  limit and suggesting a smaller width or larger bead. _(Implemented in
+  `src/lib/pattern-utils.ts`; the per-side and cell limits report separately so the message names
+  the one actually hit.)_
 - [ ] **SET-6 [v2]** Optional advanced settings panel, collapsed by default, containing the
   background-removal and pixel-art options below.
   **Check:** Panel is hidden until opened; all v1 behavior is unchanged when it is never opened.
@@ -215,26 +217,34 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
 
 ### Pattern view — VIEW
 
-- [ ] **VIEW-1 [v1]** Render the pattern on a single drawing surface (canvas), not as one page
+- [x] **VIEW-1 [v1]** Render the pattern on a single drawing surface (canvas), not as one page
   element per bead.
-  **Check:** A 300 × 300 pattern renders and pans smoothly. _(Current build uses one element per
-  bead and must be rewritten. See Decision log D1.)_
-- [ ] **VIEW-2 [v1]** Zoom in and out, and pan when the pattern exceeds the viewport.
+  **Check:** A 100 × 100 pattern (NFR-3's design target) renders and pans smoothly, and a pattern
+  at NFR-3's 50,000-cell hard limit stays usable. _(Current build uses one element per bead and
+  must be rewritten. See Decision log D1.)_
+- [x] **VIEW-2 [v1]** Zoom in and out, and pan when the pattern exceeds the viewport.
   **Check:** At maximum zoom individual cells and codes are comfortably readable; at minimum zoom
   the whole pattern fits the viewport. Zoom keeps the viewport center fixed.
   _(Partially implemented via CSS scaling; replaced by VIEW-1.)_
-- [ ] **VIEW-3 [v1]** Color codes are drawn on each cell and can be toggled off.
+- [x] **VIEW-3 [v1]** Color codes are drawn on each cell and can be toggled off.
   **Check:** Toggling off removes all code text and leaves colors unchanged; toggling on restores
   it. _(Partially implemented.)_
 - [ ] **VIEW-4 [v1]** Code text is legible against its cell color.
   **Check:** Codes on the palette's darkest and lightest colors are both readable.
   _(Implemented via contrast-based text color.)_
-- [ ] **VIEW-5 [v1]** When cells are too small to fit code text, hide the text automatically rather
+- [x] **VIEW-5 [v1]** When cells are too small to fit code text, hide the text automatically rather
   than drawing unreadable overlapping glyphs.
   **Check:** Zoom out until cells are under the legibility threshold; text disappears and colors
   remain.
-- [ ] **VIEW-6 [v2]** Gridlines every 10 cells to help counting, toggleable.
-  **Check:** Lines align to every 10th cell boundary in both directions.
+- [ ] **VIEW-6 [v1]** Gridlines every 10 cells to help counting, toggleable. Promoted from [v2];
+  see Decision log D16.
+  **Check:** Lines align to every 10th cell boundary in both directions, and remain visible against
+  the palette's darkest and lightest colors.
+- [ ] **VIEW-7 [v1]** Row and column numbers along the edges of the pattern view, so the visible
+  region can be located within the whole pattern. See Decision log D16.
+  **Check:** Zoom in until the pattern exceeds the viewport; the numbers along the top and left
+  edges identify the visible columns and rows and stay correct while panning. They are absent when
+  the whole pattern already fits.
 
 ### Editing — EDIT
 
@@ -290,24 +300,82 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
   work. No outbound requests appear in the network log during those actions.
 - [ ] **SAVE-3 [later]** A library of multiple named projects the user can browse and return to.
 
+### User interface — UI
+
+Covers the application shell — controls, status, layout, and chrome. The pattern view itself is
+VIEW. Appearance is split deliberately: UI-1 … UI-6 are mechanical and checkable, UI-7 is the
+subjective half and is held to v2. See Decision log D14.
+
+- [ ] **UI-1 [v1]** No content is clipped, and the page never scrolls horizontally, at 390 px or
+  1280 px wide.
+  **Check:** At both widths, in each screen state U1–U5, no element is cut off and
+  `document.documentElement.scrollWidth` does not exceed the viewport width. _(Measured 2026-09-13
+  on the empty state at 390 px: `scrollWidth` equals the viewport and no element overflows. The
+  clipping originally recorded here did not reproduce — `src/styles.css` has had a narrow-width
+  media query since M0. Unticked because the Check covers all of U1–U5, which M8 verifies.)_
+- [ ] **UI-2 [v1]** Controls reflow to a single full-width column when two columns no longer fit,
+  and status messages span the control panel rather than occupying an arbitrary grid cell.
+  **Check:** At 390 px every control is full-width and in document order; at 1280 px the
+  two-column layout is preserved; the status message spans the panel width at both.
+- [ ] **UI-3 [v1]** Spacing, corner radii, and font sizes come from defined scales rather than
+  per-rule literals.
+  **Check:** `src/styles.css` defines spacing, radius, and type scales as custom properties in
+  `:root`, and no `border-radius`, `font-size`, `padding`, `margin`, or `gap` literal appears
+  outside `:root` except where no scale value applies. _(Currently five unrelated radii, four font
+  sizes mixing px and rem, six ad-hoc spacing values.)_
+  **Keep the token set minimal and descriptive.** Name what the app already does — roughly four
+  spacing steps, three radii, three type sizes — not what a future design system might want.
+  Structure is what survives a v2 change of direction; speculative structure built for a direction
+  nobody has chosen yet is the one part of this work that can genuinely be wasted.
+- [ ] **UI-4 [v1]** Every interactive control has a visible keyboard focus indicator, distinct
+  from its hover state.
+  **Check:** Tab through upload, target width, bead size, Generate, the zoom controls, the code
+  toggle, and the inventory sort; each shows a clearly visible focus ring.
+- [ ] **UI-5 [v1]** App text meets WCAG AA contrast — 4.5:1 for normal text, 3:1 for large text.
+  **Check:** Measure each text-on-background pair — body, labels, buttons in both enabled and
+  disabled states, and all three status variants — with a contrast checker. Note that
+  `src/contrast.ts` does **not** answer this: it uses a perceptual-brightness approximation to pick
+  black-or-white text on bead cells (VIEW-4), not WCAG relative luminance.
+- [ ] **UI-6 [v1]** Interactive controls are at least 44 × 44 px at 390 px wide.
+  **Check:** Measure each control's rendered box at 390 px.
+- [ ] **UI-7 [v2]** The interface reads as intentionally designed rather than as an unstyled form.
+  Verified by human review against the fixed screen states in "Done looks like," not by automated
+  test.
+  **Check:** See the interface review procedure in "Done looks like."
+
 ### Non-functional — NFR
 
 - [ ] **NFR-1 [v1]** Free to run and free to host: a static site with no backend and no paid
   services.
   **Check:** The built app runs correctly when served as plain static files.
 - [ ] **NFR-2 [v1]** Generation completes without freezing the page.
-  **Check:** At the NFR-3 cell cap, the page stays responsive; if generation exceeds ~150 ms of
+  **Check:** At NFR-3's hard limit, the page stays responsive; if generation exceeds ~150 ms of
   blocking, move the pipeline off the main thread. See Decision log D8.
-- [ ] **NFR-3 [v1]** Hard limits: 500 beads maximum per side, 100,000 cells maximum (so the largest
-  square is 316 × 316). Source images above 8000 px on a side are rejected per IN-6.
-  **Check:** Settings above these limits are refused with the message required by SET-5.
-  _(Implemented in `pattern-utils.mjs`.)_
+- [ ] **NFR-3 [v1]** Two size numbers, deliberately different. See Decision log D15.
+  - **Design target — 10,000 cells (100 × 100).** What the app is tuned and tested against: M1's
+    render and pan performance, M2's generation time, and the R1–R6 review all use a pattern of
+    this size. At Standard 5 mm that is a 50 cm piece; at Mini 2.6 mm, 26 cm.
+  - **Hard limit — 50,000 cells, 300 beads maximum per side** (so the largest square is
+    223 × 223). Settings above this are refused.
+
+  Source images above 8000 px on a side are rejected per IN-6.
+  **Check:** Settings above the hard limit are refused with the message required by SET-5; a
+  pattern at the design target meets the performance Checks in VIEW-1 and NFR-2.
+  _(Enforced in `src/lib/pattern-utils.ts`.)_
 - [ ] **NFR-4 [v1]** Deterministic logic is covered by automated tests that run without a browser.
   **Check:** The test suite covers palette validation, dimension calculation, OkLab matching, color
   reduction, and inventory tallying, and passes from a single command.
+  _(Partially implemented as of M1 step 4: `npm test` is the single command and covers palette
+  validation, dimension calculation, palette matching, transparency, inventory tallying, and the
+  canvas view's zoom/visible-range/cell-mapping math — 23 tests. Still missing OkLab matching and
+  color reduction, which do not exist until M2.)_
 - [ ] **NFR-5 [v1]** Usable in a current desktop browser at 1280 px wide and in a phone browser at
   390 px wide.
-  **Check:** At both widths, all v1 controls are reachable and the pattern view is usable.
+  **Check:** At both widths, all v1 controls are reachable and the pattern view is usable. UI-1 and
+  UI-2 carry the concrete failure conditions for this. _(The 390 px clipping this was written
+  against is gone — `src/styles.css` has had a narrow-width media query since M0, and the page
+  measures zero horizontal overflow at 390 px. Left unticked because M8 verifies it properly,
+  including with a pattern on screen.)_
 
 ## Won't build
 
@@ -332,7 +400,7 @@ regression guard.
 
 | # | Image | Passing result |
 |---|---|---|
-| R1 | Flat-color illustration or logo, transparent background | Near-exact reproduction. Flat regions stay single-colored. |
+| R1 | Flat-color illustration, transparent background | Near-exact reproduction. Flat regions stay single-colored. |
 | R2 | Flat-color drawing of an object on a solid white canvas | Subject as R1. The canvas must come out as **one** uniform color, never speckled into several near-whites — that speckle would also defeat SET-7 later. |
 | R3 | Shaded or painted digital artwork — soft gradients, dark outlines | Outlines survive as continuous lines, not dashes. Shading resolves into a few clean bands, not noise. |
 | R4 | High-contrast photo, one subject, plain background (dog portrait) | Subject clearly identifiable from ~60 cm away. Eyes and silhouette intact. |
@@ -343,14 +411,37 @@ Additional pass conditions for all six: distinct color count is within the SET-4
 region of the source is broken into three or more colors that read as noise; no visible checkerboard
 or moiré artifacts.
 
+**Interface review (UI-7) — gates v2, not v1.** The same procedure as above, applied to the app's
+own appearance. v1 only has to pass the mechanical UI-1 … UI-6 Checks; this review is what "looks
+designed" means, and it is deliberately held to v2 so it cannot become an open-ended tuning loop
+inside v1 (D14). Walk these five fixed screen states at 1280 px, and U5 at 390 px.
+
+| # | Screen state | Passing result |
+|---|---|---|
+| U1 | First load, nothing uploaded | Reads as a finished tool at rest, not an empty form. The primary action is obvious and its disabled state is clearly deliberate rather than broken. |
+| U2 | Image uploaded, before generating | The chosen file and the settings that will be applied are both legible at a glance. Nothing shifts position jarringly from U1. |
+| U3 | Pattern generated — canvas, stats, inventory | The pattern is the visual focus. Stats and inventory support it without competing for attention. |
+| U4 | An error state (unsupported file, or dimensions over the NFR-3 cap) | The message is the most prominent thing on screen, reads as informative rather than alarming, and says what to do next. |
+| U5 | U3 at 390 px wide | Same hierarchy as U3, reflowed. Nothing feels like a desktop layout squeezed. |
+
+Additional pass conditions for all five: spacing follows a consistent rhythm; one accent color used
+consistently for primary actions; no control visually orphaned or misaligned; type hierarchy
+clearly distinguishes headings, labels, and body text.
+
+**Stopping rule, as for R1–R6: when U1–U5 pass, stop, even if it feels improvable.**
+
+The state list is finalized once the UI surface is settled — U3 depends on M1's canvas view, and an
+editor state would depend on M5. Do not fix screenshots of these states before then.
+
 ## Constraints and hunches
 
 - Free, static, no backend. Data stays local (SAVE-2, NFR-1).
 - The realistic constraint on quality is the user's actual bead inventory: most people own on the
   order of 25 colors, not 221. Output that needs 80 colors is unbuildable, which is why SET-4/GEN-3
   exist.
-- Small patterns are the common case. At 5 mm beads, a 10-inch piece is only ~51 beads wide, so the
-  NFR-3 caps are far above typical use.
+- Small patterns are the common case. At 5 mm beads, a 10-inch piece is only ~51 beads wide — about
+  2,600 cells, roughly a quarter of NFR-3's design target. The original caps (500 per side, 100,000
+  cells) were far above anything physically buildable and were revised down in D15.
 - **The majority input is the easy input.** Flat-color artwork is what this pipeline handles best:
   it already consists of large uniform regions, so downscaling and palette-snapping lose little.
   Photos are the hard case — fine texture (fur, foliage, hair) does not survive at bead resolution.
@@ -364,9 +455,10 @@ or moiré artifacts.
 
 ## Open questions
 
-- **Q1 — Mini bead pitch.** The app currently uses 2 mm for Mini beads (0.079 in). Mini Perler
-  beads are commonly specified at 2.6 mm. If 2.6 is correct, every Mini pattern is currently ~30%
-  too many beads wide. Measure a real bead strip and fix SET-2.
+- **Q1 — Mini bead pitch. RESOLVED (2026-09-08).** Set to 2.6 mm (0.102 in) in M0, the commonly
+  published Mini Perler pitch. Was 2 mm (0.079 in), which made every Mini pattern ~30% too many
+  beads wide. At a 10 in target width, Mini now yields 98 beads across rather than 127. Worth
+  confirming against a real bead strip, but no longer blocking.
 - **Q2 — Default color limit.** SET-4 defaults to 30. Artwork and photos likely want very different
   values — a flat-color drawing may need only 8, while a photo portrait wants every one of the 30.
   Validate against R1–R6 and decide whether one default serves both or the limit should adapt to
@@ -391,6 +483,17 @@ or moiré artifacts.
   outlining everything; too loose eats the subject's own light edges. Whether a single tolerance
   value can serve both clean PNG exports and re-compressed JPEGs is unknown. This is the part of
   SET-7 most likely to be harder than it looks.
+- **Q9 — Visual identity for the v2 redesign.** The current palette is Tailwind's defaults
+  (indigo-600, gray-50, gray-200) carried over from the original single-file build, and the type is
+  the bare system stack. Whether the v2 redesign keeps that and merely tightens it, or adopts an
+  identity of its own, is undecided — and it is the choice most likely to turn UI-7 into the tuning
+  loop D14 is trying to avoid.
+- **Q10 — Are D15's revised size numbers right?** They are reasoned from bead pitch and plausible
+  finished dimensions, not from real projects. Mini is where the hard limit is most likely to bind:
+  a 78 cm mural at 2.6 mm pitch is 300 beads per side and 90,000 cells, which D15 refuses on the
+  cell count even though it passes the per-side limit. Decide before M9 ticks NFR-3 whether the
+  50,000-cell limit should be higher for Mini specifically, or whether refusing that piece is the
+  correct answer for v1.
 
 ## Decision log
 
@@ -417,10 +520,11 @@ or moiré artifacts.
 - **D7 (2026-09-07) — No undo in v1, and therefore no flood fill.** With a one-cell brush a mistake
   is self-correcting: paint it again. Undo is expensive to build correctly and becomes mandatory
   only once a tool can change many cells at once. (EDIT-6, EDIT-8)
-- **D8 (2026-09-07) — Keep the pipeline on the main thread for now.** At the NFR-3 cell cap the
-  work is roughly 100,000 cells against 221 colors, which should complete in well under a second
-  with palette values precomputed. Move to a background thread only if measurement shows visible
-  jank. (NFR-2)
+- **D8 (2026-09-07) — Keep the pipeline on the main thread for now.** At NFR-3's hard limit the
+  work is 50,000 cells against 221 colors, and 10,000 at the design target, which should complete
+  in well under a second with palette values precomputed. Move to a background thread only if
+  measurement shows visible jank. (NFR-2) _(Cell counts updated by D15; the conclusion holds with
+  more margin than before.)_
 - **D9 (2026-09-07) — v1 export is a PNG with codes baked into every cell.** A printable, paginated
   PDF is what serious builders eventually need, but it is roughly a week of work hidden behind one
   sentence. Deferred to OUT-6.
@@ -449,3 +553,91 @@ or moiré artifacts.
   case, border-touching subjects, and anti-aliased edge halos are all specified as Checks under
   SET-7, and the tolerance question is open as Q8. And removal without SET-8's auto-trim would
   silently shrink the finished piece, so the two ship together.
+- **D14 (2026-09-08) — Appearance is split into a mechanical v1 floor and a subjective v2 review.**
+  Leaving appearance out of the spec entirely rested on it not being checkable, but most of what
+  currently reads as "crude" is not a design problem — it is inconsistency and breakage. Five
+  unrelated corner radii, four font sizes mixing units, six ad-hoc spacing values, a status box
+  orphaned at half-width, and content clipped off-screen at 390 px. Fixing those requires no taste,
+  only one decision applied consistently, so they become ordinary Checks (UI-1 … UI-6) in v1.
+  Choosing a point of view — typography, a real color story, empty states, motion — does require
+  taste and has the same open-ended shape as M2's color tuning, so it is held to v2 as UI-7 and
+  given M2's treatment: a fixed review set (U1–U5) with an explicit stopping rule. The subjective
+  half is never split in two; it moves whole into v2. Two consequences recorded deliberately:
+  - **NFR-5 is currently failing** and was untracked until now. At 390 px the heading, the Generate
+    button, and the target-width control are clipped, because `src/styles.css` has no media queries
+    and a hardcoded two-column control grid. This is an existing [v1] obligation, not new scope.
+    _[Correction, 2026-09-13 — this premise was false when written, and is kept only because the
+    rest of D14 was reasoned from it. `src/styles.css` already carried an `@media (max-width:
+    640px)` block collapsing the control grid to one column; it landed in M0 (`fdaec7c`), the
+    commit before this entry, which touched documentation only. Measured at a real 390 px viewport
+    the page has zero horizontal overflow and nothing clipped. D14's actual decision — splitting
+    mechanical UI-1 … UI-6 from subjective UI-7 — does not rest on this and stands unchanged.]_
+  - **The UI-7 review set cannot be fixed yet.** U3 depends on M1's canvas view and an editor state
+    would depend on M5, so the screen states are finalized only once the UI surface stops moving.
+  - **The v1 floor is not invalidated by whatever v2 decides.** Tokenizing changes *structure*; a
+    change of aesthetic direction changes *values*. Swapping the font, the radii, or the whole
+    palette in v2 is a handful of edits in `:root` precisely because UI-3 happened first — without
+    it, the same change means hunting scattered literals across the file. UI-1, UI-2, UI-4, and
+    UI-6 are direction-independent outright: no redesign makes "content must not be clipped" or
+    "focus must be visible" obsolete. UI-5's threshold is permanent even though the colors it
+    measures are not. The floor is also what makes the UI-7 review answerable at all — "is spacing
+    consistent" cannot be judged against values that were never systematic.
+- **D15 (2026-09-10) — Size limits split into a design target and a hard limit, and both lowered.**
+  NFR-3's original numbers (500 per side, 100,000 cells) were not derived from physical beads. 500
+  beads at Standard 5 mm pitch is a 2.5 m piece; the 316 × 316 largest square is 1.58 m. A cap no
+  user can reach is not a safety limit, and it also made every performance target in the plan an
+  exercise against a fictional worst case. Replaced with two numbers that answer two different
+  questions — **10,000 cells (100 × 100)** for what we tune and test against, **50,000 cells and
+  300 per side** for what we refuse. Four consequences recorded deliberately:
+  - **M1 and M2 test against 100 × 100, not 300 × 300.** VIEW-1's Check and
+    `plans/m1-canvas.md`'s size targets move with it, and M2's per-pixel OkLab conversion gets
+    roughly 10× cheaper — which matters because NFR-2's 150 ms threshold is what decides whether
+    D8's "main thread for now" holds.
+  - **SET-5's error becomes real guidance.** Naming a threshold users actually hit is a usable
+    message; naming one nobody reaches is decoration.
+  - **This does not change M1's canvas architecture, which is the reason it is worth writing
+    down.** The binding constraint on canvas size is cells × max zoom, not cell count. At VIEW-2's
+    readable max zoom (~30 px per cell) even the 100 × 100 design target is a 3,000 × 3,000
+    CSS-pixel surface — about 36M device pixels and ~144 MB of backing store at DPR 2, over mobile
+    Safari's canvas area cap, and NFR-5 puts 390 px in scope. So a canvas sized to the whole
+    pattern remains the wrong shape at the revised numbers, and M1 still needs a viewport-sized
+    canvas drawing only the visible cell range. Lowering the cap looks like it should retire that
+    problem; it does not.
+    _(2026-09-13: the max zoom above was 30 px when this was written; M1 raised it to 46.875 px
+    — two zoom clicks — once the viewport-sized canvas made the ceiling free. The figures here
+    stand as the reasoning of the day, and the conclusion only hardens: a pattern-sized canvas for
+    the 100 × 100 target would now be 4,688 × 4,688. `MAX_CELL_SIZE_PX` in `src/lib/viewport.ts`
+    is the live value.)_
+  - **Code updated 2026-09-10.** `src/lib/pattern-utils.ts` now enforces 300 / 50,000, and the
+    per-side and cell limits throw separately so SET-5's message names the limit actually hit —
+    the combined message advertised `maxDimension × maxDimension`, a combination both the old and
+    the new numbers reject.
+
+- **D16 (2026-09-13) — Gridlines move into v1, and ship with edge numbers rather than alone.**
+  Hands-on use of the finished M1 canvas found a large pattern hard to navigate in two distinct
+  ways: losing track of which region is on screen, and miscounting beads within a run. At maximum
+  zoom a 300 × 160 pattern shows about 0.3% of itself. VIEW-6 was already specified for the second
+  problem and sat at [v2]; it is promoted, and VIEW-7 is added for the first. (VIEW-6, VIEW-7, M10)
+
+  **Four consequences recorded deliberately:**
+  - **Gridlines alone would not have fixed the reported problem, which is why the two ship
+    together.** Every 10-cell block looks identical, so uniform lines give local structure without
+    absolute position — they answer "how many beads is that" but not "where am I". Numbers are what
+    differentiate position. Shipping VIEW-6 by itself would have closed a requirement and left the
+    complaint standing.
+  - **VIEW-6's [v2] marker was the one deferral in this spec with no decision behind it.** Every
+    other deferred item is argued — D6, D7, D9, D10, D13, D14. Gridlines reached [v2] by appearing
+    in two lists (the Deferred section above, `plan-v1.md`'s "Explicitly not in v1") and were never
+    revisited. `plan-v1.md`'s scope-creep rule says to reopen deferred items deliberately because
+    "each is a logged decision with a reason"; this one was not. So this entry is less a reversal
+    than the decision that was missing.
+  - **The export stays deferred.** Gridlines baked into the exported PNG remain out of v1, next to
+    the export legend, and M6 decides. The geometry lives in `src/lib/guides.ts` as pure functions
+    precisely so M6 reuses it rather than reinventing it. The v1 story for a printed pattern is
+    therefore unchanged — which is worth stating, because the user who reported this works from
+    both the screen and paper.
+  - **A minimap was considered and declined.** A thumbnail with a viewport rectangle answers "where
+    am I" more directly, but needs a second canvas inside `#outputContainer`, which is cleared
+    wholesale on every generate, and sticky positioning of its own. Edge numbers answer the same
+    question by drawing into a canvas that is already sticky-pinned to the scroll corner — no new
+    DOM and no CSS change. Recorded here so it is a logged decision if it is ever revisited.

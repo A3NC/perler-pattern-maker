@@ -13,6 +13,9 @@ Everything else in `specs.md` is marked **[v2]** or **[later]** and is out of sc
 
 ## Starting point
 
+_(Pre-M0 filenames, kept as history: `perler.html` is now `index.html` + `src/`, and
+`pattern-utils.mjs` is now `src/lib/pattern-utils.ts`.)_
+
 `perler.html` already covers roughly a third of v1: upload, target width, bead size, nearest-color
 matching, zoom, code toggle, and bead counts. `pattern-utils.mjs` holds the reusable logic and has
 real tests.
@@ -47,7 +50,7 @@ Sizes are relative: S = a sitting, M = a few sittings, L = the biggest items in 
 
 ---
 
-### M0 — Project setup · S
+### M0 — Project setup · S — ✅ **Done** (2026-09-08)
 **Do:** Set up Vite + TypeScript. Move the code out of `perler.html` into separate files. Wire the
 existing tests to run from one command. Change no behavior.
 
@@ -57,9 +60,25 @@ later means redoing it.
 **Done when:** The app behaves exactly as it does today, launched through Vite, and the test suite
 runs from a single command. *(NFR-4)*
 
+**Delivered:** `perler.html` split into `index.html` + `src/`, on Vite + TypeScript. `npm run check`
+is the single gate (typecheck + 12 tests, green). Verified in-browser that `npm run dev` and
+`npm run preview` both load the 221-color palette and enable Generate. Mini bead pitch corrected to
+2.6 mm (Q1) — see the retired risk below.
+
+**Deviation from "change no behavior":** `index.html` also carries an inline classic-script boot
+guard. It covers failures the app structurally cannot report on its own: a `file://` open, a plain
+static file server, or a throw in module-level startup each stop `src/main.ts` from executing at
+all, so its own error handling never fires and the page hangs silently on "Loading color
+palette..." forever. The guard
+turns each into a readable message with Generate disabled (PAL-3). It changes only the failure
+path; the working path is untouched. Cost: PAL-3 messaging now lives in two places, and logic sits
+in `index.html` against the convention that logic lives in `src/`. Kept mainly for **M1** — that
+milestone rewrites the DOM contract this app depends on, which is exactly when the silent-hang
+failure recurs. Revisit at M9 and delete it if it has stopped earning its keep.
+
 ---
 
-### M1 — Canvas pattern view · L
+### M1 — Canvas pattern view · L — ✅ **Done** (2026-09-13)
 **Do:** Replace the element-per-bead grid with canvas rendering. Implement zoom and pan by
 redrawing rather than CSS scaling. Draw bead codes onto cells, keep the on/off toggle, and hide
 code text automatically when cells get too small to read.
@@ -67,12 +86,32 @@ code text automatically when cells get too small to read.
 **Why here:** It unblocks both the size requirements and the entire editor. It is also the single
 biggest piece of new work — do it while the rest of the app is still simple.
 
-**Done when:** A 300 × 300 pattern renders and pans smoothly; zoom keeps the viewport center fixed;
+**Done when:** A 100 × 100 pattern renders and pans smoothly; zoom keeps the viewport center fixed;
 codes are legible on the darkest and lightest palette colors and vanish when cells shrink below the
 legibility threshold. *(VIEW-1 … VIEW-5)*
 
 **Watch for:** Zoom that drifts off-center, and blurry text from ignoring the display's pixel
 density. Both are standard canvas pitfalls and both are easier to fix now than later.
+
+**Delivered:** `src/render/canvas-view.ts` replaced the element-per-bead grid. The canvas is sized
+to the *container*, not the pattern — `#grid-wrapper` survives as an empty spacer driving native
+scroll, with the canvas a `position: sticky` overlay pinned to the visible corner, redrawing only
+the visible cell range. Zoom by redraw holds the viewport center; drag-pan moves the scroll offset;
+bead codes draw with contrast-based color and hide below an 18 px legibility threshold;
+`devicePixelRatio` is applied once at the context so every other length stays in CSS pixels. The
+deterministic half lives in `src/lib/viewport.ts` with 29 tests, including the screen → cell
+mapping M5 consumes.
+
+**Deviation — max zoom raised late:** `MAX_CELL_SIZE_PX` went from 30 px to 46.875 px (two zoom
+clicks) after hands-on use found 30 px tight for inspecting a single bead. A one-constant change
+only because the container-sized canvas makes the ceiling free: per-frame cost *falls* as cells
+grow (468 cells/frame at 30 px, 187 at 46.875), and only the spacer grows. Annotated on D15 rather
+than rewritten into it.
+
+**Left open, deliberately:** the code-legibility threshold (`MIN_CODE_FONT_PX = 6`) was calibrated
+at 1x against upscaled text and is biased toward hiding codes too eagerly. Re-judge it when
+convenient; lowering it brings codes in a click or two earlier. VIEW-4 stays unticked — M1
+preserved it rather than closing it, and M9 walks it with the rest.
 
 ---
 
@@ -167,20 +206,59 @@ disabled after first load, everything still works. *(SAVE-1, SAVE-2)*
 
 ---
 
-### M8 — Polish pass · M
-**Do:** Verify the bead inventory totals against non-empty cell count. Check usability at 1280 px
-and at 390 px wide. Re-run the R1–R6 reference review. Walk the full **[v1]** requirement list and
-tick every Check.
+### M8 — Interface floor · M
+**Do:** Implement UI-1 … UI-6. Collapse the control grid to one column on narrow viewports and stop
+the horizontal overflow at 390 px. Replace the ad-hoc spacing, radius, and font-size literals with
+scales defined in `:root`. Give every interactive control a visible focus ring, bring app text to
+WCAG AA contrast, and size touch targets to 44 px at 390 px wide.
 
-**Done when:** Every **[v1]** requirement in `specs.md` passes. *(OUT-4, NFR-5, "Done looks like")*
+**Why here:** All of v1's UI surface exists by now — the canvas view from M1, crop from M4, editor
+chrome from M5 — so nothing gets styled twice. It is also the last point where this is still cheap:
+after M9 ticks the boxes, reopening them is a regression rather than a task.
+
+**Done when:** UI-1 … UI-6 pass their Checks at both 1280 px and 390 px. *(UI-1 … UI-6, NFR-5)*
+
+**Watch for:** This is deliberately the *mechanical* half of appearance — consistency and
+breakage, not taste. The subjective half is UI-7 and is **[v2]**; if you find yourself choosing
+fonts or reworking the color story, you have crossed into the tuning loop D14 exists to prevent.
+
+---
+
+### M9 — Final verification · M
+**Do:** Verify the bead inventory totals against non-empty cell count. Check usability at 1280 px
+and at 390 px wide. Re-run the R1–R6 reference review. Walk the full **[v1]** requirement list —
+UI-1 … UI-6 included — and tick every Check.
+
+**Done when:** Every **[v1]** requirement in `specs.md` passes. *(OUT-4, NFR-5, UI-1 … UI-6,
+"Done looks like")*
+
+---
+
+### M10 — Pattern orientation · S
+**Do:** Draw gridlines every 10 cells on the pattern view, plus row and column numbers along the
+top and left edges that stay put while panning. One "Grid" checkbox toggles both.
+
+**Why here:** Not on the critical path, and not a prerequisite for anything — but hands-on use of
+M1 showed that a large pattern is hard to navigate: at maximum zoom a 300 × 160 pattern shows about
+0.3% of itself. Gridlines alone do not fix that (every 10-cell block looks identical), which is why
+the edge numbers ship with them rather than after. Cheap now that M1's canvas exists.
+
+**Done when:** Gridlines land on every 10th cell boundary in both directions; edge numbers identify
+the visible columns and rows and stay correct while panning; both vanish and return with the
+toggle. *(VIEW-6, VIEW-7)*
+
+**Watch for:** Gridlines that disappear against the darkest or lightest beads — a line crosses many
+cells, so `src/contrast.ts`'s per-cell trick does not apply.
 
 ---
 
 ## Critical path
 
-M0 → M1 → M2 → M5 → M6 are sequential; each genuinely needs the one before it. **M3 can be done at
-any point** — slot it in whenever you want a quick, satisfying win. M4 needs M2 done. M7 needs the
-pattern data settled by M5.
+M0 → M1 → M2 → M5 → M6 are sequential; each genuinely needs the one before it. **M3 and M10 can be
+done at any point** — slot either in whenever you want a quick, satisfying win. M4 needs M2 done.
+M7 needs the pattern data settled by M5.
+
+**M0 and M1 are done; M10 is in flight** — see `plans/m10-orientation.md` for where it stands.
 
 The two large items, **M1 and M2, are the project.** If time runs short, everything after them can
 be trimmed; neither of them can be.
@@ -193,16 +271,17 @@ be trimmed; neither of them can be.
 | Canvas work in M1 takes longer than expected | Zoom, pan, and text rendering each fight you | Ship zoom before pan, and pan before code-text level-of-detail. All three are separable. |
 | Reference images flatter the algorithm | Everything passes but a real user's file looks bad | Pick R4 and R5 from actual phone photos and R2/R3 from real uploaded-style artwork, not curated stock images — and pick all six *before* tuning. |
 | White-canvas artwork is a poor v1 experience | Patterns come out with a wide white border; inventory is mostly white | Expected, not a bug (spec D13). Make sure crop (M4) and the eraser (M5) actually make it workable, and treat background removal as the first v2 item. |
-| Mini bead pitch is wrong (Q1) | Mini patterns come out ~30% too wide | Measure a real bead strip before M8. One-line fix, but it invalidates every Mini pattern until then. |
+| ~~Mini bead pitch is wrong (Q1)~~ — **retired in M0** | Mini patterns came out ~30% too wide | Fixed: pitch is now 2.6 mm / 0.102 in. Confirm against a real bead strip when convenient. |
 | Scope creep from the deferred list | You start "just quickly adding" fill, or dithering, or palette switching | Each is a logged decision with a reason. Reopen it deliberately, not mid-milestone. |
 
 ## Explicitly not in v1
 
 Background removal and subject auto-trim, pixel-art passthrough mode, palette switching (needs the
-other palette files sourced first), undo/redo, flood fill, gridlines, legend in the export,
-user-facing algorithm choice, printable PDF, multi-project library, draw-from-scratch mode.
+other palette files sourced first), undo/redo, flood fill, legend in the export,
+user-facing algorithm choice, printable PDF, multi-project library, draw-from-scratch mode, and
+deliberate visual design (UI-7).
 
-Reasons for each are in the `specs.md` decision log. Three worth restating:
+Reasons for each are in the `specs.md` decision log. Four worth restating:
 
 **Background removal is out of v1 but first in line for v2** (D13). It serves the majority input
 case, so this is the deferral most likely to bite. The v1 answer is crop plus eraser, and it is
@@ -217,3 +296,12 @@ also keeps flood fill out.
 
 **The printable PDF is out** because it is roughly a week of work hidden behind five words in the
 original spec, and a PNG with codes covers the on-screen case.
+
+**Deliberate visual design is out, but the floor under it is not** (D14). v1 still has to look
+finished rather than broken: UI-1 … UI-6 are **[v1]** and get built in M8 — consistent spacing,
+radius, and type scales, a working narrow layout, focus rings, AA contrast, real touch targets.
+What is deferred is UI-7, the part that needs taste: typography, a color story of its own, empty
+states, motion. That half has the same no-finish-line shape as M2's color tuning, so it gets the
+same treatment — the U1–U5 interface review in `specs.md`, with an explicit stopping rule — and it
+waits for v2 rather than running loose inside v1. Note that NFR-5 is **currently failing**: at
+390 px the heading, the Generate button, and the target-width control are clipped off-screen.

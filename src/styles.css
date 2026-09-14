@@ -1,0 +1,305 @@
+        /* width:100% plus padding overflowed the viewport -- .container was 40px
+           wider than its parent, which is what pushed content off-screen at narrow
+           widths (NFR-5 / UI-1). The original file patched this per-rule on
+           #beadCountsContainer only; this makes it the default everywhere. */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #4F46E5;
+            --primary-hover: #4338CA;
+            --bg: #F9FAFB;
+            --surface: #FFFFFF;
+            --text: #111827;
+            --border: #E5E7EB;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background-color: var(--surface);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            margin-top: 0;
+            color: var(--primary);
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background-color: var(--bg);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            /* Grid/flex items default to min-width:auto and refuse to shrink below
+               their min-content width -- a file input's is wide enough to push the
+               whole panel past the viewport. */
+            min-width: 0;
+        }
+
+        /* Full-panel width regardless of the current column count. Was an inline
+           `grid-column: span 2` in index.html, which no media query could override. */
+        .span-full {
+            grid-column: 1 / -1;
+        }
+
+        label {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        input[type="file"],
+        input[type="number"],
+        select {
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        button {
+            /* 1 / -1 spans whatever column count the grid currently has. `span 2`
+               would conjure an implicit second column once .controls collapses. */
+            grid-column: 1 / -1;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 1rem;
+            border-radius: 6px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        button:disabled {
+            background-color: #9CA3AF;
+            cursor: not-allowed;
+        }
+
+        .output-container {
+            margin-top: 2rem;
+            width: 100%;
+            height: 500px; /* 1. Locks the window to a fixed height */
+            overflow: auto; /* 2. Enables proper scrollbars */
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            background-color: var(--bg);
+            position: relative;
+            /* We removed the flexbox centering here, as it breaks scrollbars on large items */
+        }
+
+        /* An empty spacer, sized in JS to the pattern at the current zoom. It
+           holds no beads -- its whole job is to give .output-container a
+           scrollable area of the right size. `overflow: hidden` used to live
+           here and cannot: it would make this a scroll container of its own,
+           which is the one thing that stops the sticky canvas below from
+           tracking the scroll. */
+        #grid-wrapper {
+            margin: 0 auto; /* Centers the pattern while it is smaller than the window */
+        }
+
+        #pattern-canvas {
+            /* Sticky, so the viewport-sized canvas stays pinned over the
+               visible corner of the spacer as it scrolls -- the compositor
+               keeps it in place and JS only repaints what moved under it.
+               Block because an inline box cannot be sticky. */
+            position: sticky;
+            top: 0;
+            left: 0;
+            display: block;
+            cursor: grab;
+        }
+
+        .output-container.panning #pattern-canvas {
+            cursor: grabbing;
+        }
+
+        .zoom-controls {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 1rem;
+            display: none; /* Hidden until image is generated */
+        }
+        
+        .zoom-controls button {
+            grid-column: auto;
+            padding: 0.5rem 1rem;
+            width: auto;
+        }
+
+        #stats {
+            margin-top: 1rem;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .status-message {
+            /* Span the panel instead of inheriting one grid cell, which left it
+               orphaned at half width next to the full-width button (UI-2). */
+            grid-column: 1 / -1;
+            margin: 1rem 0 0;
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        .status-message.error {
+            color: #991B1B;
+            background-color: #FEE2E2;
+            border: 1px solid #FCA5A5;
+        }
+
+        .status-message.info {
+            color: #1E3A8A;
+            background-color: #DBEAFE;
+            border: 1px solid #93C5FD;
+        }
+
+        .status-message.success {
+            color: #166534;
+            background-color: #DCFCE7;
+            border: 1px solid #86EFAC;
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        /* Bead Counter Styles */
+        #beadCountsContainer {
+            margin-top: 2rem;
+            width: 100%;
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-sizing: border-box;
+            display: none; /* Hidden until generated */
+        }
+        
+        .count-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 0.75rem;
+        }
+
+        .count-header h3 {
+            margin: 0;
+            color: var(--text);
+        }
+
+        .bead-list {
+            max-height: 250px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            padding-right: 0.5rem; /* Room for scrollbar */
+        }
+
+        .bead-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.5rem 1rem;
+            background-color: var(--bg);
+            border-radius: 6px;
+            border: 1px solid var(--border);
+        }
+
+        .color-swatch {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            border: 1px solid rgba(0,0,0,0.2);
+            flex-shrink: 0;
+        }
+
+        .color-name {
+            flex-grow: 1;
+            font-weight: 500;
+        }
+
+        .color-count {
+            font-weight: 700;
+            background-color: var(--primary);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.9rem;
+        }
+
+        /* NFR-5 / UI-1, UI-2. Below this width the two-column control grid and the
+           doubled 2rem body+container padding push content off-screen: at 390 px the
+           heading, Generate button, and target-width control were all clipped.
+           Note this is only the responsive fix -- the spacing, radius, and type
+           scales that UI-3 calls for are M8's job, not this rule's. */
+        @media (max-width: 640px) {
+            body {
+                padding: 1rem 0.75rem;
+            }
+
+            .container {
+                padding: 1.25rem;
+            }
+
+            .controls {
+                /* minmax(0, 1fr), not 1fr: plain 1fr floors at min-content. */
+                grid-template-columns: minmax(0, 1fr);
+                gap: 1rem;
+                padding: 1rem;
+            }
+
+            input[type="file"],
+            input[type="number"],
+            select,
+            button {
+                width: 100%;
+                box-sizing: border-box;
+            }
+        }

@@ -142,6 +142,57 @@ test('visibleCellRange stops at the pattern edge', () => {
     assert.deepEqual(visibleCellRange(0, 200, 10, 0), { start: 0, end: -1 });
 });
 
+// NFR-3's hard limit as the plan's non-square case, in the reference container.
+const LIMIT_W = 300;
+const LIMIT_H = 160;
+const CONTAINER_W = 760;
+const CONTAINER_H = 500;
+
+/** Cells the draw loop touches in one frame -- its whole per-frame cost. */
+function cellsPerFrame(cellSize: number, scrollLeft = 0, scrollTop = 0): number {
+    const cols = visibleCellRange(scrollLeft, CONTAINER_W, cellSize, LIMIT_W);
+    const rows = visibleCellRange(scrollTop, CONTAINER_H, cellSize, LIMIT_H);
+    return (cols.end - cols.start + 1) * (rows.end - rows.start + 1);
+}
+
+test('per-frame work is bounded by the container, not the pattern', () => {
+    // The step 2 precondition, stated as a cost: zooming in on a 48,000-cell
+    // pattern must make each frame cheaper, never more expensive. A
+    // pattern-sized canvas would draw all 48,000 cells at every zoom.
+    const fit = fitCellSize(LIMIT_W, LIMIT_H, CONTAINER_W, CONTAINER_H);
+
+    let cellSize = fit;
+    let previous = cellsPerFrame(cellSize);
+    // The whole pattern is on screen at fit zoom, so that frame is the worst.
+    assert.equal(previous, LIMIT_W * LIMIT_H);
+
+    while (cellSize < MAX_CELL_SIZE_PX) {
+        cellSize = clampCellSize(cellSize * ZOOM_STEP, fit, MAX_CELL_SIZE_PX);
+        // Scrolled to the middle, where the visible range is not clipped by an
+        // edge and the frame is therefore at its most expensive for this zoom.
+        const count = cellsPerFrame(cellSize, (LIMIT_W * cellSize) / 3, (LIMIT_H * cellSize) / 3);
+        assert.ok(count <= previous, `${count} cells at ${cellSize}px exceeded ${previous}`);
+        previous = count;
+    }
+
+    // At maximum zoom a frame is a few hundred cells out of 48,000.
+    assert.ok(previous < 600, `${previous} cells at maximum zoom`);
+});
+
+test('text never draws on more than a container-full of cells', () => {
+    // fillText is the expensive call, and step 5's threshold is what bounds how
+    // many of them a frame can make: codes only draw at >= 18px per cell, and
+    // few 18px cells fit a 760 x 500 container. This is why step 6's
+    // performance bar survives the 50,000-cell hard limit.
+    const worst = cellsPerFrame(
+        MIN_CODE_CELL_SIZE_PX,
+        MIN_CODE_CELL_SIZE_PX / 2,
+        MIN_CODE_CELL_SIZE_PX / 2
+    );
+    assert.ok(worst < 1500, `${worst} code draws per frame at the threshold`);
+    assert.ok(worst < (LIMIT_W * LIMIT_H) / 20, 'text frames are a fraction of the pattern');
+});
+
 test('cellAtClientPoint round-trips at every zoom level', () => {
     // The fit-to-390px extreme, two middling zooms, and the readable maximum.
     for (const cellSize of [1.3, 5, 12.5, MAX_CELL_SIZE_PX]) {

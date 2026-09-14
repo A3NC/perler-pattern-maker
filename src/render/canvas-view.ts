@@ -24,9 +24,9 @@ import type { Pattern } from '../types';
 // alone -- past mobile canvas area caps -- so this is a precondition for zoom,
 // not a later optimization.
 //
-// Drag-pan and the screen -> cell mapping are step 3; bead codes and the
-// toggle are step 4; the level-of-detail threshold is step 5;
-// devicePixelRatio is step 6.
+// Every length in this module is a CSS pixel. The canvas backing store is the
+// one exception -- sized by devicePixelRatio in layout(), with the density
+// applied once at the context so the draw loop never sees it.
 
 const outputContainer = requireElement('outputContainer');
 const zoomControls = requireElement('zoomControls');
@@ -41,6 +41,15 @@ interface View {
     spacer: HTMLDivElement;
     canvas: HTMLCanvasElement;
     ctx: CanvasRenderingContext2D;
+    /**
+     * Canvas size in CSS px, set by layout(). Kept on the view because
+     * canvas.width/.height are device pixels once the backing store is scaled
+     * by devicePixelRatio, and the draw loop needs the CSS lengths: reading the
+     * backing store there would widen the visible cell range by dpr on each
+     * axis and draw four times the cells per frame at dpr 2.
+     */
+    width: number;
+    height: number;
     /** Current zoom, expressed as the on-screen size of one bead in CSS px. */
     cellSize: number;
     /** Fit-to-container cell size: VIEW-2's zoom-out floor. */
@@ -99,6 +108,9 @@ export function renderPattern(pattern: Pattern): void {
         spacer,
         canvas,
         ctx,
+        // Filled by the layout() below, which is what measures the container.
+        width: 0,
+        height: 0,
         cellSize: minCellSize,
         minCellSize,
         widestCode: widestCodeIn(pattern)
@@ -115,7 +127,7 @@ export function renderPattern(pattern: Pattern): void {
 /** Resize the spacer to the zoomed pattern and the canvas to the container. */
 function layout(): void {
     if (!view) return;
-    const { pattern, spacer, canvas, cellSize } = view;
+    const { pattern, spacer, canvas, ctx, cellSize } = view;
 
     spacer.style.width = `${pattern.width * cellSize}px`;
     spacer.style.height = `${pattern.height * cellSize}px`;
@@ -125,12 +137,29 @@ function layout(): void {
     const width = Math.max(1, Math.round(Math.min(pattern.width * cellSize, outputContainer.clientWidth)));
     const height = Math.max(1, Math.round(Math.min(pattern.height * cellSize, outputContainer.clientHeight)));
 
-    // CSS size and backing store are kept equal: one canvas unit is one CSS
-    // pixel until step 6 introduces devicePixelRatio.
+    // The backing store is device pixels; everything else in this module --
+    // cellSize, scroll offsets, the visible range, the code font, the step 3
+    // coordinate mapping -- stays in CSS pixels, and density is applied exactly
+    // once, by the transform below. Folding dpr into cellSize instead would
+    // push it back through the zoom math, the mapping, and the legibility
+    // threshold, which is why it is deliberately confined to these four lines.
+    //
+    // Read fresh each layout: devicePixelRatio changes with browser zoom and
+    // with a move to a different display, and both paths reach us through
+    // handleResize.
+    const dpr = window.devicePixelRatio || 1;
+
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
-    canvas.width = width;
-    canvas.height = height;
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+
+    // Assigning width/height resets the context to its defaults, transform
+    // included, so this has to follow the resize rather than be set up once.
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    view.width = width;
+    view.height = height;
 }
 
 function widestCodeIn(pattern: Pattern): string {
@@ -161,7 +190,9 @@ function setCodeFont(ctx: CanvasRenderingContext2D, cellSize: number, widestCode
 /** Repaint the cells under the canvas at the current scroll offset. */
 function draw(): void {
     if (!view) return;
-    const { pattern, canvas, ctx, cellSize, widestCode } = view;
+    // width/height, not canvas.width/.height: CSS pixels, which is the space
+    // every calculation below works in.
+    const { pattern, ctx, cellSize, widestCode, width, height } = view;
 
     const scrollLeft = outputContainer.scrollLeft;
     const scrollTop = outputContainer.scrollTop;
@@ -179,10 +210,10 @@ function draw(): void {
 
     // Cleared rather than filled: an unpainted cell was transparent in the
     // source (GEN-1) and should read as a hole, not as a bead.
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, width, height);
 
-    const cols = visibleCellRange(scrollLeft, canvas.width, cellSize, pattern.width);
-    const rows = visibleCellRange(scrollTop, canvas.height, cellSize, pattern.height);
+    const cols = visibleCellRange(scrollLeft, width, cellSize, pattern.width);
+    const rows = visibleCellRange(scrollTop, height, cellSize, pattern.height);
 
     for (let row = rows.start; row <= rows.end; row++) {
         const top = Math.round((row * cellSize) - scrollTop);

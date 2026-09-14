@@ -177,7 +177,7 @@ click, at ~19 px.
 
 ---
 
-### 6. Device pixel ratio and the performance check
+### ~~6. Device pixel ratio and the performance check~~ — code done, visual checks pending
 
 Size the canvas backing store by `devicePixelRatio` and scale the context, so text and cell edges
 are crisp on a Retina display.
@@ -203,6 +203,30 @@ when cells are large enough that few of them fit on screen.
 
 **Done when:** Text is sharp on a HiDPI display; 100 × 100 pans smoothly; zoom and pan stay
 responsive at NFR-3's 50,000-cell hard limit.
+
+**Landed as:** four lines in `layout()` — `dpr` read fresh per layout, backing store sized
+`width * dpr`, and `ctx.setTransform(dpr, 0, 0, dpr, 0, 0)` after the resize, since assigning
+`canvas.width` resets the context transform. The `canvas.width`/`.height` trap above was real and
+is fixed: `View` now carries `width`/`height` in CSS px, set by `layout()` and read by the
+`clearRect` and both `visibleCellRange` calls. Nothing else in the module or in `viewport.ts`
+knows dpr exists, so steps 2, 3 and 5 were untouched.
+
+**Cost, measured against NFR-3's hard limit** (300 × 160 = 48,000 cells, 760 × 500 container):
+the per-frame cell count falls monotonically as you zoom in — 48,000 at fit, 2,688 at 12 px,
+442 at maximum zoom. The worst frame is fit zoom, which is also the one zoom where the whole
+pattern is visible and there is therefore nothing to pan; every pannable zoom is well below it.
+Codes cross step 5's threshold at ~19 px, where at most ~1,134 cells are on screen, so `fillText`
+is bounded at roughly a thousand calls per frame rather than 48,000. Both bounds are asserted in
+`viewport.test.ts` ("per-frame work is bounded by the container, not the pattern", "text never
+draws on more than a container-full of cells").
+
+**Still needs a human eye, and cannot be automated here** (no browser harness, by the ground
+rules): text sharpness on a HiDPI display, the smoothness of a 100 × 100 pan, and the re-check
+this step's Watch note asks for — step 4's contrast and step 5's 18 px threshold were both
+calibrated at 1x against upscaled, blurry text. The threshold in particular was deliberately
+biased toward hiding too eagerly; with a DPR-scaled backing store, `MIN_CODE_FONT_PX` in
+`src/lib/viewport.ts` may want to drop from 6, which lowers the threshold proportionally. Do not
+close M1 until these are looked at.
 
 > **Watch:** `plan-v1.md` names blurry text from ignoring pixel density as the second standard
 > canvas pitfall. Doing this last means every earlier step's visual judgment was made at 1x —

@@ -62,7 +62,7 @@ the palette code with S1–S3. See Decision log D6.
 
 **Planned for v2:** the advanced settings panel and everything in it — background removal (SET-7),
 subject auto-trim (SET-8), pixel-art passthrough (SET-9) — plus palette switching, undo/redo, flood
-fill, gridlines, and a legend in the export.
+fill, and a legend in the export. _(Gridlines were on this list until D16 moved them into v1.)_
 
 **Later, undated:** drawing from scratch (S4), user-facing algorithm selection, a multi-project
 library, printable multi-page PDF export.
@@ -217,27 +217,34 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
 
 ### Pattern view — VIEW
 
-- [ ] **VIEW-1 [v1]** Render the pattern on a single drawing surface (canvas), not as one page
+- [x] **VIEW-1 [v1]** Render the pattern on a single drawing surface (canvas), not as one page
   element per bead.
   **Check:** A 100 × 100 pattern (NFR-3's design target) renders and pans smoothly, and a pattern
   at NFR-3's 50,000-cell hard limit stays usable. _(Current build uses one element per bead and
   must be rewritten. See Decision log D1.)_
-- [ ] **VIEW-2 [v1]** Zoom in and out, and pan when the pattern exceeds the viewport.
+- [x] **VIEW-2 [v1]** Zoom in and out, and pan when the pattern exceeds the viewport.
   **Check:** At maximum zoom individual cells and codes are comfortably readable; at minimum zoom
   the whole pattern fits the viewport. Zoom keeps the viewport center fixed.
   _(Partially implemented via CSS scaling; replaced by VIEW-1.)_
-- [ ] **VIEW-3 [v1]** Color codes are drawn on each cell and can be toggled off.
+- [x] **VIEW-3 [v1]** Color codes are drawn on each cell and can be toggled off.
   **Check:** Toggling off removes all code text and leaves colors unchanged; toggling on restores
   it. _(Partially implemented.)_
 - [ ] **VIEW-4 [v1]** Code text is legible against its cell color.
   **Check:** Codes on the palette's darkest and lightest colors are both readable.
   _(Implemented via contrast-based text color.)_
-- [ ] **VIEW-5 [v1]** When cells are too small to fit code text, hide the text automatically rather
+- [x] **VIEW-5 [v1]** When cells are too small to fit code text, hide the text automatically rather
   than drawing unreadable overlapping glyphs.
   **Check:** Zoom out until cells are under the legibility threshold; text disappears and colors
   remain.
-- [ ] **VIEW-6 [v2]** Gridlines every 10 cells to help counting, toggleable.
-  **Check:** Lines align to every 10th cell boundary in both directions.
+- [ ] **VIEW-6 [v1]** Gridlines every 10 cells to help counting, toggleable. Promoted from [v2];
+  see Decision log D16.
+  **Check:** Lines align to every 10th cell boundary in both directions, and remain visible against
+  the palette's darkest and lightest colors.
+- [ ] **VIEW-7 [v1]** Row and column numbers along the edges of the pattern view, so the visible
+  region can be located within the whole pattern. See Decision log D16.
+  **Check:** Zoom in until the pattern exceeds the viewport; the numbers along the top and left
+  edges identify the visible columns and rows and stay correct while panning. They are absent when
+  the whole pattern already fits.
 
 ### Editing — EDIT
 
@@ -596,7 +603,41 @@ editor state would depend on M5. Do not fix screenshots of these states before t
     pattern remains the wrong shape at the revised numbers, and M1 still needs a viewport-sized
     canvas drawing only the visible cell range. Lowering the cap looks like it should retire that
     problem; it does not.
+    _(2026-09-13: the max zoom above was 30 px when this was written; M1 raised it to 46.875 px
+    — two zoom clicks — once the viewport-sized canvas made the ceiling free. The figures here
+    stand as the reasoning of the day, and the conclusion only hardens: a pattern-sized canvas for
+    the 100 × 100 target would now be 4,688 × 4,688. `MAX_CELL_SIZE_PX` in `src/lib/viewport.ts`
+    is the live value.)_
   - **Code updated 2026-09-10.** `src/lib/pattern-utils.ts` now enforces 300 / 50,000, and the
     per-side and cell limits throw separately so SET-5's message names the limit actually hit —
     the combined message advertised `maxDimension × maxDimension`, a combination both the old and
     the new numbers reject.
+
+- **D16 (2026-09-13) — Gridlines move into v1, and ship with edge numbers rather than alone.**
+  Hands-on use of the finished M1 canvas found a large pattern hard to navigate in two distinct
+  ways: losing track of which region is on screen, and miscounting beads within a run. At maximum
+  zoom a 300 × 160 pattern shows about 0.3% of itself. VIEW-6 was already specified for the second
+  problem and sat at [v2]; it is promoted, and VIEW-7 is added for the first. (VIEW-6, VIEW-7, M10)
+
+  **Four consequences recorded deliberately:**
+  - **Gridlines alone would not have fixed the reported problem, which is why the two ship
+    together.** Every 10-cell block looks identical, so uniform lines give local structure without
+    absolute position — they answer "how many beads is that" but not "where am I". Numbers are what
+    differentiate position. Shipping VIEW-6 by itself would have closed a requirement and left the
+    complaint standing.
+  - **VIEW-6's [v2] marker was the one deferral in this spec with no decision behind it.** Every
+    other deferred item is argued — D6, D7, D9, D10, D13, D14. Gridlines reached [v2] by appearing
+    in two lists (the Deferred section above, `plan-v1.md`'s "Explicitly not in v1") and were never
+    revisited. `plan-v1.md`'s scope-creep rule says to reopen deferred items deliberately because
+    "each is a logged decision with a reason"; this one was not. So this entry is less a reversal
+    than the decision that was missing.
+  - **The export stays deferred.** Gridlines baked into the exported PNG remain out of v1, next to
+    the export legend, and M6 decides. The geometry lives in `src/lib/guides.ts` as pure functions
+    precisely so M6 reuses it rather than reinventing it. The v1 story for a printed pattern is
+    therefore unchanged — which is worth stating, because the user who reported this works from
+    both the screen and paper.
+  - **A minimap was considered and declined.** A thumbnail with a viewport rectangle answers "where
+    am I" more directly, but needs a second canvas inside `#outputContainer`, which is cleared
+    wholesale on every generate, and sticky positioning of its own. Edge numbers answer the same
+    question by drawing into a canvas that is already sticky-pinned to the scroll corner — no new
+    DOM and no CSS change. Recorded here so it is a logged decision if it is ever revisited.

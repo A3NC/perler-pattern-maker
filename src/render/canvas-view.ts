@@ -1,6 +1,12 @@
 import { getContrastColor } from '../contrast';
 import { requireElement } from '../dom';
 import {
+    gridlineIndices,
+    rulerLabelStep,
+    shouldDrawGridlines,
+    shouldDrawRuler
+} from '../lib/guides';
+import {
     CODE_FONT_RATIO,
     MAX_CELL_SIZE_PX,
     ZOOM_STEP,
@@ -10,6 +16,7 @@ import {
     visibleCellRange,
     zoomedScrollOffset
 } from '../lib/viewport';
+import type { CellRange } from '../lib/viewport';
 import type { Pattern } from '../types';
 
 // The canvas pattern view (D1), replacing the element-per-bead grid.
@@ -19,10 +26,10 @@ import type { Pattern } from '../types';
 // an empty spacer sized to the full pattern, which is what gives
 // .output-container something to scroll natively; the canvas sits inside it as
 // a `position: sticky` overlay pinned to the visible corner, and every scroll
-// redraws just the cell range under it. At VIEW-2's 30px maximum zoom a
-// pattern-sized canvas would be 3000 x 3000 for the 100 x 100 design target
+// redraws just the cell range under it. At VIEW-2's maximum zoom a
+// pattern-sized canvas would be 4688 x 4688 for the 100 x 100 design target
 // alone -- past mobile canvas area caps -- so this is a precondition for zoom,
-// not a later optimization.
+// not a later optimization. It is also what made raising that ceiling free.
 //
 // Every length in this module is a CSS pixel. The canvas backing store is the
 // one exception -- sized by devicePixelRatio in layout(), with the density
@@ -31,9 +38,24 @@ import type { Pattern } from '../types';
 const outputContainer = requireElement('outputContainer');
 const zoomControls = requireElement('zoomControls');
 const toggleTextBtn = requireElement<HTMLInputElement>('toggleTextBtn');
+const toggleGridBtn = requireElement<HTMLInputElement>('toggleGridBtn');
 
 /** How much of a cell's width a code may fill before the font is shrunk to fit. */
 const CODE_MAX_WIDTH_RATIO = 0.86;
+
+// A gridline crosses many cells, so contrast.ts's per-cell choice cannot apply:
+// there is no single bead colour to contrast against. Drawn instead as a
+// dark/light pair one CSS pixel apart, so one half of the rule always reads.
+const GRID_RULE_DARK = 'rgba(0, 0, 0, 0.55)';
+const GRID_RULE_LIGHT = 'rgba(255, 255, 255, 0.6)';
+
+// Ruler chrome is fixed-size: it labels the view, not the beads, so unlike code
+// text it does not scale with zoom. rulerLabelStep is what stops it colliding.
+const RULER_FONT_PX = 10;
+const RULER_BAND_PX = 15;
+const RULER_PADDING_PX = 3;
+const RULER_BACKGROUND = 'rgba(255, 255, 255, 0.86)';
+const RULER_TEXT = '#1F2937';
 
 interface View {
     pattern: Pattern;
@@ -187,6 +209,100 @@ function setCodeFont(ctx: CanvasRenderingContext2D, cellSize: number, widestCode
     }
 }
 
+/**
+ * Gridlines every GRID_INTERVAL cells (VIEW-6). Two passes rather than two
+ * fillStyle assignments per line, and fillRect rather than stroke -- a stroked
+ * line is centred on its coordinate and needs a half-pixel offset to stay
+ * crisp, while a filled rect lands on the pixel grid by construction.
+ */
+function drawGridlines(
+    ctx: CanvasRenderingContext2D,
+    cols: CellRange,
+    rows: CellRange,
+    cellSize: number,
+    scrollLeft: number,
+    scrollTop: number,
+    width: number,
+    height: number
+): void {
+    if (!shouldDrawGridlines(cellSize)) return;
+
+    const verticals = gridlineIndices(cols).map((col) => Math.round((col * cellSize) - scrollLeft));
+    const horizontals = gridlineIndices(rows).map((row) => Math.round((row * cellSize) - scrollTop));
+
+    ctx.fillStyle = GRID_RULE_DARK;
+    for (const x of verticals) ctx.fillRect(x, 0, 1, height);
+    for (const y of horizontals) ctx.fillRect(0, y, width, 1);
+
+    ctx.fillStyle = GRID_RULE_LIGHT;
+    for (const x of verticals) ctx.fillRect(x + 1, 0, 1, height);
+    for (const y of horizontals) ctx.fillRect(0, y + 1, width, 1);
+}
+
+/**
+ * Row and column numbers along the view's edges (VIEW-7), which is what turns
+ * self-similar gridlines into an absolute position. They need no sticky
+ * positioning of their own: the canvas is already pinned to the visible corner
+ * of the scroll area, so its first pixels are always on screen.
+ *
+ * Drawn per axis, and only where the pattern overflows -- see shouldDrawRuler.
+ */
+function drawRulers(
+    ctx: CanvasRenderingContext2D,
+    pattern: Pattern,
+    cols: CellRange,
+    rows: CellRange,
+    cellSize: number,
+    scrollLeft: number,
+    scrollTop: number,
+    width: number,
+    height: number
+): void {
+    const showColumns = shouldDrawRuler(pattern.width * cellSize, width);
+    const showRows = shouldDrawRuler(pattern.height * cellSize, height);
+    if (!showColumns && !showRows) return;
+
+    const step = rulerLabelStep(cellSize);
+    ctx.font = `bold ${RULER_FONT_PX}px monospace`;
+
+    // Sized to the widest number this pattern can print, so a three-digit row
+    // index near NFR-3's 300-per-side limit is never clipped.
+    const bandWidth = showRows
+        ? Math.ceil(ctx.measureText(String(pattern.height)).width) + (RULER_PADDING_PX * 2)
+        : 0;
+    const bandHeight = showColumns ? RULER_BAND_PX : 0;
+
+    ctx.fillStyle = RULER_BACKGROUND;
+    if (showColumns) ctx.fillRect(0, 0, width, bandHeight);
+    // Starts below the column band rather than at 0: overlapping fills would
+    // make the shared corner visibly darker than either strip.
+    if (showRows) ctx.fillRect(0, bandHeight, bandWidth, height - bandHeight);
+
+    ctx.fillStyle = RULER_TEXT;
+    ctx.textBaseline = 'middle';
+
+    if (showColumns) {
+        ctx.textAlign = 'left';
+        for (const col of gridlineIndices(cols, step)) {
+            const x = Math.round((col * cellSize) - scrollLeft);
+            // Would land in the row band and collide with a row number.
+            if (x + RULER_PADDING_PX < bandWidth) continue;
+            ctx.fillText(String(col), x + RULER_PADDING_PX, bandHeight / 2);
+        }
+    }
+
+    if (showRows) {
+        ctx.textAlign = 'right';
+        for (const row of gridlineIndices(rows, step)) {
+            const y = Math.round((row * cellSize) - scrollTop);
+            if (y < bandHeight) continue;
+            // Sits just below its line, mirroring column labels sitting just
+            // right of theirs, so a label always trails the rule it names.
+            ctx.fillText(String(row), bandWidth - RULER_PADDING_PX, y + (RULER_FONT_PX / 2));
+        }
+    }
+}
+
 /** Repaint the cells under the canvas at the current scroll offset. */
 function draw(): void {
     if (!view) return;
@@ -240,6 +356,14 @@ function draw(): void {
                 ctx.fillText(cell.name, (left + right) / 2, (top + bottom) / 2);
             }
         }
+    }
+
+    // Guides last, so they sit above the beads and their codes. One checkbox
+    // drives both layers (D16): the zoom bar is already tight at 390px, and
+    // gridlines without their numbers do not answer "where am I".
+    if (toggleGridBtn.checked) {
+        drawGridlines(ctx, cols, rows, cellSize, scrollLeft, scrollTop, width, height);
+        drawRulers(ctx, pattern, cols, rows, cellSize, scrollLeft, scrollTop, width, height);
     }
 }
 
@@ -382,4 +506,7 @@ export function initPatternViewControls(): void {
     // VIEW-3. A redraw, not a CSS class: the codes are pixels on the canvas
     // now, so there is no text node left to hide.
     toggleTextBtn.addEventListener('change', () => draw());
+
+    // VIEW-6 and VIEW-7, same reasoning.
+    toggleGridBtn.addEventListener('change', () => draw());
 }

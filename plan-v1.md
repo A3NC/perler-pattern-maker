@@ -78,7 +78,7 @@ failure recurs. Revisit at M9 and delete it if it has stopped earning its keep.
 
 ---
 
-### M1 — Canvas pattern view · L — 🔄 **In flight**
+### M1 — Canvas pattern view · L — ✅ **Done** (2026-09-13)
 **Do:** Replace the element-per-bead grid with canvas rendering. Implement zoom and pan by
 redrawing rather than CSS scaling. Draw bead codes onto cells, keep the on/off toggle, and hide
 code text automatically when cells get too small to read.
@@ -92,6 +92,26 @@ legibility threshold. *(VIEW-1 … VIEW-5)*
 
 **Watch for:** Zoom that drifts off-center, and blurry text from ignoring the display's pixel
 density. Both are standard canvas pitfalls and both are easier to fix now than later.
+
+**Delivered:** `src/render/canvas-view.ts` replaced the element-per-bead grid. The canvas is sized
+to the *container*, not the pattern — `#grid-wrapper` survives as an empty spacer driving native
+scroll, with the canvas a `position: sticky` overlay pinned to the visible corner, redrawing only
+the visible cell range. Zoom by redraw holds the viewport center; drag-pan moves the scroll offset;
+bead codes draw with contrast-based color and hide below an 18 px legibility threshold;
+`devicePixelRatio` is applied once at the context so every other length stays in CSS pixels. The
+deterministic half lives in `src/lib/viewport.ts` with 29 tests, including the screen → cell
+mapping M5 consumes.
+
+**Deviation — max zoom raised late:** `MAX_CELL_SIZE_PX` went from 30 px to 46.875 px (two zoom
+clicks) after hands-on use found 30 px tight for inspecting a single bead. A one-constant change
+only because the container-sized canvas makes the ceiling free: per-frame cost *falls* as cells
+grow (468 cells/frame at 30 px, 187 at 46.875), and only the spacer grows. Annotated on D15 rather
+than rewritten into it.
+
+**Left open, deliberately:** the code-legibility threshold (`MIN_CODE_FONT_PX = 6`) was calibrated
+at 1x against upscaled text and is biased toward hiding codes too eagerly. Re-judge it when
+convenient; lowering it brings codes in a click or two earlier. VIEW-4 stays unticked — M1
+preserved it rather than closing it, and M9 walks it with the rest.
 
 ---
 
@@ -214,13 +234,31 @@ UI-1 … UI-6 included — and tick every Check.
 
 ---
 
+### M10 — Pattern orientation · S
+**Do:** Draw gridlines every 10 cells on the pattern view, plus row and column numbers along the
+top and left edges that stay put while panning. One "Grid" checkbox toggles both.
+
+**Why here:** Not on the critical path, and not a prerequisite for anything — but hands-on use of
+M1 showed that a large pattern is hard to navigate: at maximum zoom a 300 × 160 pattern shows about
+0.3% of itself. Gridlines alone do not fix that (every 10-cell block looks identical), which is why
+the edge numbers ship with them rather than after. Cheap now that M1's canvas exists.
+
+**Done when:** Gridlines land on every 10th cell boundary in both directions; edge numbers identify
+the visible columns and rows and stay correct while panning; both vanish and return with the
+toggle. *(VIEW-6, VIEW-7)*
+
+**Watch for:** Gridlines that disappear against the darkest or lightest beads — a line crosses many
+cells, so `src/contrast.ts`'s per-cell trick does not apply.
+
+---
+
 ## Critical path
 
-M0 → M1 → M2 → M5 → M6 are sequential; each genuinely needs the one before it. **M3 can be done at
-any point** — slot it in whenever you want a quick, satisfying win. M4 needs M2 done. M7 needs the
-pattern data settled by M5.
+M0 → M1 → M2 → M5 → M6 are sequential; each genuinely needs the one before it. **M3 and M10 can be
+done at any point** — slot either in whenever you want a quick, satisfying win. M4 needs M2 done.
+M7 needs the pattern data settled by M5.
 
-**M0 is done; M1 is in flight** — see `plans/m1-canvas.md` for where it stands.
+**M0 and M1 are done; M10 is in flight** — see `plans/m10-orientation.md` for where it stands.
 
 The two large items, **M1 and M2, are the project.** If time runs short, everything after them can
 be trimmed; neither of them can be.
@@ -239,7 +277,7 @@ be trimmed; neither of them can be.
 ## Explicitly not in v1
 
 Background removal and subject auto-trim, pixel-art passthrough mode, palette switching (needs the
-other palette files sourced first), undo/redo, flood fill, gridlines, legend in the export,
+other palette files sourced first), undo/redo, flood fill, legend in the export,
 user-facing algorithm choice, printable PDF, multi-project library, draw-from-scratch mode, and
 deliberate visual design (UI-7).
 

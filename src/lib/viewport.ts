@@ -6,17 +6,26 @@
 // All lengths are CSS pixels. Device pixel ratio is applied once at the context
 // in step 6 and deliberately never reaches this module.
 
-/** VIEW-2's readable ceiling: cell size at maximum zoom. */
-export const MAX_CELL_SIZE_PX = 30;
+/** Multiplicative change per zoom click. */
+export const ZOOM_STEP = 1.25;
+
+/**
+ * VIEW-2's readable ceiling: cell size at maximum zoom. Two zoom clicks above
+ * the original 30px, which was tight for inspecting an individual bead.
+ *
+ * Raising this is cheap only because the canvas is sized to the container
+ * rather than the pattern (D1, settled at step 2 of M1): the ceiling now costs
+ * spacer width, not backing-store memory, and a frame gets *cheaper* as cells
+ * grow, since fewer of them fit on screen. Under the pattern-sized canvas this
+ * replaced, the same change would have multiplied canvas area by 2.4.
+ */
+export const MAX_CELL_SIZE_PX = 30 * ZOOM_STEP ** 2;
 
 /**
  * Absolute floor for a cell. Only binds on patterns too large to fit even one
  * pixel per cell in the container; the usual zoom-out floor is fitCellSize.
  */
 export const MIN_CELL_SIZE_PX = 1;
-
-/** Multiplicative change per zoom click. */
-export const ZOOM_STEP = 1.25;
 
 /** Code text height, as a fraction of the cell. 1/3 is the old grid's 10px in 30px. */
 export const CODE_FONT_RATIO = 1 / 3;

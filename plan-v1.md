@@ -234,7 +234,7 @@ UI-1 … UI-6 included — and tick every Check.
 
 ---
 
-### M10 — Pattern orientation · S
+### M10 — Pattern orientation · S — ✅ **Done** (2026-09-13)
 **Do:** Draw gridlines every 10 cells on the pattern view, plus row and column numbers along the
 top and left edges that stay put while panning. One "Grid" checkbox toggles both.
 
@@ -250,15 +250,35 @@ toggle. *(VIEW-6, VIEW-7)*
 **Watch for:** Gridlines that disappear against the darkest or lightest beads — a line crosses many
 cells, so `src/contrast.ts`'s per-cell trick does not apply.
 
+**Delivered:** `src/lib/guides.ts` holds the geometry as pure functions — the gridline interval and
+its pitch threshold, which boundaries fall inside a visible range, the adaptive ruler-label step,
+and the per-axis ruler test — with 11 tests, and M6's export as the intended second consumer (D16).
+`src/render/canvas-view.ts` draws gridlines as a dark/light double rule (the answer to the
+watch-for: a pair reads against any bead, and `fillRect` dodges `stroke`'s half-pixel centering),
+then rulers last so they sit above everything. One "Grid" checkbox toggles both by redrawing, never
+by a CSS class. M1's canvas contract was untouched: no CSS change, no `Pattern` change, and
+`devicePixelRatio` still applied only in `layout()`.
+
+**Two things worth carrying forward:**
+- **Rulers cost nothing to keep pinned.** The canvas is already `position: sticky` at the scroll
+  corner, so labels drawn at its own edges are sticky for free — the reason this milestone stayed S
+  rather than growing a DOM gutter. Anything that later gives `#grid-wrapper` an `overflow`,
+  `transform`, `filter`, or `contain` breaks this along with the whole M1 view.
+- **The two thresholds are judgment calls, not measurements,** like `MIN_CODE_FONT_PX` in M1: a
+  14 px minimum gridline pitch and a 34 px minimum label pitch. Both are one constant each in
+  `guides.ts` and both are covered by tests that assert the behavior, not the number.
+
 ---
 
 ## Critical path
 
-M0 → M1 → M2 → M5 → M6 are sequential; each genuinely needs the one before it. **M3 and M10 can be
-done at any point** — slot either in whenever you want a quick, satisfying win. M4 needs M2 done.
-M7 needs the pattern data settled by M5.
+M0 → M1 → M2 → M5 → M6 are sequential; each genuinely needs the one before it. **M3 can be done at
+any point** — slot it in whenever you want a quick, satisfying win, the way M10 was. M4 needs M2
+done. M7 needs the pattern data settled by M5.
 
-**M0 and M1 are done; M10 is in flight** — see `plans/m10-orientation.md` for where it stands.
+**M0, M1, and M10 are done. M2 is next** — it is the first thing on the critical path with nothing
+left in front of it, and no tactical plan exists for it yet; write `plans/m2-*.md` the day it
+starts.
 
 The two large items, **M1 and M2, are the project.** If time runs short, everything after them can
 be trimmed; neither of them can be.
@@ -303,5 +323,7 @@ radius, and type scales, a working narrow layout, focus rings, AA contrast, real
 What is deferred is UI-7, the part that needs taste: typography, a color story of its own, empty
 states, motion. That half has the same no-finish-line shape as M2's color tuning, so it gets the
 same treatment — the U1–U5 interface review in `specs.md`, with an explicit stopping rule — and it
-waits for v2 rather than running loose inside v1. Note that NFR-5 is **currently failing**: at
-390 px the heading, the Generate button, and the target-width control are clipped off-screen.
+waits for v2 rather than running loose inside v1. NFR-5 and UI-1 stay unticked until M8 verifies
+them, but **the specific 390 px clipping they were written against is gone** — `src/styles.css` has
+carried an `@media (max-width: 640px)` block since M0, and a real 390 px viewport measures zero
+horizontal overflow with nothing clipped. See the correction on NFR-5 in `specs.md`.

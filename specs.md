@@ -236,15 +236,23 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
   than drawing unreadable overlapping glyphs.
   **Check:** Zoom out until cells are under the legibility threshold; text disappears and colors
   remain.
-- [ ] **VIEW-6 [v1]** Gridlines every 10 cells to help counting, toggleable. Promoted from [v2];
+- [x] **VIEW-6 [v1]** Gridlines every 10 cells to help counting, toggleable. Promoted from [v2];
   see Decision log D16.
   **Check:** Lines align to every 10th cell boundary in both directions, and remain visible against
   the palette's darkest and lightest colors.
-- [ ] **VIEW-7 [v1]** Row and column numbers along the edges of the pattern view, so the visible
+  _(Implemented in M10. Geometry in `src/lib/guides.ts`, drawn by `src/render/canvas-view.ts` as a
+  dark/light double rule — a line crosses many cells, so `src/contrast.ts`'s per-cell choice cannot
+  apply. Lines are suppressed below a 14 px line pitch, tested on the pitch rather than the cell so
+  they survive zoom-out, which is where counting help matters most.)_
+- [x] **VIEW-7 [v1]** Row and column numbers along the edges of the pattern view, so the visible
   region can be located within the whole pattern. See Decision log D16.
   **Check:** Zoom in until the pattern exceeds the viewport; the numbers along the top and left
   edges identify the visible columns and rows and stay correct while panning. They are absent when
   the whole pattern already fits.
+  _(Implemented in M10, per axis: `shouldDrawRuler` gives a wide short pattern a column ruler and no
+  row ruler. Labels thin from every 10th to every 20th, 50th ... cell as zoom drops, so they never
+  collide. They stay correct while panning for free — the canvas is already `position: sticky` at
+  the scroll corner, so its own first pixels are the viewport's.)_
 
 ### Editing — EDIT
 
@@ -365,10 +373,10 @@ subjective half and is held to v2. See Decision log D14.
 - [ ] **NFR-4 [v1]** Deterministic logic is covered by automated tests that run without a browser.
   **Check:** The test suite covers palette validation, dimension calculation, OkLab matching, color
   reduction, and inventory tallying, and passes from a single command.
-  _(Partially implemented as of M1 step 4: `npm test` is the single command and covers palette
-  validation, dimension calculation, palette matching, transparency, inventory tallying, and the
-  canvas view's zoom/visible-range/cell-mapping math — 23 tests. Still missing OkLab matching and
-  color reduction, which do not exist until M2.)_
+  _(Partially implemented as of M10: `npm test` is the single command and covers palette
+  validation, dimension calculation, palette matching, transparency, inventory tallying, the canvas
+  view's zoom/visible-range/cell-mapping math, and the gridline/ruler geometry — 40 tests. Still
+  missing OkLab matching and color reduction, which do not exist until M2.)_
 - [ ] **NFR-5 [v1]** Usable in a current desktop browser at 1280 px wide and in a phone browser at
   390 px wide.
   **Check:** At both widths, all v1 controls are reachable and the pattern view is usable. UI-1 and
@@ -641,3 +649,14 @@ editor state would depend on M5. Do not fix screenshots of these states before t
     wholesale on every generate, and sticky positioning of its own. Edge numbers answer the same
     question by drawing into a canvas that is already sticky-pinned to the scroll corner — no new
     DOM and no CSS change. Recorded here so it is a logged decision if it is ever revisited.
+
+  **Shipped in M10 (2026-09-13), as decided.** All four consequences held: the two layers ship
+  together behind one "Grid" checkbox, the geometry is reusable pure functions for M6, the export is
+  untouched, and no minimap was built. Two things the decision did not anticipate:
+  - **One toggle, not two, and for a layout reason rather than a conceptual one.** `.zoom-controls`
+    is a no-wrap flex row and the bar is already tight at 390 px, so a second checkbox would have
+    cost NFR-5 more than independent control was worth. If the rulers ever want their own switch,
+    M8's UI-1 work on that bar is the place it becomes cheap.
+  - **"No CSS change" held, but only by putting the checkbox's inline styles in `index.html`,**
+    copied from `toggleTextBtn`. That is two controls styled inline now instead of one — M8 owns
+    moving both into `src/styles.css`.

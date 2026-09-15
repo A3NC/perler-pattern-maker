@@ -22,6 +22,7 @@ const imageUpload = requireElement<HTMLInputElement>('imageUpload');
 const generateBtn = requireElement<HTMLButtonElement>('generateBtn');
 const targetWidthInput = requireElement<HTMLInputElement>('targetWidth');
 const beadSizeSelect = requireElement<HTMLSelectElement>('beadSize');
+const colorLimitInput = requireElement<HTMLInputElement>('colorLimit');
 const statsDiv = requireElement('stats');
 
 let perlerColors: Palette = [];
@@ -43,6 +44,9 @@ loadPalette()
     .then((palette) => {
         perlerColors = palette;
         paletteReady = true;
+        // SET-4's range is 2 to the palette size, and the palette size is not
+        // known until now.
+        colorLimitInput.max = String(perlerColors.length);
         generateBtn.disabled = !uploadedImage;
         generateBtn.textContent = 'Generate Pattern';
         showStatus(`Default palette loaded (${perlerColors.length} colors). Upload an image to begin.`, 'success');
@@ -94,6 +98,15 @@ generateBtn.addEventListener('click', () => {
         return;
     }
 
+    const colorLimit = Number.parseInt(colorLimitInput.value, 10);
+    if (!Number.isFinite(colorLimit) || colorLimit < 2 || colorLimit > perlerColors.length) {
+        showStatus(
+            `Enter a maximum color count between 2 and ${perlerColors.length}.`,
+            'error'
+        );
+        return;
+    }
+
     let dimensions;
     try {
         dimensions = calculateDimensions(
@@ -108,7 +121,7 @@ generateBtn.addEventListener('click', () => {
     }
 
     try {
-        buildPattern(uploadedImage, dimensions.pixelWidth, dimensions.pixelHeight);
+        buildPattern(uploadedImage, dimensions.pixelWidth, dimensions.pixelHeight, colorLimit);
     } catch (error) {
         console.error('Pattern generation failed:', error);
         clearPattern();
@@ -117,17 +130,28 @@ generateBtn.addEventListener('click', () => {
 });
 
 /** Rasterize, convert, then render the pattern, stats, and inventory. */
-function buildPattern(image: HTMLImageElement, pixelWidth: number, pixelHeight: number): void {
+function buildPattern(
+    image: HTMLImageElement,
+    pixelWidth: number,
+    pixelHeight: number,
+    colorLimit: number
+): void {
     showProcessing();
 
     const source = imageToPixels(image, pixelWidth, pixelHeight);
-    const { pattern, tallies, beadCount } = generatePattern(source, perlerColors);
+    const { pattern, tallies, beadCount } = generatePattern(source, perlerColors, {
+        gridWidth: pixelWidth,
+        gridHeight: pixelHeight,
+        colorLimit
+    });
 
     clearPattern();
     showStatus('Pattern generated successfully.', 'success');
     renderPattern(pattern);
 
-    statsDiv.textContent = `Pattern Size: ${pixelWidth} x ${pixelHeight} beads | Total Beads Required: ${beadCount}`;
+    const distinctColors = Object.keys(tallies).length;
+    statsDiv.textContent = `Pattern Size: ${pixelWidth} x ${pixelHeight} beads | `
+        + `Total Beads Required: ${beadCount} | Colors Used: ${distinctColors}`;
 
     setBeadCounts(Object.values(tallies));
     renderBeadCounts();

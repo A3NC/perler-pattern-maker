@@ -29,21 +29,32 @@ export type MatcherFactory = (palette: Palette) => Matcher;
  * cell -- and kept in a flat Float64Array rather than an array of objects,
  * because this inner loop runs up to 11M times at NFR-3's hard limit.
  */
-export const oklabMatcher: MatcherFactory = (palette) => {
+/**
+ * The palette's OkLab values, flat: three entries per color, in palette order.
+ * Shared by the matcher and the reduction pass (GEN-3) so both measure
+ * perceptual distance against exactly the same numbers.
+ */
+export function paletteToOklab(palette: Palette): Float64Array {
     if (!Array.isArray(palette) || palette.length === 0) {
         throw new Error('No palette is available for color matching.');
     }
 
-    const count = palette.length;
-    const lab = new Float64Array(count * 3);
+    const lab = new Float64Array(palette.length * 3);
 
-    for (let i = 0; i < count; i += 1) {
+    for (let i = 0; i < palette.length; i += 1) {
         const [r, g, b] = palette[i].rgb as [number, number, number];
         const color = linearToOklab(srgbByteToLinear(r), srgbByteToLinear(g), srgbByteToLinear(b));
         lab[i * 3] = color.L;
         lab[i * 3 + 1] = color.a;
         lab[i * 3 + 2] = color.b;
     }
+
+    return lab;
+}
+
+export const oklabMatcher: MatcherFactory = (palette) => {
+    const lab = paletteToOklab(palette);
+    const count = palette.length;
 
     return {
         name: 'oklab',

@@ -117,9 +117,10 @@ preserved it rather than closing it, and M9 walks it with the rest.
 
 ### M2 — Quality core: perceptual matching + color limit · L
 **Do:** Move color matching to OkLab, precomputing each palette color's values once at load.
-Average source pixels within each bead cell when downscaling. Add the color-limit setting: keep the
-most-used colors, remap the rest to their nearest kept color. Put the whole thing behind the
-pipeline boundary. Add tests.
+Average source pixels within each bead cell when downscaling — in *linear* light, since averaging
+gamma-encoded bytes darkens every blend. Add the color-limit setting, reducing by greedy perceptual
+merge rather than by raw frequency (D17). Put the whole thing behind the pipeline boundary. Add
+tests.
 
 **Why here:** This is the project's actual risk. It needs M1 in place so results can be seen
 properly, and it needs to come before the editor so the editor isn't compensating for a bug that
@@ -276,9 +277,8 @@ M0 → M1 → M2 → M5 → M6 are sequential; each genuinely needs the one befo
 any point** — slot it in whenever you want a quick, satisfying win, the way M10 was. M4 needs M2
 done. M7 needs the pattern data settled by M5.
 
-**M0, M1, and M10 are done. M2 is next** — it is the first thing on the critical path with nothing
-left in front of it, and no tactical plan exists for it yet; write `plans/m2-*.md` the day it
-starts.
+**M0, M1, and M10 are done. M2 is in flight** (started 2026-09-15) — it was the first thing on the
+critical path with nothing left in front of it. Its tactical plan is `plans/m2-quality-core.md`.
 
 The two large items, **M1 and M2, are the project.** If time runs short, everything after them can
 be trimmed; neither of them can be.

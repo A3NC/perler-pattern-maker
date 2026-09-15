@@ -1,12 +1,12 @@
 # Project Development Context
 
-_Last reviewed: 2026-09-13_
+_Last reviewed: 2026-09-15_
 
 ## Project summary
 
 This directory contains a client-side web application that converts an uploaded image into a Perler bead pattern. The user chooses a target physical width and bead size; the app calculates the required bead-grid dimensions, resizes the image, maps each visible pixel to the nearest color in a Perler palette, and displays an interactive pattern with bead codes and an inventory count.
 
-`specs.md` holds the requirements (each with an ID, a version marker, and a verification Check) and the decision log. `plan-v1.md` breaks v1 into milestones M0–M10. **M0 is complete**: the app was moved from a single HTML file onto Vite + TypeScript with no behavior change, and the Mini bead pitch was corrected to 2.6 mm (spec Q1). **M1 — replacing the element-per-bead grid with canvas rendering (decision D1) — is complete** (2026-09-13): canvas rendering, zoom by redraw, drag-pan plus the screen → cell mapping, bead codes with contrast and an 18 px legibility threshold, and `devicePixelRatio` applied once at the context. Max zoom was raised late from 30 px to 46.875 px, which the container-sized canvas made free. **M10 — pattern orientation (gridlines and edge rulers, decision D16) — is complete** (2026-09-13): `src/lib/guides.ts` holds the guide geometry, `canvas-view.ts` draws gridlines as a dark/light double rule plus per-axis edge rulers whose labels thin as zoom drops, and one "Grid" checkbox toggles both by redrawing. **M2 is next**, and no tactical plan exists for it yet. The pipeline is still nearest-RGB, so M2's perceptual matching (D2), the color limit, crop, the correction editor, PNG export, and autosave are all still ahead.
+`specs.md` holds the requirements (each with an ID, a version marker, and a verification Check) and the decision log. `plan-v1.md` breaks v1 into milestones M0–M10. **M0 is complete**: the app was moved from a single HTML file onto Vite + TypeScript with no behavior change, and the Mini bead pitch was corrected to 2.6 mm (spec Q1). **M1 — replacing the element-per-bead grid with canvas rendering (decision D1) — is complete** (2026-09-13): canvas rendering, zoom by redraw, drag-pan plus the screen → cell mapping, bead codes with contrast and an 18 px legibility threshold, and `devicePixelRatio` applied once at the context. Max zoom was raised late from 30 px to 46.875 px, which the container-sized canvas made free. **M10 — pattern orientation (gridlines and edge rulers, decision D16) — is complete** (2026-09-13): `src/lib/guides.ts` holds the guide geometry, `canvas-view.ts` draws gridlines as a dark/light double rule plus per-axis edge rulers whose labels thin as zoom drops, and one "Grid" checkbox toggles both by redrawing. **M2 — the quality core (perceptual matching, area averaging, the color limit) — is in flight** (started 2026-09-15); its tactical plan is `plans/m2-quality-core.md` and the two decisions taken up front are D17. The pipeline is still nearest-RGB until M2 lands, and crop, the correction editor, PNG export, and autosave are all still ahead.
 
 Appearance is tracked as the **UI** requirement group, split by D14: UI-1 … UI-6 are **[v1]**
 mechanical Checks built in M8 (Interface floor), while UI-7 — deliberate visual design — is
@@ -26,7 +26,7 @@ Each answers one question, and they are kept deliberately separate so the strate
 | `plan-v1.md` | In what order, and why? | Whole project |
 | `plans/<milestone>.md` | How do I get through *this* milestone? | While it is in flight |
 
-**Active tactical plan: none.** M10's was deleted at its close; M2's is not written yet. Write `plans/m2-*.md` the day M2 starts and point this line at it.
+**Active tactical plan: `plans/m2-quality-core.md`** (M2, started 2026-09-15). Delete it at milestone close and move this pointer to the next one.
 
 Only one tactical plan exists at a time. It is written the day the milestone starts (writing it earlier means guessing at work that later milestones will reshape), and at milestone close it is deleted and this pointer moves to the next one. Don't expand step-level detail into `plan-v1.md` — one screen per milestone is what keeps that file re-readable.
 

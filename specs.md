@@ -1,6 +1,6 @@
 # Perler Pattern Generator — Specification
 
-_Last updated: 2026-09-07 · Status: v1 in progress_
+_Last updated: 2026-09-15 · Status: v1 in progress_
 
 ## Purpose
 
@@ -193,9 +193,14 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
   **Check:** Unit test: a mid-gray and a saturated color pair where RGB distance and OkLab distance
   disagree resolves to the OkLab-nearest palette entry. Visual: dark tones and skin tones no longer
   snap to visibly wrong hues. See Decision log D2. _(Currently RGB — must be replaced.)_
-- [ ] **GEN-3 [v1]** Reduce the output to at most the SET-4 color limit by keeping the most-used
-  colors and remapping the rest to their nearest kept color.
+- [ ] **GEN-3 [v1]** Reduce the output to at most the SET-4 color limit by repeatedly merging the
+  color whose removal costs the least perceptual error — its bead count times its OkLab distance to
+  the nearest surviving color — into that survivor. The same merge also collapses near-duplicate
+  colors that fall below a ΔE floor, even when the pattern is already within the limit.
+  See Decision log D17.
   **Check:** Distinct color count in the bead list is ≤ the limit, and no cell is left unassigned.
+  A flat region of near-identical source colors resolves to one bead color rather than several
+  (the condition R2 turns on).
 - [ ] **GEN-4 [v1]** Downscaling averages source pixels within each bead cell before palette
   matching, so that detail is summarized rather than point-sampled.
   **Check:** A source image with fine alternating stripes produces blended cells, not an aliased
@@ -660,3 +665,40 @@ editor state would depend on M5. Do not fix screenshots of these states before t
   - **"No CSS change" held, but only by putting the checkbox's inline styles in `index.html`,**
     copied from `toggleTextBtn`. That is two controls styled inline now instead of one — M8 owns
     moving both into `src/styles.css`.
+
+- **D17 (2026-09-15) — Color reduction merges by perceptual cost, not by frequency, and runs even
+  when the pattern is already within the limit.** GEN-3 was originally worded "keep the most-used
+  colors and remap the rest to their nearest kept color." Planning M2 against the R1–R6 images
+  — already committed in `test_img/`, so this is measured against the actual review, not a
+  hypothetical — showed frequency ranking failing two of them in opposite directions, and failing
+  a third by never running at all. Reduction is therefore a greedy merge that repeatedly removes the
+  color with the lowest `count × ΔE_oklab to nearest survivor`, with a second stopping rule on ΔE
+  alone. GEN-3's statement moves with it. **Four consequences recorded deliberately:**
+  - **Frequency keeps the wrong colors at the top.** R2's pass condition is that a white canvas
+    comes out as *one* color, never speckled into several near-whites. Those near-whites are the
+    most frequent colors in the image, so ranking by count keeps every one of them — frequency
+    ranking is not merely unhelpful for R2, it actively protects the exact colors R2 fails on.
+    Cost ranking merges them first, because the ΔE between them is nearly zero.
+  - **Frequency drops the wrong colors at the bottom.** R4 requires a dog's eyes to survive. Eye
+    highlights might be forty beads out of ten thousand, ranking far below the limit, and get
+    remapped to whatever kept color is nearest — possibly not near at all. Cost ranking gives a
+    rare color that sits far from every other color a *high* cost, so isolation protects it. This is
+    the property frequency cannot express: it knows how much of a color there is, but not whether
+    anything else can stand in for it.
+  - **Reduction firing only at the limit leaves R2 unaddressed regardless.** A flat drawing often
+    yields fewer than thirty distinct colors, so a limit-triggered pass never runs and the speckle
+    survives untouched. Hence the ΔE floor: the same merge loop, with a second stopping condition
+    that collapses near-duplicates independent of the count. `MERGE_FLOOR = 0` reduces the behavior
+    to pure limit-based reduction, so the two are one mechanism rather than two code paths.
+  - **The cost is one more tuning constant inside a timeboxed milestone.** `MERGE_FLOOR` is a
+    judgment call, not a measurement — the same species as `MIN_CODE_FONT_PX` (M1) and the two
+    guide pitch thresholds (M10), and handled the same way: one constant, in one file, covered by
+    tests that assert the behavior rather than the number. Calibrate it against R1, R2 and R6 during
+    the review and then stop.
+
+  **A clustering approach was considered and declined.** k-means over the cell colors in OkLab,
+  snapping each centroid to its nearest palette entry, would beat greedy merge on R4 and R5. It
+  needs deliberate seeding to satisfy GEN-7's determinism, it is slower, and it is a second
+  open-ended tuning surface inside the milestone whose named risk is an endless tuning loop. GEN-6
+  exists precisely so it can be tried later as an alternative matcher without disturbing the UI.
+  Recorded here so that reopening it is a logged decision, per the rule D16 set.

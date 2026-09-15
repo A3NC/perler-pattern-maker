@@ -1,39 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
-import { findClosestColor, normalizePalette } from './pattern-utils';
-import {
-    linearToOklab,
-    linearToSrgbByte,
-    oklabDistanceSquared,
-    srgbByteToLinear,
-    srgbToOklab
-} from './oklab';
-import type { Palette, PaletteColor } from '../types';
+import { linearToOklab, linearToSrgbByte, srgbByteToLinear, srgbToOklab } from './oklab';
 
 function assertClose(actual: number, expected: number, tolerance: number, message: string): void {
     assert.ok(
         Math.abs(actual - expected) <= tolerance,
         `${message}: expected ${expected} +/- ${tolerance}, got ${actual}`
     );
-}
-
-/** Nearest palette entry by OkLab distance. Inlined here because color-match.ts is step 2. */
-function nearestOklab(r: number, g: number, b: number, palette: Palette): PaletteColor {
-    const source = srgbToOklab(r, g, b);
-    let best = palette[0];
-    let bestDistance = Infinity;
-
-    for (const color of palette) {
-        const [cr, cg, cb] = color.rgb as [number, number, number];
-        const lab = srgbToOklab(cr, cg, cb);
-        const distance = oklabDistanceSquared(source.L, source.a, source.b, lab.L, lab.a, lab.b);
-        if (distance < bestDistance) {
-            bestDistance = distance;
-            best = color;
-        }
-    }
-
-    return best;
 }
 
 test('white is L=1 with no chroma, black is the origin', () => {
@@ -103,20 +76,16 @@ test('half the light encodes to 188, not 128', () => {
     assert.equal(linearToSrgbByte(1), 255);
 });
 
-test('GEN-2: OkLab and RGB disagree on dark tones, and OkLab is right', () => {
-    // The Check written as code. Source rgb(20,20,20) is visibly not black, but
-    // sRGB distance puts it nearer #000000 (3 * 20^2 = 1200) than #2D2D2D
-    // (3 * 25^2 = 1875), because gamma encoding compresses the dark end.
-    // Perceptually the gap is 0.191 to black against 0.106 to #2D2D2D.
-    const palette = normalizePalette([
-        { name: 'black', hex: '#000000' },
-        { name: 'gray45', hex: '#2D2D2D' }
-    ]);
+test('gamma compresses the dark end, which is the effect GEN-2 turns on', () => {
+    // The lightnesses the D2 argument rests on, pinned here so a regression in
+    // the conversion explains itself. The matcher-level A/B -- RGB picking black
+    // where OkLab picks #2D2D2D -- lives in color-match.test.ts.
+    const dark = srgbToOklab(20, 20, 20).L;
+    const midDark = srgbToOklab(45, 45, 45).L;
+    assertClose(dark, 0.1913, 0.001, 'L of rgb(20,20,20)');
+    assertClose(midDark, 0.2972, 0.001, 'L of rgb(45,45,45)');
 
-    assert.equal(findClosestColor(20, 20, 20, palette).name, 'black', 'RGB distance picks black');
-    assert.equal(nearestOklab(20, 20, 20, palette).name, 'gray45', 'OkLab picks the lighter gray');
-
-    // Pin the lightnesses the argument rests on, so a regression says why it broke.
-    assertClose(srgbToOklab(20, 20, 20).L, 0.1913, 0.001, 'L of rgb(20,20,20)');
-    assertClose(srgbToOklab(45, 45, 45).L, 0.2972, 0.001, 'L of rgb(45,45,45)');
+    // 0 -> 20 is the smaller step in bytes and the larger one in lightness. That
+    // inversion is the whole reason raw RGB distance snaps dark tones to black.
+    assert.ok(dark - 0 > midDark - dark, 'the 20-byte step should outweigh the 25-byte one');
 });

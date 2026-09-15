@@ -47,7 +47,8 @@ Both are recorded as **D17** in `specs.md`; restated here because they shape the
 
 ## Files
 
-### New — all pure, all in `src/lib/`, all Node-tested (NFR-4)
+### New — all pure, all Node-tested (NFR-4); `src/lib/` except the matcher, which lives in
+`src/pipeline/` so GEN-6's "no edit outside the pipeline module" reads literally
 
 **`src/lib/oklab.ts`** — the conversion and the metric.
 
@@ -60,7 +61,7 @@ Both are recorded as **D17** in `specs.md`; restated here because they shape the
 - `oklabDistanceSquared(...)` for the hot loop; `oklabDistance(...)` for the ΔE floor, which runs a
   few hundred times total and is much easier to reason about un-squared.
 
-**`src/lib/color-match.ts`** — GEN-6's replaceable unit, shaped as a factory so precomputation
+**`src/pipeline/color-match.ts`** — GEN-6's replaceable unit, shaped as a factory so precomputation
 happens once at palette load rather than once per cell (221 conversions, not 11M):
 
 ```ts
@@ -196,7 +197,7 @@ determinism test.
    identical.
 4. **SET-4 by hand:** set the limit to 12; the inventory lists at most 12 colors.
 5. **GEN-6 by hand:** flip `ACTIVE_MATCHER` to `rgbMatcher`, regenerate, confirm the old behavior
-   returns with no edit outside `color-match.ts`. Flip back.
+   returns with no edit outside `src/pipeline/color-match.ts`. Flip back.
 6. **NFR-2:** time `buildPattern` at the 50,000-cell hard limit. Under ~150 ms keeps D8's
    main-thread decision intact. Over it, *record the measurement* — moving to a worker is not M2's
    scope, and D8 says to revisit only on evidence.

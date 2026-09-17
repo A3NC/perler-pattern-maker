@@ -39,30 +39,6 @@ npm run dev     # Vite dev server; open the URL it prints
 | `npm run typecheck` | `tsc --noEmit` — Vite strips types without checking them, so this is the only thing enforcing them |
 | `npm run check` | typecheck + tests, the full gate |
 
-### Why `npm run dev` and not a file server
-
-A plain static server on the project root cannot run this app, and neither can opening
-`index.html` from disk:
-
-- `src/main.ts` is TypeScript. No browser executes TypeScript — Vite has to strip the types first.
-  Python's `http.server` compounds it by guessing MIME from the extension: `.ts` collides with MPEG
-  transport stream, so the file arrives as `video/mp2t` and the browser's module MIME check refuses
-  it.
-- `public/colors_221.json` is served at the URL root by Vite. A plain server doesn't know that
-  convention, so the palette 404s.
-- `file://` URLs block `type="module"` scripts outright, built or not.
-
-To use your own static server, build first and serve the **output**:
-
-```bash
-npm run build && python3 -m http.server 8000 --directory dist
-```
-
-In all three failure cases the module never runs, so `main.ts`'s own error handling can't report
-it. That is what the inline classic-script boot guard at the bottom of `index.html` is for — it
-detects `file://`, script MIME rejection, and startup throws, then writes an actionable message
-into the status line and leaves Generate disabled. Keep it inline and non-module; as a module it
-would fail in exactly the cases it exists to report.
 
 ## Layout
 
@@ -92,26 +68,6 @@ colors.json             291-record hex-only palette; input to helper.py, not loa
 `null` — is the durable contract between the pipeline and everything downstream that renders,
 edits, exports, or serializes it.
 
-## Conventions
-
-- Four-space indentation. No linter or formatter is configured.
-- Deterministic logic goes in `src/lib/` or `src/pipeline/` and gets a test. Anything touching the
-  DOM, canvas, or `FileReader` stays out of those directories so the tests keep running without a
-  browser.
-- Look elements up through `requireElement` from `src/dom.ts`, not raw `getElementById`.
-
-## Project docs
-
-Three layers, kept separate on purpose:
-
-| File | Question | Lifetime |
-|---|---|---|
-| `specs.md` | What must be true? | Whole project |
-| `plan-v1.md` | In what order, and why? | Whole project |
-| `plans/<milestone>.md` | How do I get through *this* milestone? | While it is in flight |
-
-`claude.md` carries the working context for the codebase. Requirements in `specs.md` each have an
-ID, a version marker, and a verification Check; `plan-v1.md` breaks v1 into milestones M0–M10.
 
 ## Status
 

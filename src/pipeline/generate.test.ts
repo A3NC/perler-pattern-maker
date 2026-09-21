@@ -58,9 +58,15 @@ test('tallies accumulate in row-major order, which is what breaks sort ties', ()
 });
 
 test('the pipeline averages the source in linear light before matching (GEN-4)', () => {
-    // A 2x2 checkerboard collapsing into one cell is half the light, which is
-    // sRGB 188 -- so it must land on #BCBCBC. Byte-space averaging would give
-    // 128 and land on #808080, which is the whole point of the linear step.
+    // A ramp collapsing into one cell carries half the light, which is sRGB 188
+    // -- so it must land on #BCBCBC. Byte-space averaging would give 128 and land
+    // on #808080, which is the whole point of the linear step.
+    //
+    // The fixture is a gradient rather than the obvious 50/50 checkerboard
+    // because D18's downsampler treats a clean two-level cell as lineart and
+    // rebuilds it from its endpoints -- correctly, and by design. A ramp falls
+    // through the bimodality gate to the plain mean, which is the path this
+    // Check is about. downscale.test.ts pins the checkerboard itself.
     const grays = normalizePalette([
         { name: 'black', hex: '#000000' },
         { name: 'mid', hex: '#808080' },
@@ -68,8 +74,12 @@ test('the pipeline averages the source in linear light before matching (GEN-4)',
         { name: 'white', hex: '#FFFFFF' }
     ]);
 
+    // Eight levels evenly spaced in *linear* light from 0.05 to 0.95, encoded
+    // back to bytes. The uneven byte spacing is the gamma curve made visible.
+    const ramp = [63, 117, 150, 176, 198, 217, 234, 249].map((b) => [b, b, b, 255]);
+
     const { pattern, beadCount } = generatePattern(
-        pixels(2, 2, [BLACK, WHITE, WHITE, BLACK]),
+        pixels(8, 1, ramp),
         grays,
         { gridWidth: 1, gridHeight: 1 }
     );

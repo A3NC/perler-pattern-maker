@@ -1,4 +1,4 @@
-import { areaAverage } from '../lib/downscale';
+import { ACTIVE_DOWNSAMPLER } from './downscale';
 import { addColorTally, isTransparentAlpha } from '../lib/pattern-utils';
 import { ACTIVE_MATCHER, paletteToOklab } from './color-match';
 import { reduceColors } from './reduce';
@@ -28,10 +28,12 @@ const EMPTY = -1;
  * testable in bare Node (NFR-4); decoding the image is rasterize.ts's job.
  *
  * Three steps, in this order and not another:
- *   1. areaAverage summarizes the source pixels covering each bead cell, in
- *      linear light (GEN-4). The source is *larger* than the bead grid --
+ *   1. ACTIVE_DOWNSAMPLER summarizes the source pixels covering each bead cell,
+ *      in linear light (GEN-4). The source is *larger* than the bead grid --
  *      rasterize.ts hands over an intermediate-resolution buffer, because the
- *      averaging is ours to do where it can be tested.
+ *      averaging is ours to do where it can be tested. Both strategies return
+ *      the same shape, so D18's lineart handling is one identifier in
+ *      downscale.ts and no branch here.
  *   2. ACTIVE_MATCHER maps each averaged colour to a palette entry (GEN-2).
  *      Swapping algorithms is one identifier in color-match.ts and nothing here
  *      or above, which is GEN-6's Check.
@@ -61,7 +63,7 @@ export function generatePattern(
     const { gridWidth, gridHeight, colorLimit, mergeFloor } = options;
     const cellCount = gridWidth * gridHeight;
 
-    const averaged = areaAverage(source, gridWidth, gridHeight);
+    const averaged = ACTIVE_DOWNSAMPLER(source, gridWidth, gridHeight);
     const matcher = ACTIVE_MATCHER(palette);
 
     const matched = new Int32Array(cellCount);

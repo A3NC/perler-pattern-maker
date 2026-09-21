@@ -176,21 +176,76 @@ has an observable that would make you reach for it, not as a design to weigh up 
   second reason dark-on-light is the safer polarity — but both endpoints are now well fed.
 - **Absorbed into M2, date moves.** M3 is an S and the schedule carries two buffer days.
 
-### Constants — four, and they are the tuning surface
+### D18 revised — 2026-09-21, out of the R1–R6 review
 
-- `BIMODAL_GATE` — below it the cell is a smooth gradient, the two-point model does not apply, keep
-  the plain mean.
-- `LINE_CONTRAST_MIN` — `Y_mean − Y_min`; below it there is no line, just noise.
-- `DARK_MIDPOINT` (`t`) — the coverage at which the remap crosses 0.5. The same judgment the old
-  `DARK_COVERAGE_MIN` made, as a soft midpoint rather than a cliff: raising it is still the first
-  move against blooming.
-- `CONTRAST_SHARPNESS` (`k`) — how decisively the remap separates the two straddle cells. `k = 1` is
-  a no-op.
+The soft S-curve and the min/max endpoints both went. Two defects drove it, and they turned out to
+be one mechanism.
+
+**The specks.** Isolated beads coloured unlike anything in the source: a green **B25** on R3's face
+among correct skin tones, a saturated **G20** inside R1's muted **G7** regions. The reconstruction
+mixed the cell's *single darkest and single lightest pixel*, so at the ends of the curve a cell's
+colour collapsed onto essentially one of them — the point sampling GEN-4 exists to remove,
+reintroduced and aimed at the least representative pixel available. Two reasons a tail sample is the
+worst possible choice: luminance selection is hue-biased (green carries 0.7152 of `Y`, so a
+chroma-fringe pixel reliably won the light slot — that is B25), and extremes are more saturated than
+the bulk they came from (that is G20, which is not an alien hue at all — same hue family as G7, same
+lightness, chroma 0.145 against 0.097).
+
+**B25 is the decisive evidence and worth keeping.** `#4E846D` has G > R and B > R; every tone on that
+face runs R > G > B, and a convex combination cannot reverse channel ordering. So no mixture of skin
+and shadow can reach it — one of the two endpoint pixels must itself have been green. Reproduced in
+Node before any fix: a 16-pixel cell of 6 dark-feature + 9 skin + 1 green fringe emitted linear
+`(0.095, 0.139, 0.063)`. Confirmed against the real images by the `boxAverage` A/B, the same shape as
+the `MERGE_FLOOR` diagnostic: specks gone.
+
+**The greys.** Cells holding part of a line came out as blends. D18's separation argument — the two
+halves of a straddle land far enough apart that reduction collapses the weak one — did not survive
+the review; it read as grey rather than as line-versus-fill. Note reduction could never have cleaned
+either defect up: `reduceColors` sees only `Map<paletteIndex, count>` and never cell positions, so a
+merge recolours 100% of a colour's cells or none — isolated specks are structurally impossible from
+it. Worse, G20↔G7 is ΔE 0.058, ~2.9× `MERGE_FLOOR`, and D17's Phase B deliberately *protects* rare
+perceptually-isolated colours. The fix had to be upstream, which is the general lesson.
+
+**What replaced them.** Each cell splits at its own mean luminance into a dark population and a light
+one; `f_dark` is the actual weight fraction, not an estimate off the extremes; and the cell is
+**classified rather than blended** — at or above `darkCoverageMin` it takes the dark population's
+colour, below it the light population's. The fill branch returning the light population rather than
+the plain mean is the part that removes the grey: a fill cell clipped by part of a line comes back as
+the fill colour with the line's pixels excluded. Measured: one pixel in sixteen now moves a cell by
+**under 0.05 in OkLab, down from 0.187** — less than the distance between the wrong bead and the
+right one.
+
+**Traded away, deliberately.** The min/max estimator had a useful failure direction — a spuriously
+dark pixel *grew* the denominator and made the model under-detect, so noise cost you an outline
+rather than inventing one. A weight fraction has no such asymmetry; an outlier nudges it by 1/N
+either way. It bought robustness against the wrong thing: blooming is held by `darkCoverageMin` and
+the gates, and hue noise was the defect actually appearing in the images. The test that asserted the
+old direction is deleted rather than inverted.
+
+**Also settled here:** a line too thin to reach `darkCoverageMin` in any cell now vanishes outright
+instead of surviving as a faint tint. Accepted — clean fills are worth more than faint lines, and the
+lever if the review disagrees is to lower the threshold and add the local-maximum pass already
+recorded below.
+
+### Constants — three, and they are the tuning surface
+
+- `bimodalGate` — below it the cell is a smooth gradient, the two-population model does not apply,
+  keep the plain mean. Expressed as the cell's luminance variance over the variance a true two-point
+  population with the same coverage and the same **extremes** would have: 1 for a clean line, 1/3 for
+  a uniform gradient. Normalising by the gap between the two *population means* instead inverts the
+  measure — a gradient then scores 1.33, above a true two-point — so that variant must not be used.
+- `lineContrastMin` — `Y_mean − Y_dark`; below it there is no line, just noise. Identical to the old
+  `Y_mean − Y_min` for a true two-point cell, so the value carried over untouched.
+- `darkCoverageMin` — the coverage at or above which a cell is lineart. A cliff again, as in D18's
+  first draft; the name went back with it. Sits below 0.5, and that asymmetry is the entire
+  dark-minority bias. Raising it is the first move against blooming.
+
+`CONTRAST_SHARPNESS` is gone — a hard step is the `k → ∞` limit of the curve it parameterized.
 
 Same species as `MERGE_FLOOR`, `MIN_CODE_FONT_PX` and the guide pitch thresholds: judgment calls,
 each one constant in one file, covered by tests that assert behaviour rather than the number.
 Calibrate against R1–R6 **as a set** — R4 and R5 are the guard against over-aggression, because a
-bias strong enough to rescue R3's outlines will start sharpening photo texture.
+classifier decisive enough to rescue R3's outlines will start posterizing photo edges.
 
 ## Files
 
@@ -305,9 +360,17 @@ Each step leaves the app working and ends somewhere you can look at R1–R6.
    palette, 47.9% in dark tones)**
 3. **`downscale.ts` + the `rasterize.ts` change + tests.** **(done — 10 tests)**
 4. **SET-4 control + `reduce.ts` + tests.** **(done — 9 tests; 72 green overall)**
-5. **Lineart preservation (D18)** (~3–4 h). The diagnostic is done and Phase A is ruled out, so
-   this is unconditional: move `downscale.ts` into `src/pipeline/`, add `ACTIVE_DOWNSAMPLER` with
-   `boxAverage` and `contrastPreserving`, calibrate the four constants.
+5. **Lineart preservation (D18)** **(done 2026-09-21 — 86 green overall)**. `downscale.ts` moved
+   into `src/pipeline/`; `ACTIVE_DOWNSAMPLER` selects `boxAverage` or `contrastPreserving`. Shipped
+   as a two-population classifier after the review (see "D18 revised" above); the three constants
+   ship at `bimodalGate 0.6`, `lineContrastMin 0.02`, `darkCoverageMin 0.35`. Tuning is injectable
+   through `contrastPreservingWith` so tests pin behaviour rather than the numbers; the shipped
+   defaults stay the single constant block. **Still to calibrate against R1–R6 in step 6** — these
+   are defensible values from the measured geometry, not review-confirmed ones.
+   One existing test changed: `generate.test.ts`'s GEN-4 linear-light Check used a 50/50
+   checkerboard, which is exactly what D18 reclaims as lineart. Its fixture is an eight-level ramp
+   averaging to the same half-light; `downscale.test.ts` still pins the checkerboard itself against
+   `boxAverage`, so the 188-not-128 property is asserted in both places.
 6. **R1–R6 review; tune `MERGE_FLOOR` and the SET-4 default** (~2–3 h). **Stop when it passes.**
 
 ## Tests to add
@@ -384,6 +447,14 @@ determinism test.
    says revisit only on evidence. This is the evidence, for M9 to weigh. Re-time after step 5, which
    adds work to the same loop.
 
+   **Re-timed after step 5** (same harness, 221-colour palette, limit 30). Against the step-4
+   baseline the downscale goes 25.3 → **30.9 ms** at the design target and 124.4 → **148.8 ms** at
+   the hard limit; the full `generatePattern` is **62 ms** / **307 ms**. D18 costs about 20% of the
+   downscale, ~5 ms / ~15 ms of the whole. Most of that is the classifier's second pass over each
+   cell, which is cheap because pass 1 caches the linearized pixels in a reused scratch buffer —
+   pass 2 reads no LUT. Well under the "roughly doubles" this was expected to cost. The step-4
+   conclusion is unchanged, and so is the verdict: recorded for M9, not acted on here.
+
    The cost is dominated by the **downscale**, not the matching — 3.2M source pixels linearized and
    accumulated against 50k matches. So the cheap lever is `SUPERSAMPLE` in `rasterize.ts`: 8 → 4
    quarters the buffer and should clear the threshold, at some loss of averaging fidelity. One
@@ -408,15 +479,24 @@ determinism test.
   timeboxed milestone. GEN-6 is precisely what makes trying it cheap later.
 - **Blooming is the worse defect, and step 5 is how you would cause it.** Outlines two or three
   beads wide eat the artwork's interior and close up small features; a washed-out outline at least
-  leaves the fill clean. If R1 or R3 starts thickening, raise `DARK_MIDPOINT` before touching
+  leaves the fill clean. If R1 or R3 starts thickening, raise `darkCoverageMin` before touching
   anything else. The case to eyeball is the straddle pair — a line landing 0.40 / 0.24 across two
-  cells is exactly where one bead becomes two.
-- **Under one-pass, the dark colour is a single pixel's hue** — less of a risk than it looked before
-  the geometry was measured, since at 0.64 coverage `Y_min` is drawn from a several-pixel-wide run.
-  The estimator is robust about *how much* is dark and fragile about *what colour* it is. If outlines
-  still come out hue-noisy — a black line speckling into three near-blacks — that is the specific
-  signal to swap in the two-pass below-the-mean version, which replaces the level with a population
-  mean. That swap is contained: same interface, same four constants, same gate.
+  cells is exactly where one bead becomes two. **Now a sharper risk than it was under the S-curve:**
+  the classifier commits a whole cell, so a cell that tips over the threshold thickens by a full bead
+  rather than a shade.
+- **~~Under one-pass, the dark colour is a single pixel's hue~~ — this fired, on 2026-09-21.** It was
+  logged as "less of a risk than it looked once the geometry was measured," and that judgment was
+  wrong: the reasoning only covered `Y_min` being drawn from a populated dark run, and said nothing
+  about `Y_max`, which is where the chroma fringing actually lived. The recorded remedy — swap in the
+  two-pass population mean, same interface, same gate — was the right one and was contained exactly
+  as predicted. See "D18 revised" above. **Worth keeping as a lesson about the shape of the miss, not
+  just the miss:** a risk written about one endpoint silently exempted the other.
+- **Photo posterization is the new over-aggression mode, and R4/R5 are where it shows.** The
+  classifier commits every gated cell to one population, so a strong edge in a photograph snaps
+  instead of blending — the same decisiveness that rescues R3's outlines. The two gates are the only
+  guard. If R4 or R5 hardens, raise `bimodalGate` before touching `darkCoverageMin`: the complaint is
+  that the model is speaking about cells it should stay quiet on, not that the threshold is wrong.
+
 - **The editor is not the escape valve for lineart.** The plan calls M5 M2's safety net, and for
   stray cells it is. Redrawing every outline in a drawing by hand is the user doing the algorithm's
   job. Do not let M5 be the reason step 5 gets cut.

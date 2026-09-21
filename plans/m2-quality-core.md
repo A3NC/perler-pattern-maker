@@ -54,30 +54,41 @@ dashes" — is **[v1]**, so GEN-8 cannot pass while it fails, and GEN-8 is this 
 stopping condition. Closing M2 with its defining Check failing would make the R1–R6 review
 decorative rather than a gate._
 
-**The defect.** Thin lineart beside a solid fill disappears. A 1–2 px outline occupies a small
-fraction of a bead cell, the cell average is dominated by the fill, the matcher correctly matches
-that average, and the line is gone. Reported worst on light fills, where losing a high-contrast
-outline is most visible. Note that all three stages behave correctly — this is not a bug in any one
-of them, which is why it needs a deliberate answer rather than a fix.
+**The defect.** Lineart beside a solid fill washes out. Measured against `test_img/R3.png`: the
+source is 1556 px wide, so at the 100 × 100 design target one bead cell spans ~15.6 source pixels,
+and a line of ~10 px or less covers **~0.64 of a cell**. Straddling a cell boundary it splits
+roughly **0.40 / 0.24**, so `f_dark` in practice lands between **0.25 and 0.65**. The line does not
+disappear — it survives as cells whose average is a large-minority mixture, which the matcher
+correctly matches to a bead far lighter than the line's own colour. Reported worst on light fills,
+where losing a high-contrast outline is most visible. Note that all three stages behave correctly —
+this is not a bug in any one of them, which is why it needs a deliberate answer rather than a fix.
 
-**Correct averaging costs line fidelity, and that is the finding worth keeping.** A dark line
-covering an eighth of a cell against a fill of byte 220 averages to **193** in gamma-encoded sRGB
-and to **207** in linear light. Linear-light averaging lightens any mixture containing a dark
-minority, so the pre-M2 build's gamma-naive averaging preserved thin dark lines about twice as well
-as the correct version does. That is not an argument for reverting — gamma-space averaging is wrong
+**`SUPERSAMPLE` is not a lever.** That 0.64 is line width over source pixels per cell, and the
+supersample factor divides both, cancelling out of `rasterize.ts`'s scale. The ratio is a property
+of the artwork and the chosen bead grid; nothing in the decode path moves it.
+
+**Correct averaging costs line fidelity, and that is the finding worth keeping.** A black line
+covering 0.64 of a cell against a fill of byte 220 averages to **79** in gamma-encoded sRGB and to
+**139** in linear light — a deviation from the fill of 141 bytes against 81, so the pre-M2 build's
+gamma-naive averaging preserved dark lines nearly twice as well as the correct version does. That
+139 is the washout quantified: the cell that should read as a dark line reads as a mid tone instead.
+Linear-light averaging lightens any mixture containing a dark minority. This is not an argument for
+reverting — gamma-space averaging is wrong
 for the gradients and shading that are most of R3 and all of R4/R5 — but it explains why this
 surfaced at step 3 rather than step 2, and it is exactly the sort of thing that gets rediscovered
 painfully later.
 
-**Diagnose before building — two minutes, and it changes what gets built.** Set the color limit to
-the palette size *and* `mergeFloor` to 0, then regenerate:
+**Diagnosed 2026-09-16 — the cheap cause is ruled out.** The test was to set the color limit to the
+palette size *and* `mergeFloor` to 0 and regenerate, which separates two very differently priced
+causes:
 
 - *Line returns* → Phase A is merging the faint line color into the fill. The fix is cheap: lower
   `MERGE_FLOOR`, or exempt a merge that would eliminate a color outright rather than thin it.
-- *Line still gone* → it died at averaging, and needs the downsampler below.
+- *Line still washed out* → it died at averaging, and needs the downsampler below.
 
-Expect mostly the second, with Phase A complicit at the lightest fills. Do not skip this: the two
-causes have very different costs and only one of them needs new code.
+**Result: the second.** Lowering `MERGE_FLOOR` does not bring the line back, so `reduce.ts` is not
+the cause and step 5 is unconditional. Worth carrying into `specs.md` at close — it is the evidence
+that the new downsampler had to be built rather than tuned around.
 
 ### The strategy
 
@@ -91,8 +102,12 @@ Per cell, alongside the existing alpha-weighted linear colour mean, accumulate l
 `Y = 0.2126r + 0.7152g + 0.0722b`:
 
 - `Y_min`, **and the linear RGB of the pixel that set it** — the dark level and its colour
-- `Y_max`
+- `Y_max`, **and the linear RGB of the pixel that set it** — the light level and its colour
 - `ΣwαY²` — the second moment, for the bimodality gate
+
+Both endpoints carry colour because the output below reconstructs a mixture of the two. Deriving the
+light colour algebraically from the mean and the dark — `light = (mean − f·dark) / (1 − f)` — blows
+up as `f_dark → 1` and can leave the gamut; storing it is one more triple.
 
 `Y_mean` comes free from the colour mean already being accumulated. Coverage of the dark population
 follows from a two-point model:
@@ -101,11 +116,45 @@ follows from a two-point model:
 f_dark ≈ (Y_max − Y_mean) / (Y_max − Y_min)
 ```
 
-**Output is decisive, not blended.** When the gates below pass, the cell takes the dark level
-outright instead of a mix. This is not a stylistic preference: a blend produces a faint intermediate
-shade sitting near the fill, and a faint intermediate shade near the fill is precisely what Phase A
-merges away — the work would be undone one stage later. A decisive pick lands far enough from the
-fill to survive reduction, and it produces the crisp single-bead runs the artwork wanted.
+Clamp to [0, 1], and guard `Y_max − Y_min → 0` — a uniform cell has no two populations to weigh.
+
+**Output is a contrast-stretched mixture, biased toward dark.** When the gates below pass, the cell
+is rebuilt from its two endpoints with the coverage put through an S-curve first:
+
+```
+S(f) = σ(k · (logit(f) − logit(t)))
+out  = S(f_dark) · darkLinear + (1 − S(f_dark)) · lightLinear
+```
+
+`t` is the coverage at which the curve crosses 0.5; `k` is how sharply it separates. At `k = 1` and
+`t = 0.5`, `S` is the identity and this collapses to the plain two-point reconstruction. With
+`t = 0.35, k = 4` the three observed cases land at:
+
+| `f_dark` | `S(f_dark)` | reads as |
+|---|---|---|
+| 0.64 — line aligned with a cell | 0.99 | decisively dark |
+| 0.40 — straddle, strong side | 0.70 | a clearly dark bead |
+| 0.24 — straddle, weak side | 0.11 | near the fill |
+
+**What matters is the separation between the two straddle cells, not the absolute darkness of
+either.** The strong side becomes a distinctly dark bead; the weak side lands near enough the fill
+that Phase A collapses it. A straddled line therefore resolves to a single bead width, with
+reduction finishing the job rather than undoing it, and with no second pass over the cell grid.
+
+**`t` must sit below 0.5, and a symmetric curve is actively wrong here.** A curve centred on 0.5
+pushes every cell toward its own dominant end, which at `f_dark = 0.40` means *lighter* — it erases
+the line harder than the plain mean does. The sub-0.5 midpoint is what creates the bias toward dark,
+and it is where the dark-minority asymmetry now lives.
+
+An earlier draft of this decision made the output a decisive pick of the dark level, on the grounds
+that any blend would be a faint shade near the fill and be merged away. That held at `f_dark ≈ 1/8`;
+at 0.40 a blend is a genuine mid tone that survives reduction comfortably. The conclusion survives —
+the cell does end up much darker — but it rests on the separation argument above, not on Phase A.
+
+**Fallback, if straddled lines still come out two beads wide** after `t` and `k` are tuned: one more
+pass over the cell grid in which only the local maximum of `f_dark` among adjacent candidates takes
+the dark end. Bounded (one pass over ≤50k cells), same interface, still pure. Recorded because it
+has an observable that would make you reach for it, not as a design to weigh up front.
 
 ### The three decisions, settled
 
@@ -113,22 +162,30 @@ fill to survive reduction, and it produces the crisp single-bead runs the artwor
   also rescue white highlights on dark fills, but it sharpens every edge in a photo — fur, foliage,
   JPEG fringing — which is where R4/R5 want honest optical averaging. Dark-only is targeted at the
   reported failure and matches the overwhelming artwork convention. Recorded as an asymmetry we
-  chose, not one we failed to notice.
+  chose, not one we failed to notice. It is expressed as `t < 0.5` — one number, rather than a
+  dark-only branch.
 - **One-pass min/max/mean, not two-pass below-the-mean.** Two-pass gives a dark *level* that no
   single pixel can set, but it buys less than it appears: it still needs the same bimodality gate
   and the same contrast threshold, so it removes no constants, and it roughly doubles the loop that
   already puts the hard limit at 288 ms. The one-pass estimator's noise failure also points the
   safe way — a spuriously dark pixel *grows* the denominator, shrinking `f_dark`, so noise makes it
   under-detect and fall back toward today's behaviour rather than inventing an outline. Blooming is
-  the worse defect. The vulnerable endpoint here is `Y_min`; `Y_max` is the fill, a large
-  well-populated region, which is a second reason dark-on-light is the safer polarity.
+  the worse defect. The measured geometry makes this choice easier than it looked: at 0.64 coverage
+  the dark run is several pixels wide in the intermediate buffer, so `Y_min` is set by a populated
+  level rather than a lone outlier. `Y_max` is the fill, a large well-populated region, which is a
+  second reason dark-on-light is the safer polarity — but both endpoints are now well fed.
 - **Absorbed into M2, date moves.** M3 is an S and the schedule carries two buffer days.
 
-### Constants — three, and they are the tuning surface
+### Constants — four, and they are the tuning surface
 
-`BIMODAL_GATE` (below it, the cell is a smooth gradient, the two-point model does not apply, keep
-the plain mean), `DARK_COVERAGE_MIN` (below it, the line only grazes the cell — leave it as fill, or
-outlines bloom), and `LINE_CONTRAST_MIN` (`Y_mean − Y_min`; below it there is no line, just noise).
+- `BIMODAL_GATE` — below it the cell is a smooth gradient, the two-point model does not apply, keep
+  the plain mean.
+- `LINE_CONTRAST_MIN` — `Y_mean − Y_min`; below it there is no line, just noise.
+- `DARK_MIDPOINT` (`t`) — the coverage at which the remap crosses 0.5. The same judgment the old
+  `DARK_COVERAGE_MIN` made, as a soft midpoint rather than a cliff: raising it is still the first
+  move against blooming.
+- `CONTRAST_SHARPNESS` (`k`) — how decisively the remap separates the two straddle cells. `k = 1` is
+  a no-op.
 
 Same species as `MERGE_FLOOR`, `MIN_CODE_FONT_PX` and the guide pitch thresholds: judgment calls,
 each one constant in one file, covered by tests that assert behaviour rather than the number.
@@ -248,9 +305,9 @@ Each step leaves the app working and ends somewhere you can look at R1–R6.
    palette, 47.9% in dark tones)**
 3. **`downscale.ts` + the `rasterize.ts` change + tests.** **(done — 10 tests)**
 4. **SET-4 control + `reduce.ts` + tests.** **(done — 9 tests; 72 green overall)**
-5. **Lineart preservation (D18)** (~3–4 h). Run the two-minute diagnostic first. If Phase A is the
-   cause, adjust `MERGE_FLOOR` and stop. Otherwise: move `downscale.ts` into `src/pipeline/`, add
-   `ACTIVE_DOWNSAMPLER` with `boxAverage` and `contrastPreserving`, calibrate the three constants.
+5. **Lineart preservation (D18)** (~3–4 h). The diagnostic is done and Phase A is ruled out, so
+   this is unconditional: move `downscale.ts` into `src/pipeline/`, add `ACTIVE_DOWNSAMPLER` with
+   `boxAverage` and `contrastPreserving`, calibrate the four constants.
 6. **R1–R6 review; tune `MERGE_FLOOR` and the SET-4 default** (~2–3 h). **Stop when it passes.**
 
 ## Tests to add
@@ -290,12 +347,20 @@ determinism test.
 **`downscale.test.ts`, step 5 additions** — every one of these runs against both strategies, with
 `boxAverage` asserted *unchanged* so the photo path cannot regress silently.
 
-- A cell of seven-eighths light fill and one-eighth dark line comes out dark, not fill. The defect,
-  as a test.
+- A cell of ~0.64 dark line against light fill comes out clearly dark, not a mid tone. The defect
+  as measured, as a test.
+- **The straddle pair**: one line split 0.40 / 0.24 across two cells yields one clearly dark cell and
+  one near the fill. Assert the *separation* between them, not two absolute values — that separation
+  is the whole reason the remap exists, and it is what keeps a straddled line one bead wide.
+- `S` is non-decreasing in `f_dark`.
+- `k = 1, t = 0.5` reproduces the plain mean **within tolerance**. Note in the test that this is an
+  analytic sanity check, not a bit-identical path — the guaranteed-unchanged route is
+  `ACTIVE_DOWNSAMPLER = boxAverage`, since two-point reconstruction only approximates the mean.
 - A uniform fill cell is untouched — no false positive, which is the assertion that stops blooming.
 - A smooth gradient cell keeps its plain mean (`BIMODAL_GATE`). Half its pixels are below the mean,
   so without the gate a gradient reads exactly like a thick line.
-- A single stray dark pixel in 64 does not trigger (`DARK_COVERAGE_MIN`).
+- A cell well below the midpoint's tail stays within a small delta of the plain mean — the low-`f`
+  end of the curve, which is what replaces the old stray-pixel threshold test.
 - **Noise on `Y_min` shrinks `f_dark`** — assert the direction, not a number. This is the property
   the one-pass estimator was chosen for, and it is what guarantees the failure mode is a missing
   outline rather than a hallucinated one.
@@ -342,14 +407,16 @@ determinism test.
   care with seeding to hold GEN-7, and it is a second open-ended tuning surface inside an already
   timeboxed milestone. GEN-6 is precisely what makes trying it cheap later.
 - **Blooming is the worse defect, and step 5 is how you would cause it.** Outlines two or three
-  beads wide eat the artwork's interior and close up small features; a missing outline at least
-  leaves the fill clean. If R1 or R3 starts thickening, raise `DARK_COVERAGE_MIN` before touching
-  anything else.
-- **Under one-pass, the dark colour is a single pixel's hue.** The estimator is robust about *how
-  much* is dark and fragile about *what colour* it is. If outlines come out hue-noisy — a black line
-  speckling into three near-blacks — that is the specific signal to swap in the two-pass
-  below-the-mean version, which replaces the level with a population mean. That swap is contained:
-  same interface, same three constants, same gate.
+  beads wide eat the artwork's interior and close up small features; a washed-out outline at least
+  leaves the fill clean. If R1 or R3 starts thickening, raise `DARK_MIDPOINT` before touching
+  anything else. The case to eyeball is the straddle pair — a line landing 0.40 / 0.24 across two
+  cells is exactly where one bead becomes two.
+- **Under one-pass, the dark colour is a single pixel's hue** — less of a risk than it looked before
+  the geometry was measured, since at 0.64 coverage `Y_min` is drawn from a several-pixel-wide run.
+  The estimator is robust about *how much* is dark and fragile about *what colour* it is. If outlines
+  still come out hue-noisy — a black line speckling into three near-blacks — that is the specific
+  signal to swap in the two-pass below-the-mean version, which replaces the level with a population
+  mean. That swap is contained: same interface, same four constants, same gate.
 - **The editor is not the escape valve for lineart.** The plan calls M5 M2's safety net, and for
   stray cells it is. Redrawing every outline in a drawing by hand is the user doing the algorithm's
   job. Do not let M5 be the reason step 5 gets cut.
@@ -357,7 +424,8 @@ determinism test.
 ## Doc updates at close
 
 - `specs.md`: **add D18** (the lineart decision, including the finding that correct linear averaging
-  costs line fidelity — that is the part worth surviving); tick GEN-2, GEN-3, GEN-4, GEN-6, GEN-7,
+  costs line fidelity, the measured ~0.64-cell geometry, and the diagnostic that ruled out Phase A —
+  those are the parts worth surviving); tick GEN-2, GEN-3, GEN-4, GEN-6, GEN-7,
   SET-4; append the shipped note to D17 the way D16 carries M10's; update NFR-4's parenthetical test
   inventory; answer Q2 if the review settled it. Record the NFR-2 measurements against NFR-2 itself
   — M9 needs them to decide whether D8 still holds.

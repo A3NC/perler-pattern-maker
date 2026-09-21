@@ -6,7 +6,8 @@ _Written 2026-09-07 · Scope defined by the **[v1]** requirements in `specs.md`_
 
 Upload an image → crop it → set finished width, bead size, and color limit → generate a pattern
 using perceptual color matching → view it zoomable with toggleable bead codes → fix wrong cells
-with a brush and eraser → read the bead inventory → download a PNG with codes on every cell.
+with a brush, eraser and fill, undoing mistakes → read the bead inventory → download a PNG with
+codes on every cell.
 The current pattern autosaves locally.
 
 Everything else in `specs.md` is marked **[v2]** or **[later]** and is out of scope here.
@@ -193,9 +194,12 @@ produces a pattern with a visibly small white margin, and the remainder is erasa
 
 ---
 
-### M5 — Correction editor · M
-**Do:** Single-cell brush, eraser, and a palette color picker. Live bead-count updates. A pan mode
-that never paints by accident. No undo, no fill.
+### M5 — Correction editor · M (large) — **scope widened by D19**
+**Do:** Single-cell brush, eraser, flood fill, and a palette color picker. Stroke-scoped undo and
+redo. Live bead-count updates. A pan mode that never paints by accident.
+
+**Scope change, 2026-09-21:** this milestone read "no undo, no fill" until D19 reversed D7. Read
+D19 before starting; the tactical plan is `plans/m5-editor.md`.
 
 **Why here:** This is the safety net for M2. It needs canvas (M1) and a settled pipeline (M2).
 **Strengthened by M2's review (Q10):** on drawn characters, facial features distort because where a
@@ -205,15 +209,18 @@ good-enough conversion; it covers a class of defect M2 could never have reached.
 load-bearing for artwork, which is the majority input (S1).
 
 **Done when:** Dragging paints a continuous run with no skipped cells at any zoom; erased cells
-leave the bead count; painting A→B decrements A and increments B; panning modifies nothing.
-*(EDIT-1 … EDIT-6)*
+leave the bead count; painting A→B decrements A and increments B; panning modifies nothing; undo
+reverses a whole stroke and redo reapplies it; fill affects only the contiguous same-color region.
+*(EDIT-1 … EDIT-5, EDIT-7, EDIT-8)*
 
 **Watch for:** Skipped cells during fast drags — a drag reports positions with gaps in them, so
-consecutive points have to be connected, not just painted individually. Resist adding fill: it
-requires undo, and undo is explicitly out of v1. *(D7)* Also decide early, and once, whether Q10
-earns a mirror or copy-region tool — fixing a pair of eyes symmetrically is the same twelve beads
-done twice, and that is the one place the no-fill rule may be costing more than it saves. If it does
-not earn its place, say so in the milestone's Delivered block rather than leaving Q10 open.
+consecutive points have to be connected, not just painted individually. **Fill tolerance is the
+scope trap now that fill itself is in** — D19 refuses it, because a speckled background is an
+R2/GEN-3 defect and a tolerance value is one more judgment constant in the family that already
+includes `MERGE_FLOOR` and `DEFAULT_CONTRAST_TUNING`. Also decide early, and once, whether Q10
+earns a mirror or copy-region tool; D19 lowers the stakes, since "fix twelve beads twice" is only
+expensive while mistakes are unrecoverable. If it does not earn its place, say so in the milestone's
+Delivered block rather than leaving Q10 open.
 
 ---
 
@@ -312,8 +319,10 @@ any point** — slot it in whenever you want a quick, satisfying win, the way M1
 done. M7 needs the pattern data settled by M5.
 
 **M0, M1, M2 and M10 are done. M5 is next** — the critical path is M5 → M6 from here, and M2 closed
-2026-09-21 with GEN-8 unticked (see its Delivered block). No tactical plan is open; write M5's the
-day it starts.
+2026-09-21 with GEN-8 unticked (see its Delivered block). **M5's tactical plan is open at
+`plans/m5-editor.md`.** Note that D19 widened M5 from M to a large M, and it sits on the critical
+path; the bound is that every new piece is a pure, tested function and `Pattern` does not change,
+so M6 and M7 inherit nothing new.
 
 The two large items, **M1 and M2, are the project.** If time runs short, everything after them can
 be trimmed; neither of them can be.
@@ -327,14 +336,14 @@ be trimmed; neither of them can be.
 | Reference images flatter the algorithm | Everything passes but a real user's file looks bad | Pick R4 and R5 from actual phone photos and R2/R3 from real uploaded-style artwork, not curated stock images — and pick all six *before* tuning. |
 | White-canvas artwork is a poor v1 experience | Patterns come out with a wide white border; inventory is mostly white | Expected, not a bug (spec D13). Make sure crop (M4) and the eraser (M5) actually make it workable, and treat background removal as the first v2 item. |
 | ~~Mini bead pitch is wrong (Q1)~~ — **retired in M0** | Mini patterns came out ~30% too wide | Fixed: pitch is now 2.6 mm / 0.102 in. Confirm against a real bead strip when convenient. |
-| Scope creep from the deferred list | You start "just quickly adding" fill, or dithering, or palette switching | Each is a logged decision with a reason. Reopen it deliberately, not mid-milestone. |
+| Scope creep from the deferred list | You start "just quickly adding" dithering, palette switching, or fill *tolerance* | Each is a logged decision with a reason. Reopen it deliberately, not mid-milestone — which is what D19 did for undo and fill, before M5 started rather than inside it. |
 
 ## Explicitly not in v1
 
 Background removal and subject auto-trim, pixel-art passthrough mode, palette switching (needs the
-other palette files sourced first), undo/redo, flood fill, legend in the export,
-user-facing algorithm choice, printable PDF, multi-project library, draw-from-scratch mode, and
-deliberate visual design (UI-7).
+other palette files sourced first), legend in the export, user-facing algorithm choice, printable
+PDF, multi-project library, draw-from-scratch mode, and deliberate visual design (UI-7).
+_(Undo/redo and flood fill were on this list until D19 moved them into M5.)_
 
 Reasons for each are in the `specs.md` decision log. Four worth restating:
 
@@ -346,8 +355,11 @@ building SET-7 next. When it is built, it ships together with SET-8 (auto-trim),
 background without trimming the empty margin silently makes the finished piece smaller than the
 width the user asked for.
 
-**Undo is out** because a one-cell brush makes mistakes self-correcting, and leaving it out is what
-also keeps flood fill out.
+**Undo and fill are in, as of D19** — this list said the opposite until 2026-09-21. D7 rested on a
+one-cell brush making mistakes self-correcting, but EDIT-1 always specified dragging, and the state
+an edit overwrites is generated rather than authored, so "paint it again" assumes knowledge the user
+does not have. Fill follows undo in, and its own case is D13's: flood-fill-with-empty over a uniform
+background is the v1 answer for white-canvas artwork, which is the majority input.
 
 **The printable PDF is out** because it is roughly a week of work hidden behind five words in the
 original spec, and a PNG with codes covers the on-screen case.

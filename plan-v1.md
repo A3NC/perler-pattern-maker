@@ -134,6 +134,32 @@ passes. *(GEN-2, GEN-3, GEN-4, GEN-6, GEN-7, GEN-8, SET-4)*
 reference review is the stopping condition — when R1–R6 pass, stop, even if it feels improvable.
 The editor in M5 is the escape valve for whatever remains.
 
+**Delivered (2026-09-21):** OkLab matching (`src/lib/oklab.ts`, `src/pipeline/color-match.ts`),
+area averaging in linear light (`src/pipeline/downscale.ts`), greedy perceptual reduction
+(`src/pipeline/reduce.ts`), and the SET-4 control. `npm run check` is green at 88 tests, up from 40.
+Two GEN-6 switches ship, both one identifier: `ACTIVE_MATCHER` and `ACTIVE_DOWNSAMPLER`. **GEN-2,
+GEN-3, GEN-4, GEN-6, GEN-7 and SET-4 are ticked; GEN-8 is deliberately not.** D18 (lineart) was
+absorbed mid-milestone and is the reason the L ran long.
+
+**Closed with GEN-8 unticked, on purpose.** The R1–R6 review does not fully pass, and ticking it
+would make the gate decorative — which this milestone's own plan warned against. Two items remain,
+and only one of them is M2-shaped. **(1)** Dark regions blend less smoothly than before D18 (R3's
+"shading resolves into a few clean bands, not noise"). Improved by moving the contrast gate into
+perceptual lightness, not closed: lines outscore shading by only ~1.35× at the same tone and the
+bands overlap across tones, so no single threshold separates them everywhere. The three constants in
+`DEFAULT_CONTRAST_TUNING` are the surface and are meant to be moved by eye. **(2)** Facial features
+of drawn characters distort — **Q10**, and not reachable from anywhere in this pipeline, since the
+grid is fixed before any of it runs.
+
+**What the milestone cost that the plan did not predict:** the review found two defects *after*
+D18 shipped, each needing its own diagnosis — colour specks traced to reconstructing cells from
+single extreme pixels, and dark-region jaggedness traced to a threshold measured in the wrong
+space. Both are written up in `specs.md` D18. The transferable part is that both were confirmed by a
+cheap A/B before any code was written, the same way the `MERGE_FLOOR` diagnostic ruled out Phase A.
+
+**NFR-2 is over and stays over:** 65 ms at the design target, 315 ms at the hard limit, against
+~150 ms. Recorded against NFR-2 for M9 to weigh, per D8.
+
 ---
 
 ### M3 — Input handling and errors · S
@@ -172,6 +198,11 @@ produces a pattern with a visibly small white margin, and the remainder is erasa
 that never paints by accident. No undo, no fill.
 
 **Why here:** This is the safety net for M2. It needs canvas (M1) and a settled pipeline (M2).
+**Strengthened by M2's review (Q10):** on drawn characters, facial features distort because where a
+cell boundary falls relative to an eye decides what that eye becomes — and nothing in the pipeline
+can see that, since the grid is fixed before any of it runs. So M5 is not only cleanup after a
+good-enough conversion; it covers a class of defect M2 could never have reached. That makes it
+load-bearing for artwork, which is the majority input (S1).
 
 **Done when:** Dragging paints a continuous run with no skipped cells at any zoom; erased cells
 leave the bead count; painting A→B decrements A and increments B; panning modifies nothing.
@@ -179,7 +210,10 @@ leave the bead count; painting A→B decrements A and increments B; panning modi
 
 **Watch for:** Skipped cells during fast drags — a drag reports positions with gaps in them, so
 consecutive points have to be connected, not just painted individually. Resist adding fill: it
-requires undo, and undo is explicitly out of v1. *(D7)*
+requires undo, and undo is explicitly out of v1. *(D7)* Also decide early, and once, whether Q10
+earns a mirror or copy-region tool — fixing a pair of eyes symmetrically is the same twelve beads
+done twice, and that is the one place the no-fill rule may be costing more than it saves. If it does
+not earn its place, say so in the milestone's Delivered block rather than leaving Q10 open.
 
 ---
 
@@ -277,8 +311,9 @@ M0 → M1 → M2 → M5 → M6 are sequential; each genuinely needs the one befo
 any point** — slot it in whenever you want a quick, satisfying win, the way M10 was. M4 needs M2
 done. M7 needs the pattern data settled by M5.
 
-**M0, M1, and M10 are done. M2 is in flight** (started 2026-09-15) — it was the first thing on the
-critical path with nothing left in front of it. Its tactical plan is `plans/m2-quality-core.md`.
+**M0, M1, M2 and M10 are done. M5 is next** — the critical path is M5 → M6 from here, and M2 closed
+2026-09-21 with GEN-8 unticked (see its Delivered block). No tactical plan is open; write M5's the
+day it starts.
 
 The two large items, **M1 and M2, are the project.** If time runs short, everything after them can
 be trimmed; neither of them can be.

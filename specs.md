@@ -112,7 +112,7 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
   count before generating.
   **Check:** Changing target width or bead size updates the displayed dimensions immediately,
   before Generate is pressed.
-- [ ] **SET-4 [v1]** User sets a maximum number of distinct colors for the output. Default 30,
+- [x] **SET-4 [v1]** User sets a maximum number of distinct colors for the output. Default 30,
   range 2 to the palette size.
   **Check:** With the limit set to 12, the generated pattern's bead list contains at most 12
   distinct colors. See Decision log D3.
@@ -189,11 +189,13 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
   and are excluded from the bead count. _(Partially implemented.)_
   Note: this already solves S1 for artwork saved with a transparent background. SET-7 exists for
   artwork flattened onto an opaque canvas, which is the more common export.
-- [ ] **GEN-2 [v1]** Color matching uses a perceptual color space (OkLab), not raw RGB distance.
+- [x] **GEN-2 [v1]** Color matching uses a perceptual color space (OkLab), not raw RGB distance.
   **Check:** Unit test: a mid-gray and a saturated color pair where RGB distance and OkLab distance
   disagree resolves to the OkLab-nearest palette entry. Visual: dark tones and skin tones no longer
-  snap to visibly wrong hues. See Decision log D2. _(Currently RGB — must be replaced.)_
-- [ ] **GEN-3 [v1]** Reduce the output to at most the SET-4 color limit by repeatedly merging the
+  snap to visibly wrong hues. See Decision log D2.
+  _(M2: `src/lib/oklab.ts` + `src/pipeline/color-match.ts`. Measured 38.6% of sampled colors
+  resolving differently against the real palette, 47.9% in dark tones.)_
+- [x] **GEN-3 [v1]** Reduce the output to at most the SET-4 color limit by repeatedly merging the
   color whose removal costs the least perceptual error — its bead count times its OkLab distance to
   the nearest surviving color — into that survivor. The same merge also collapses near-duplicate
   colors that fall below a ΔE floor, even when the pattern is already within the limit.
@@ -201,24 +203,41 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
   **Check:** Distinct color count in the bead list is ≤ the limit, and no cell is left unassigned.
   A flat region of near-identical source colors resolves to one bead color rather than several
   (the condition R2 turns on).
-- [ ] **GEN-4 [v1]** Downscaling averages source pixels within each bead cell before palette
+- [x] **GEN-4 [v1]** Downscaling averages source pixels within each bead cell before palette
   matching, so that detail is summarized rather than point-sampled.
   **Check:** A source image with fine alternating stripes produces blended cells, not an aliased
-  moiré pattern. See Decision log D4.
+  moiré pattern. See Decision log D4 and D18.
+  _(M2: `src/pipeline/downscale.ts`. Exact fractional-coverage box filter in linear light,
+  alpha-weighted. D18 adds the lineart strategy alongside it.)_
 - [ ] **GEN-5 [v1]** Each cell's assigned color is flat and hard-edged — no gradient, blur, or
   anti-aliasing within or between cells.
   **Check:** Zoom to a cell boundary in the rendered pattern and in the exported PNG: adjacent
   cells meet at a hard edge with exactly two colors present.
-- [ ] **GEN-6 [v1]** The conversion pipeline is a single replaceable unit, so alternative
+- [x] **GEN-6 [v1]** The conversion pipeline is a single replaceable unit, so alternative
   algorithms can be swapped in without touching UI code.
   **Check:** A second algorithm can be added and selected by changing one identifier, with no
   edits outside the pipeline module.
-- [ ] **GEN-7 [v1]** Output is deterministic: same image, settings, and palette produce an
+  _(M2: two switches, both one identifier — `ACTIVE_MATCHER` in `color-match.ts` and
+  `ACTIVE_DOWNSAMPLER` in `downscale.ts`. The second one earned itself during M2: flipping it to
+  `boxAverage` is what localized the D18 color-speck bug.)_
+- [x] **GEN-7 [v1]** Output is deterministic: same image, settings, and palette produce an
   identical pattern.
   **Check:** Generate twice without changing settings; bead counts and every cell match.
+  _(M2: every argmin in `reduce.ts` tie-breaks on ascending palette index, and a test asserts it
+  rather than trusting map iteration order.)_
 - [ ] **GEN-8 [v1]** The pattern is recognizable and reads as intentional pixel art. Verified by
   human review against the fixed reference set in "Done looks like," not by automated test.
   **Check:** See the reference-image review procedure below.
+  _(**Deliberately unticked at M2 close (2026-09-21).** M2 shipped its whole scope and every other
+  requirement it owns, but the review did not fully pass and ticking this would make the gate
+  decorative — the one thing the milestone's own plan said not to do. Two things outstanding, and
+  they are different in kind. (1) Dark regions blend less smoothly than before D18: improved by
+  moving the contrast gate into perceptual lightness, not closed — lines outscore shading by only
+  ~1.35× at the same tone and the bands still overlap across tones, so no threshold separates them
+  everywhere. This is the R3 clause "shading resolves into a few clean bands, not noise." (2) Facial
+  features of drawn characters distort — see Q10, which is not M2's to fix. The three tuning
+  constants are in `DEFAULT_CONTRAST_TUNING`, `src/pipeline/downscale.ts`, and are meant to be moved
+  by eye.)_
 
 ### Pattern view — VIEW
 
@@ -364,6 +383,13 @@ subjective half and is held to v2. See Decision log D14.
 - [ ] **NFR-2 [v1]** Generation completes without freezing the page.
   **Check:** At NFR-3's hard limit, the page stays responsive; if generation exceeds ~150 ms of
   blocking, move the pipeline off the main thread. See Decision log D8.
+  _(**Measured at M2 close, and it is over.** Node timings excluding decode and canvas, 221-color
+  palette: **65 ms** at the design target (comfortable) and **315 ms** at the hard limit, against
+  the ~150 ms threshold. The cost is dominated by the downscale — ~3.2M source pixels linearized
+  and accumulated against 50k matches — not by matching. Recorded rather than acted on: D8 says
+  revisit only on evidence, and this is the evidence, for M9 to weigh. The cheapest lever is
+  `SUPERSAMPLE` 8 → 4 in `src/rasterize.ts`, which quarters the intermediate buffer; a worker is the
+  bigger move.)_
 - [ ] **NFR-3 [v1]** Two size numbers, deliberately different. See Decision log D15.
   - **Design target — 10,000 cells (100 × 100).** What the app is tuned and tested against: M1's
     render and pan performance, M2's generation time, and the R1–R6 review all use a pattern of
@@ -375,13 +401,17 @@ subjective half and is held to v2. See Decision log D14.
   **Check:** Settings above the hard limit are refused with the message required by SET-5; a
   pattern at the design target meets the performance Checks in VIEW-1 and NFR-2.
   _(Enforced in `src/lib/pattern-utils.ts`.)_
-- [ ] **NFR-4 [v1]** Deterministic logic is covered by automated tests that run without a browser.
+- [x] **NFR-4 [v1]** Deterministic logic is covered by automated tests that run without a browser.
   **Check:** The test suite covers palette validation, dimension calculation, OkLab matching, color
   reduction, and inventory tallying, and passes from a single command.
-  _(Partially implemented as of M10: `npm test` is the single command and covers palette
-  validation, dimension calculation, palette matching, transparency, inventory tallying, the canvas
-  view's zoom/visible-range/cell-mapping math, and the gridline/ruler geometry — 40 tests. Still
-  missing OkLab matching and color reduction, which do not exist until M2.)_
+  _(Satisfied as of M2: `npm test` is the single command and covers palette validation, dimension
+  calculation, palette matching, transparency, inventory tallying, the canvas view's
+  zoom/visible-range/cell-mapping math, the gridline/ruler geometry, and — added in M2 — OkLab
+  conversion and distance, the matcher strategy, the GEN-4 downscale including D18's lineart
+  classifier, and color reduction. 88 tests, all browser-free. Standing obligation, not a one-time
+  one: M5, M6 and M7 each add deterministic logic, and the convention that keeps this true is in
+  CLAUDE.md — anything touching the DOM, canvas or FileReader stays out of `src/lib/` and
+  `src/pipeline/`.)_
 - [ ] **NFR-5 [v1]** Usable in a current desktop browser at 1280 px wide and in a phone browser at
   390 px wide.
   **Check:** At both widths, all v1 controls are reachable and the pattern view is usable. UI-1 and
@@ -496,6 +526,17 @@ editor state would depend on M5. Do not fix screenshots of these states before t
   outlining everything; too loose eats the subject's own light edges. Whether a single tolerance
   value can serve both clean PNG exports and re-compressed JPEGs is unknown. This is the part of
   SET-7 most likely to be harder than it looks.
+- **Q10 — Feature alignment against the bead grid. NEW (2026-09-21), from the M2 review.** On drawn
+  characters, facial features do not survive the reduction as features: eyes come out asymmetrical
+  and mouths distorted, because where a cell boundary happens to fall relative to an eye decides
+  what that eye becomes. **No part of the M2 pipeline can address this.** Downscaling, matching and
+  reduction all run *after* the grid is fixed, so none of them can see that two cells ought to match
+  each other. Fixing it algorithmically means object detection or feature-aware grid alignment —
+  possible, but a different kind of problem and far outside v1. Recorded because it changes what M5
+  is for: until now the editor was justified as M2's safety net for stray cells (D9), and this is a
+  class of defect M2 could never have reached, which makes M5 load-bearing for artwork rather than
+  merely a tidy-up. Decide at M5 whether the editor needs anything specific for it — a mirror or
+  copy-region tool would turn "fix twelve beads twice, symmetrically" into one action.
 - **Q9 — Visual identity for the v2 redesign.** The current palette is Tailwind's defaults
   (indigo-600, gray-50, gray-200) carried over from the original single-file build, and the type is
   the bare system stack. Whether the v2 redesign keeps that and merely tightens it, or adopts an
@@ -666,6 +707,55 @@ editor state would depend on M5. Do not fix screenshots of these states before t
     copied from `toggleTextBtn`. That is two controls styled inline now instead of one — M8 owns
     moving both into `src/styles.css`.
 
+- **D18 (2026-09-16, revised 2026-09-21) — Lineart cells are classified as line or fill, from
+  population means, rather than averaged.** Found in the human review of M2's steps 1–4: outlines
+  beside a solid fill wash out. Measured on `test_img/R3.png` — 1556 px wide, so at the 100 × 100
+  design target one cell spans ~15.6 source pixels and a 10 px line covers **~0.64 of a cell**,
+  splitting roughly 0.40 / 0.24 when it straddles a boundary. The line never disappears; it becomes
+  a large-minority mixture that the matcher correctly resolves to a bead far lighter than the line.
+  Absorbed into M2 rather than deferred because R3's Check is [v1] and GEN-8 is M2's own stopping
+  condition. **Five findings worth keeping:**
+  - **Correct averaging costs line fidelity, and that is not an argument for reverting.** A black
+    line over 0.64 of a byte-220 fill averages to **79** in gamma-encoded sRGB and **139** in linear
+    light. The pre-M2 gamma-naive build preserved dark lines nearly twice as well *by being wrong*.
+    Linear-light averaging lightens any mixture containing a dark minority; it is still correct for
+    the gradients that are most of R3 and all of R4/R5.
+  - **Neither `SUPERSAMPLE` nor reduction is a lever.** 0.64 is line width over source pixels per
+    cell, and the supersample factor divides both, so it cancels. And setting the limit to the
+    palette size with `MERGE_FLOOR = 0` did not bring the line back — that diagnostic ruled out
+    Phase A and made a new downsampler unavoidable. Worth repeating as a method: two very
+    differently priced causes, separated by one cheap A/B before any code was written.
+  - **Reconstructing a cell from its two extreme pixels is wrong, and it took shipping to see.**
+    The first version mixed the single darkest and single lightest pixel by an S-curve on coverage.
+    The review found beads coloured unlike anything in the source — a green B25 on a face among
+    correct skin tones, a saturated G20 inside muted G7 regions. Both are one mechanism: the
+    extremes of ~64 samples are *tail values*, and at the ends of the curve a cell collapsed onto
+    essentially one of them, which is the point sampling GEN-4 exists to remove, aimed at the least
+    representative pixel available. Luminance selection is hue-biased too (green carries 0.7152 of
+    Y, so a chroma-fringe pixel reliably won the light slot). **B25 `#4E846D` has G > R while every
+    tone on that face has R > G > B, and a convex combination cannot reverse channel ordering** —
+    which is what proved the cell's colour came from one pixel rather than from its content. The fix
+    is population means: split the cell at its own mean luminance and use the mean of each side. One
+    pixel in sixteen now moves a cell by under 0.05 in OkLab, down from 0.187.
+  - **Classify, do not blend.** The S-curve left cells holding part of a line reading as grey. A
+    cell is now line or fill with nothing between, and — the part that removes the grey — a fill
+    cell returns its *light* population rather than the plain mean, so the line's pixels are
+    excluded entirely. Accepted cost: a line too thin to reach the coverage threshold in any cell
+    vanishes outright instead of surviving as a tint.
+  - **Threshold in perceptual lightness, not linear light.** The contrast gate shipped measuring
+    `Y_mean − Y_dark` in linear light, and dark regions came back jagged. An identical 30-byte step
+    spans 0.0091 in shadow to 0.1036 in highlight — an 11.4× swing for the same visible step — and,
+    decisively, a dark shadow edge carried *more* linear contrast (0.0221) than a genuine dark
+    outline (0.0195), so in that space no threshold could even order them. Measured on `cbrt(Y)` the
+    swing is 1.74× and the ordering is correct. This is the third time M2 was caught by a
+    gamma-space confusion; see "Why gamma appears three times" in the milestone plan.
+
+  **Not closed.** Lines outscore shading by only ~1.35× at the same tone and the bands overlap
+  across tones, so the three constants in `DEFAULT_CONTRAST_TUNING` are a real tuning surface, not
+  settled values. GEN-8 stays unticked for this. GEN-6's `ACTIVE_DOWNSAMPLER` is what makes a
+  better downsampler cheap to try later — a two-pass estimator was swapped in mid-milestone through
+  exactly that seam, with no edit outside the module.
+
 - **D17 (2026-09-15) — Color reduction merges by perceptual cost, not by frequency, and runs even
   when the pattern is already within the limit.** GEN-3 was originally worded "keep the most-used
   colors and remap the rest to their nearest kept color." Planning M2 against the R1–R6 images
@@ -702,3 +792,10 @@ editor state would depend on M5. Do not fix screenshots of these states before t
   open-ended tuning surface inside the milestone whose named risk is an endless tuning loop. GEN-6
   exists precisely so it can be tried later as an alternative matcher without disturbing the UI.
   Recorded here so that reopening it is a logged decision, per the rule D16 set.
+
+  **Shipped in M2 (2026-09-21)** as `src/pipeline/reduce.ts`, two phases behind one merge loop, with
+  `MERGE_FLOOR` at 0.02. One thing the implementation taught that the decision did not anticipate:
+  the isolation-protects-rare-colors property is double-edged. It did what D17 wanted, but it also
+  protected the D18 color specks — a wrong bead that sits far from every other color is exactly the
+  shape D17 defends. Reduction therefore cannot be a safety net for upstream color errors, which is
+  what made the speck fix unavoidable rather than tunable.

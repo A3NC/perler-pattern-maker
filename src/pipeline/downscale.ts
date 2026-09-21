@@ -74,6 +74,14 @@ export interface ContrastTuning {
      * the plain mean -- a gradient has half its pixels under the mean and would
      * otherwise read exactly like a thick line.
      *
+     * **Has a ceiling, measured 2026-09-21.** Raising it tightens the gate, which
+     * is the right lever against photo posterizing -- but past ~0.725 the gate
+     * starts flapping on marginal cells, and a *single* stray pixel can flip a
+     * cell's verdict between "line" and "plain mean". On the face fixture in
+     * downscale.test.ts that is a 0.475 jump in OkLab from one pixel in sixteen,
+     * which reads on screen as a gap in an outline. 0.725 was the last safe value
+     * and 0.750 the first unsafe one; the test pins the property, not the number.
+     *
      * Note the normaliser is the cell's Y_max - Y_min, not the gap between the
      * two population means. Substituting the population gap inverts the measure:
      * a gradient then scores 1.33, *above* a true two-point, and the gate stops
@@ -81,12 +89,43 @@ export interface ContrastTuning {
      */
     bimodalGate: number;
     /**
-     * Y_mean - Y_dark, in linear light. Below it there is no line in this cell,
-     * just sensor or JPEG noise. Absolute rather than relative, which makes it
-     * strictest where the payoff is -- dark lines on light fills, the polarity
-     * D18 was written against.
+     * How much darker the dark population is than the cell as a whole, in
+     * **perceptual lightness** -- cbrt of linear luminance, which is the gray-axis
+     * form of OkLab's L (see oklab.ts: both rows of the first matrix sum to 1, so
+     * a neutral gray's L is exactly cbrt(linear)). Below it there is no line in
+     * this cell, just shading or noise.
+     *
+     * This was measured in linear light until 2026-09-21, and that was the third
+     * appearance of the gamma mistake this milestone keeps finding. A fixed linear
+     * threshold is not a fixed perceptual one. Measured across the tonal range, an
+     * identical 30-byte step spans 0.0091 (in shadow) to 0.1036 (in highlight) of
+     * linear luminance -- an 11.4x swing for the same visual step -- against
+     * 0.0850 to 0.0488 in cbrt, a 1.74x swing. So the shipped 0.02 sat on top of
+     * dark shading and cell-to-cell flapping followed, which is what "jagged, like
+     * bad shading" looks like on screen.
+     *
+     * The decisive case: a dark shadow edge (bytes 45/75) reads 0.0221 in linear
+     * while a genuine dark outline (a 0.64-coverage line of byte 20 on byte 70)
+     * reads 0.0195. **The shading has more linear contrast than the line**, so in
+     * linear light no threshold can order them at all -- the gate was simultaneously
+     * too permissive for dark shading and too strict for dark outlines. In cbrt
+     * they are 0.0670 and 0.1070, correctly ordered with room between.
+     *
+     * Honest about what this does not do: lines beat shading by only ~1.35x at the
+     * same tone, and the bands still overlap *across* tones -- a hard step in deep
+     * shadow (0.0850) outscores a faint line in a highlight (0.0613). The change
+     * narrows the problem, it does not close it. The usable window against the
+     * cases measured is roughly 0.085 (above every 30-byte shading step, at any
+     * tone) to 0.107 (below a dark outline on a dark fill). Tune inside it by eye:
+     * raise against remaining jaggedness in shading, lower if dark outlines go
+     * missing.
+     *
+     * Note this is the one threshold that moved. bimodalGate stays in linear light
+     * on purpose: it is a *shape* test (is this distribution two-lumped), and its
+     * 1.0-vs-1/3 identities are a property of the linear formulation. Magnitudes
+     * need perceptual units; shape ratios do not.
      */
-    lineContrastMin: number;
+    lineDarkeningMin: number;
     /**
      * The dark coverage at or above which a cell is lineart rather than fill.
      * It sits below 0.5, and that asymmetry is the whole dark-minority bias,
@@ -98,9 +137,9 @@ export interface ContrastTuning {
 }
 
 export const DEFAULT_CONTRAST_TUNING: ContrastTuning = {
-    bimodalGate: 0.6,
-    lineContrastMin: 0.02,
-    darkCoverageMin: 0.35
+    bimodalGate: 0.725,   // 0.75 flaps on marginal cells -- see the ceiling note above
+    lineDarkeningMin: 0.09,
+    darkCoverageMin: 0.3
 };
 
 /**
@@ -360,8 +399,10 @@ function downsample(
                     const variance = ySquaredSum / alphaSum - yMean * yMean;
                     const twoPointVariance = fDark * (1 - fDark) * spread * spread;
 
+                    // cbrt, not a subtraction in linear light: see lineDarkeningMin.
+                    // Twice per cell, not per pixel, so the cost is nothing.
                     if (
-                        yMean - yDark >= tuning.lineContrastMin &&
+                        Math.cbrt(yMean) - Math.cbrt(yDark) >= tuning.lineDarkeningMin &&
                         twoPointVariance > 0 &&
                         variance >= tuning.bimodalGate * twoPointVariance
                     ) {

@@ -352,3 +352,71 @@ test('D18: one pixel in sixteen must not dictate the cell colour (R1 G20 specks)
     // pixel must not move a cell far enough to change which bead it becomes.
     assert.ok(moved < 0.05, `one pixel moved the cell ${moved.toFixed(3)} in OkLab`);
 });
+
+// ---------------------------------------------------------------------------
+// The dark-shading regression, reported from the R1-R6 review: "in dark areas,
+// colors don't blend as smoothly after adding lineart detection... a jagged look
+// that can appear like bad shading."
+//
+// lineDarkeningMin is measured in perceptual lightness (cbrt of linear luminance)
+// rather than in linear light. These pin why that had to change.
+// ---------------------------------------------------------------------------
+
+/** How much darker the below-mean population is than the cell, in linear light. */
+function linearDarkening(bytes: number[]): number {
+    const ys = bytes.map((byte) => {
+        const v = srgbByteToLinear(byte);
+        return 0.2126 * v + 0.7152 * v + 0.0722 * v;
+    });
+    const mean = ys.reduce((a, b) => a + b, 0) / ys.length;
+    const dark = ys.filter((y) => y < mean);
+    return mean - dark.reduce((a, b) => a + b, 0) / dark.length;
+}
+
+test('D18: in linear light a dark shadow edge outranks a dark outline', () => {
+    // Not a regression test -- a proof that the old formulation could not work,
+    // kept executable so nobody moves the gate back to linear light.
+    const shadowEdge = [...Array(6).fill(45), ...Array(6).fill(75)];
+    const darkOutline = [...Array(16).fill(20), ...Array(9).fill(70)];
+
+    assert.ok(
+        linearDarkening(shadowEdge) > linearDarkening(darkOutline),
+        'the shadow edge must carry MORE linear contrast than the line, or this test is pointless'
+    );
+
+    // So in linear light no threshold can separate them: any value that rejects
+    // the shading also rejects the line. In cbrt they are 0.0670 and 0.1070, and
+    // the shipped 0.095 falls between.
+    const gray = (bytes: number[]) => pixels(bytes.length, 1, bytes.map((b) => [b, b, b, 255]));
+
+    const shading = gray(shadowEdge);
+    assert.deepEqual(
+        cellLinear(contrastPreserving(shading, 1, 1), 0),
+        cellLinear(boxAverage(shading, 1, 1), 0),
+        'the shadow edge keeps its plain mean -- no posterizing'
+    );
+
+    const line = gray(darkOutline);
+    assertClose(
+        cellLinear(contrastPreserving(line, 1, 1), 0)[0],
+        srgbByteToLinear(20),
+        'the dark outline is still recognized as a line'
+    );
+});
+
+test('D18: an identical shading step is judged the same way at every tone', () => {
+    // The tonal uniformity the units change buys. The same 30-byte step swings
+    // 11.4x in linear luminance from shadow to highlight but only 1.74x in cbrt,
+    // so one constant can now cover the whole range -- and none of these is a
+    // line, so none of them may be classified.
+    for (const low of [10, 25, 45, 80, 120, 160, 195]) {
+        const step = [...Array(6).fill(low), ...Array(6).fill(low + 30)];
+        const source = pixels(12, 1, step.map((b) => [b, b, b, 255]));
+
+        assert.deepEqual(
+            cellLinear(contrastPreserving(source, 1, 1), 0),
+            cellLinear(boxAverage(source, 1, 1), 0),
+            `a ${low}/${low + 30} step must keep its plain mean`
+        );
+    }
+});

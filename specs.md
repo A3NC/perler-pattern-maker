@@ -78,11 +78,11 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
 
 ### Input — IN
 
-- [ ] **IN-1 [v1]** Accept a single image file via file picker, in PNG, JPEG, GIF, WebP, or BMP.
+- [x] **IN-1 [v1]** Accept a single image file via file picker, in PNG, JPEG, GIF, WebP, or BMP.
   **Check:** One valid file of each listed format uploads and produces a preview.
-  _(**Half done at M3.** All five formats — including all three WebP header layouts — upload and
-  reach a generated pattern, verified in Chrome against real encoder output. The outstanding half is
-  the preview, which is IN-5 and belongs to M4; this ticks when that lands.)_
+  _(**Completed at M4**, having been half done at M3. M3 verified all five formats — including all
+  three WebP header layouts — upload and reach a generated pattern, against real encoder output. The
+  outstanding half was the preview, which is IN-5; it landed in M4 and this ticks with it.)_
 - [x] **IN-2 [v1]** Reject non-image files with a specific, readable error naming the problem.
   **Check:** Uploading a `.txt`, a `.pdf`, and a zero-byte file each shows a distinct message that
   says what was wrong (not "an error occurred"), and the app stays usable afterward.
@@ -108,9 +108,13 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
   _(Satisfied at M3, by attempting the decode rather than refusing the format — see Q4, now
   resolved, and D20. The sniffed format is carried through the decode so that a failure can be
   named; HEIC's message points at Settings > Camera > Formats.)_
-- [ ] **IN-5 [v1]** Show a preview of the uploaded image before generation.
+- [x] **IN-5 [v1]** Show a preview of the uploaded image before generation.
   **Check:** After a successful upload, the image is visible at a reasonable on-screen size and the
   Generate control becomes enabled.
+  _(Satisfied at M4, and the preview carries the crop rectangle rather than being a bare thumbnail —
+  cropping is the quality lever this requirement exists to enable. Driven in Chrome at 1280 px and at
+  390 px: no preview before upload, the image visible and Generate enabled after one, and the panel
+  hidden again on a successful generate per D21.)_
 - [x] **IN-6 [v1]** Reject images above a size ceiling with a readable error rather than hanging.
   **Check:** Upload an image larger than the ceiling defined in NFR-3; an error appears within
   2 seconds and the tab does not freeze.
@@ -122,29 +126,47 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
 
 ### Settings — SET
 
-- [ ] **SET-1 [v1]** User sets the target finished width of the physical piece, in inches.
-  Unit is labeled on screen. Height follows from the source image's aspect ratio.
+- [x] **SET-1 [v1]** User sets the target finished width of the physical piece, in inches.
+  Unit is labeled on screen. Height follows from the aspect ratio of the **cropped region** — the
+  whole image until the user crops (M4).
   **Check:** Entering 10 inches at 5mm bead size yields a pattern ~51 beads wide, and the displayed
-  height matches the image's aspect ratio within one bead. _(Partially implemented.)_
-- [ ] **SET-2 [v1]** User selects bead size from a fixed list: Standard and Mini, each labeled with
+  height matches the cropped region's aspect ratio within one bead.
+  _(Ticked at M4, and it needed nothing built for it: the arithmetic has been right since M0, but the
+  Check wants the result **displayed**, which is SET-3's readout. Measured in Chrome on a 400 × 300
+  source: 10 in at Standard gives 51 × 38, and 51 × 0.75 = 38.25. "The source image's aspect ratio"
+  in the original wording became the crop's when M4 landed.)_
+- [x] **SET-2 [v1]** User selects bead size from a fixed list: Standard and Mini, each labeled with
   its millimeter pitch.
   **Check:** Switching from Standard to Mini at a fixed target width increases bead count per side
-  by the inverse ratio of the two pitches, within one bead. _(Partially implemented; Q1 resolved —
-  Mini is 2.6 mm / 0.102 in as of M0.)_
-- [ ] **SET-3 [v1]** Display the computed grid dimensions (width × height in beads) and total bead
+  by the inverse ratio of the two pitches, within one bead.
+  _(Ticked at M4 for the same reason as SET-1 — the Check needed a displayed number, not new
+  arithmetic. Measured in Chrome: at 20 in the width goes 102 → 196 beads against a predicted
+  102 × (0.197 / 0.102) = 197.0, one bead inside the tolerance. Q1 resolved — Mini is 2.6 mm /
+  0.102 in as of M0.)_
+- [x] **SET-3 [v1]** Display the computed grid dimensions (width × height in beads) and total bead
   count before generating.
   **Check:** Changing target width or bead size updates the displayed dimensions immediately,
   before Generate is pressed.
+  _(Satisfied at M4, in `#dimensions`, and it also tracks the **crop** — which is what made it the
+  first thing M4 built rather than the last: with it live, "did the crop reach the pipeline" is
+  answered by dragging a handle and watching a number. Deliberately a separate element from
+  `#stats`: this line describes the pattern that would be generated, `#stats` the one that exists.
+  It stays live after a pattern exists, because the settings do, and is labelled "Will generate:"
+  so the two tenses cannot be read as one claim made twice.)_
 - [x] **SET-4 [v1]** User sets a maximum number of distinct colors for the output. Default 30,
   range 2 to the palette size.
   **Check:** With the limit set to 12, the generated pattern's bead list contains at most 12
   distinct colors. See Decision log D3.
-- [ ] **SET-5 [v1]** Reject dimension settings that exceed the limits in NFR-3, with a message
+- [x] **SET-5 [v1]** Reject dimension settings that exceed the limits in NFR-3, with a message
   saying which limit was hit and what to change.
   **Check:** A setting that would produce more than NFR-3's hard limit shows an error naming the
-  limit and suggesting a smaller width or larger bead. _(Implemented in
-  `src/lib/pattern-utils.ts`; the per-side and cell limits report separately so the message names
-  the one actually hit.)_
+  limit and suggesting a smaller width or larger bead.
+  _(Ticked at M4. Implemented in `src/lib/pattern-utils.ts` since M0 — the per-side and cell limits
+  report separately so the message names the one actually hit — but until SET-3's readout existed
+  the only way to see it was to press Generate, and the Check reads as a property of the settings
+  rather than of the attempt. `refreshDimensions` catches the same throw and shows the same message
+  live. Measured in Chrome: 400 in at Standard reads "Pattern is too large: 2030 × 1523 beads
+  exceeds the limit of 300 beads per side. Choose a smaller width or a larger bead size.")_
 - [ ] **SET-6 [v2]** Optional advanced settings panel, collapsed by default, containing the
   background-removal and pixel-art options below.
   **Check:** Panel is hidden until opened; all v1 behavior is unchanged when it is never opened.
@@ -205,10 +227,12 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
   **Check:** With hand-edited cells present, switching palette prompts before discarding them.
   _(**This is the only requirement of its shape, and it covers only the palette.** Crop, target
   width, bead size and color limit all regenerate and destroy manual edits in exactly the same way,
-  and no [v1] requirement covers them — a gap, named here rather than in passing. D21 is v1's
-  answer: the first Generate disables the whole input set, so the discard has to be asked for
-  explicitly through Start over, which is not the same as being warned about it. Whether v1 also
-  wants PAL-7's confirmation on that control is M9's call.)_
+  and no [v1] requirement covers them — a gap, named here rather than in passing, and **open**. D21
+  briefly closed it by freezing every input after the first Generate, and was narrowed the same day
+  because that made the ordinary case — regenerate at a different width — worse in order to be tidy
+  about the awkward one. Only the crop is one-shot now, so changing a setting and pressing Generate
+  still discards hand edits silently. Whether v1 wants PAL-7's confirmation extended to the settings
+  is M9's call.)_
 
 ### Generation — GEN
 
@@ -943,34 +967,49 @@ editor state would depend on M5. Do not fix screenshots of these states before t
   **Deliberately not done:** no decoder is bundled (Q4), and no preview is built — IN-1's remaining
   half is IN-5's, and M4 owns it. Building a placeholder here would be building it twice.
 
-- **D21 (2026-09-22) — The first Generate fixes the inputs; a new pattern is an explicit act.**
-  Written for M4, and it is a lifecycle decision rather than a crop one. The preview panel appears
-  on a successful upload and is **hidden outright** on a successful generate — no summary row — and
-  the settings inputs are disabled with it. Getting a different pattern goes through one control,
-  **Start over**, which re-enables the inputs and restores the preview with the same image and the
-  same crop rectangle still in place, so it is a revision rather than a reset.
+- **D21 (2026-09-22, narrowed the same day) — Cropping is one-shot per image; the size and colour
+  settings are not.** Written for M4. The preview panel appears on a successful upload and is
+  **hidden outright** on a successful generate — no summary row — and only a new upload brings it
+  back. The crop rectangle is kept rather than cleared, so regenerating reuses the same framing.
+  Target width, bead size and maximum colours **stay live throughout**: they can be changed and the
+  pattern regenerated without re-uploading.
 
-  **The reasoning starts with the interface and ends somewhere else.** The first half is ordinary:
-  a preview panel sitting between the controls and the canvas competes with the pattern for U3's
-  "the pattern is the visual focus," and the stats line already reports the pattern's size, so a
-  summary strip is cost without content. The second half is what makes this a decision worth
-  logging.
+  **This was narrowed hours after it was written, and the original is worth recording because the
+  reasoning that produced it was wrong in an instructive way.** As first written, the first Generate
+  disabled *every* input and a "Start over" control was the only way back. The argument was
+  consistency: target width and bead size regenerate exactly as a crop change would, so freezing one
+  and not the others looked arbitrary. What that missed is that the two are not the same kind of
+  thing to the person using it. Re-cropping after the fact is **messy** — the preview is gone, the
+  pattern is what is on screen, and reopening a crop over an image you can no longer see invites
+  fiddling with framing while looking at something else. Changing a width and pressing Generate
+  again is not messy at all; it is the obvious way to try a different size. Freezing both to keep
+  the rule tidy made the ordinary case worse in order to be consistent about the awkward one.
+  Consistency was the wrong axis to reason on.
 
-  - **Freezing the crop alone would have been arbitrary and would not have closed anything.**
-    Target width, bead size and color limit each re-run the pipeline exactly as a crop change does.
-    A user who can change the width but not the framing is owed an explanation there isn't one for.
-  - **The hazard is real and predates M4.** A second Generate calls `setPattern`, replacing the
-    `Pattern` object M5 has been mutating in place. Every manual edit is gone — no warning, no
-    undo, since history is deliberately not persisted (D19). Nothing in v1 named this; PAL-7 names
-    the same shape for palette switching and is **[v2]**.
-  - **Explicit is not the same as confirmed, and v1 stops at explicit.** A dialog is PAL-7's
-    mechanism and belongs with it; a control that says what it discards is proportionate at this
-    scale. Recorded as a gap beside PAL-7 rather than closed here, for M9 to weigh — the same
-    treatment NFR-2's overrun and IN-6's ceiling got.
+  **Why the preview closes at all.** A panel sitting between the controls and the canvas competes
+  with the pattern for U3's "the pattern is the visual focus," and the stats line already reports
+  the pattern's size, so a summary strip would be cost without content.
 
-  **What it costs is nearly nothing, which is why the decision is about the product and not the
-  budget.** The decoded `HTMLImageElement` is already retained after upload, so restoring the
-  preview is a class toggle and an `input.disabled` loop — no re-upload, no second decode, no new
-  state machine. Recorded because it ticks no box: it satisfies no requirement, threatens neither
-  Check M4 closes (IN-5's is about the state after upload; SET-3's says *before Generate is
-  pressed*), and would otherwise ship as an unexplained behavior.
+  **What the narrowing gives up, stated plainly so it is not discovered later.** A second Generate
+  calls `setPattern`, replacing the `Pattern` object M5 mutates in place — every manual edit gone,
+  no warning, no undo, since history is deliberately not persisted (D19). The frozen version closed
+  that by accident rather than by design. **It is open again**, and it is not M4's to close: the
+  honest fix is PAL-7's shape, a confirmation naming the loss, which is **[v2]** and palette-only.
+  Recorded beside PAL-7 too, and given the same treatment as NFR-2's overrun and IN-6's ceiling —
+  left for M9 to weigh rather than quietly patched here.
+
+  **Two consequences at the edges, both found by using it rather than by reading it:**
+  - **A new upload discards the pattern**, not just the crop. D21 was written saying a new upload
+    "resets everything"; it did not — the old pattern stayed on the page below the fold, a
+    conversion of an image no longer visible anywhere, looking current and belonging to nothing.
+  - **A rejected upload changes nothing but the status line** — not the loaded image, not its crop,
+    not this freeze, not the pattern. This revises M3, which cleared the loaded image and disabled
+    Generate after a rejection. That was right when written and is not now: with no preview on
+    screen the user could not tell which image was still loaded, so refusing to generate was the
+    safe reading of an ambiguous state. IN-5's preview removes the ambiguity, and with it the
+    reason; what was left was a failed action costing the user their image, their crop, and their
+    way back to the preview.
+
+  Recorded because it ticks no box: it satisfies no requirement, threatens neither Check M4 closes
+  (IN-5's is about the state after upload; SET-3's says *before Generate is pressed*), and would
+  otherwise ship as an unexplained behavior.

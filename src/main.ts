@@ -1,16 +1,26 @@
 import './styles.css';
 
 import { requireElement } from './dom';
+import { fullImageCrop } from './lib/crop';
 import { calculateDimensions } from './lib/pattern-utils';
 import { loadPalette } from './palette';
 import { generatePattern } from './pipeline/generate';
 import { imageToPixels } from './rasterize';
 import { clearPattern, initPatternViewControls, renderPattern, showProcessing } from './render/canvas-view';
+import {
+    clearCropPreview,
+    getCrop,
+    hideCropPreview,
+    initCropControls,
+    onCropChange,
+    showCropPreview
+} from './render/crop-view';
 import { initEditorControls, setEditorPalette } from './render/editor';
 import { initInventoryControls } from './render/inventory';
 import { clearPatternState, onPatternChange, setPattern } from './state/pattern-state';
 import { showStatus } from './status';
 import { UploadError, readImageFile } from './upload';
+import type { CropRect } from './lib/crop';
 import type { Palette } from './types';
 
 declare global {
@@ -26,6 +36,7 @@ const targetWidthInput = requireElement<HTMLInputElement>('targetWidth');
 const beadSizeSelect = requireElement<HTMLSelectElement>('beadSize');
 const colorLimitInput = requireElement<HTMLInputElement>('colorLimit');
 const statsDiv = requireElement('stats');
+const dimensionsDiv = requireElement('dimensions');
 
 let perlerColors: Palette = [];
 let paletteReady = false;
@@ -34,6 +45,7 @@ let uploadedImage: HTMLImageElement | null = null;
 initPatternViewControls();
 initInventoryControls();
 initEditorControls();
+initCropControls();
 
 // The stats line reads the shared owner too, so an edit and a generate reach it
 // by the same path and `Colors Used` cannot drift from the inventory (EDIT-4).
@@ -46,6 +58,64 @@ onPatternChange((state) => {
     statsDiv.textContent = `Pattern Size: ${state.pattern.width} x ${state.pattern.height} beads | `
         + `Total Beads Required: ${state.beadCount} | Colors Used: ${distinctColors}`;
 });
+
+/**
+ * One place decides what is interactive, rather than the three that used to
+ * assign `generateBtn.disabled` between them, each knowing part of the story.
+ *
+ * Note what is *not* here: the size and colour settings stay live after a
+ * pattern exists, so they can be changed and the pattern regenerated. Only the
+ * crop is one-shot (D21).
+ */
+function syncControls(): void {
+    generateBtn.disabled = !paletteReady || !uploadedImage;
+    refreshDimensions();
+}
+
+/**
+ * SET-3: the pattern the current crop and settings *would* produce, updated as
+ * either changes. It stays live after a pattern exists, because the settings do
+ * -- changing the width and watching this line is how the next generate is
+ * aimed. It is labelled "Will generate" for that reason: once a pattern is on
+ * screen the stats line below reports what *is*, and without the label the two
+ * read as the same claim made twice.
+ *
+ * `calculateDimensions` throwing is the useful case rather than the awkward one:
+ * it carries SET-5's message naming the limit that was hit, which until now
+ * could only be seen by pressing Generate.
+ */
+function refreshDimensions(): void {
+    if (!uploadedImage) {
+        dimensionsDiv.textContent = '';
+        dimensionsDiv.classList.remove('is-error');
+        return;
+    }
+
+    const crop = currentCrop(uploadedImage);
+    try {
+        const { pixelWidth, pixelHeight, cellCount } = calculateDimensions(
+            parseFloat(targetWidthInput.value),
+            parseFloat(beadSizeSelect.value),
+            crop.width,
+            crop.height
+        );
+        dimensionsDiv.classList.remove('is-error');
+        dimensionsDiv.textContent = `Will generate: ${pixelWidth} × ${pixelHeight} beads · `
+            + `${cellCount.toLocaleString()} beads total`;
+    } catch (error) {
+        dimensionsDiv.classList.add('is-error');
+        dimensionsDiv.textContent = (error as Error).message;
+    }
+}
+
+/** The live crop, or the whole image before the preview has one. */
+function currentCrop(image: HTMLImageElement): CropRect {
+    return getCrop() ?? fullImageCrop(image.naturalWidth, image.naturalHeight);
+}
+
+targetWidthInput.addEventListener('input', refreshDimensions);
+beadSizeSelect.addEventListener('change', refreshDimensions);
+onCropChange(refreshDimensions);
 
 // Startup wiring succeeded, so the boot guard in index.html can stand down and
 // leave the status line to us. Deliberately set here rather than at the top of
@@ -65,15 +135,15 @@ loadPalette()
         // SET-4's range is 2 to the palette size, and the palette size is not
         // known until now.
         colorLimitInput.max = String(perlerColors.length);
-        generateBtn.disabled = !uploadedImage;
         generateBtn.textContent = 'Generate Pattern';
+        syncControls();
         showStatus(`Default palette loaded (${perlerColors.length} colors). Upload an image to begin.`, 'success');
     })
     .catch((error: unknown) => {
         console.error('Error loading colors_221.json:', error);
         paletteReady = false;
-        generateBtn.disabled = true;
         generateBtn.textContent = 'Palette unavailable';
+        syncControls();
         // Name the actual failure (PAL-3). "Serve it over HTTP" is no longer the
         // right advice here: if the page were not served, the boot guard in
         // index.html would have caught it and this code would never have run.
@@ -107,19 +177,41 @@ imageUpload.addEventListener('change', async (event) => {
         const image = await readImageFile(file);
         if (token !== uploadToken) return;
         uploadedImage = image;
+        // A new image brings the crop preview back -- it is the one thing that
+        // does, since the crop is one-shot per image (D21) -- and it takes the
+        // old pattern with it. Leaving that pattern up would leave a conversion
+        // of an image no longer anywhere on screen: below the fold, looking
+        // current, belonging to nothing.
+        //
+        // Only on success: a rejected file changed nothing, so it must not cost
+        // the user the pattern they already had (M3).
+        clearPattern();
+        clearPatternState();
+        showCropPreview(image);
     } catch (error) {
         if (token !== uploadToken) return;
-        uploadedImage = null;
-        generateBtn.disabled = true;
+        // **A rejected file changes nothing but the status line.** Not the
+        // loaded image, not its crop, not the pattern.
+        //
+        // This revises M3, which cleared the loaded image and disabled Generate
+        // after a rejection. That was right when it was written and is not now:
+        // with no preview on screen, the user had no way to tell *which* image
+        // was still loaded, so refusing to generate was the safe reading of an
+        // ambiguous state. IN-5's preview removes the ambiguity -- whatever is
+        // pictured is what will be generated -- and with it the reason. What is
+        // left is a failed action that used to cost the user their loaded image,
+        // their crop, and their way back to the preview.
+        if (uploadedImage === null) clearCropPreview();
         // Every message from readImageFile names the actual problem
         // (IN-2 … IN-4, IN-6); anything else reaching here is a bug worth
         // seeing in the console.
         if (!(error instanceof UploadError)) console.error('Upload failed:', error);
+        syncControls();
         showStatus((error as Error).message || 'That image could not be used.', 'error');
         return;
     }
 
-    generateBtn.disabled = !paletteReady;
+    syncControls();
     showStatus(
         paletteReady
             ? 'Image ready. Choose dimensions and generate your pattern.'
@@ -147,13 +239,17 @@ generateBtn.addEventListener('click', () => {
         return;
     }
 
+    // The crop is the source of truth for size from here down -- never the
+    // image's own dimensions, which describe the uncropped picture.
+    const crop = currentCrop(uploadedImage);
+
     let dimensions;
     try {
         dimensions = calculateDimensions(
             parseFloat(targetWidthInput.value),
             parseFloat(beadSizeSelect.value),
-            uploadedImage.width,
-            uploadedImage.height
+            crop.width,
+            crop.height
         );
     } catch (error) {
         showStatus((error as Error).message, 'error');
@@ -161,7 +257,12 @@ generateBtn.addEventListener('click', () => {
     }
 
     try {
-        buildPattern(uploadedImage, dimensions.pixelWidth, dimensions.pixelHeight, colorLimit);
+        buildPattern(uploadedImage, crop, dimensions.pixelWidth, dimensions.pixelHeight, colorLimit);
+        // D21, and only on the path where a pattern actually exists: the crop is
+        // settled for this image. The size and colour settings stay live, so the
+        // pattern can be regenerated at a different size without re-uploading;
+        // only the framing is fixed. A new upload is what brings the crop back.
+        hideCropPreview();
     } catch (error) {
         console.error('Pattern generation failed:', error);
         clearPattern();
@@ -173,13 +274,14 @@ generateBtn.addEventListener('click', () => {
 /** Rasterize, convert, then render the pattern, stats, and inventory. */
 function buildPattern(
     image: HTMLImageElement,
+    crop: CropRect,
     pixelWidth: number,
     pixelHeight: number,
     colorLimit: number
 ): void {
     showProcessing();
 
-    const source = imageToPixels(image, pixelWidth, pixelHeight);
+    const source = imageToPixels(image, pixelWidth, pixelHeight, crop);
     const { pattern, tallies } = generatePattern(source, perlerColors, {
         gridWidth: pixelWidth,
         gridHeight: pixelHeight,

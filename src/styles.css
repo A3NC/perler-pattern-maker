@@ -561,6 +561,152 @@
             touch-action: none;
         }
 
+        /* SET-3's live readout: the pattern that *would* be generated, from the
+           current crop and settings. Sits above Generate because that is the
+           reading order -- see the size, then press the button. The error state
+           is SET-5's message, surfaced here so the limit is named before the
+           button is pressed rather than after. */
+        .dimensions {
+            margin-top: 0.5rem;
+            padding: 0.6rem 0.75rem;
+            border-radius: 6px;
+            background-color: #F3F4F6;
+            border: 1px solid var(--border);
+            font-size: 0.95rem;
+            font-weight: 500;
+            text-align: center;
+            color: #374151;
+        }
+
+        .dimensions:empty {
+            display: none;
+        }
+
+        .dimensions.is-error {
+            color: #991B1B;
+            background-color: #FEE2E2;
+            border-color: #FCA5A5;
+        }
+
+        /* M4's crop preview (IN-5). Hidden until an upload succeeds, and hidden
+           again on a successful generate (D21). Same show/hide idiom as
+           .editor-controls: display in the base rule, a class to reveal. */
+        .preview-area {
+            display: none;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .preview-area.is-visible {
+            display: block;
+        }
+
+        /* Shrink-wraps the image, so its own box *is* the image's box and every
+           overlay below can be positioned against it with inset: 0. line-height
+           kills the inline descender gap under the image. */
+        .preview-frame {
+            position: relative;
+            display: inline-block;
+            max-width: 100%;
+            line-height: 0;
+            /* The crop is a drag, so the browser must not claim the gesture for
+               scrolling first. M5 learned this on the pattern canvas; it fails
+               only on a touch screen, which is half of M4's Done-when. */
+            touch-action: none;
+            /* A drag across an image otherwise selects it, which flashes a blue
+               wash over the preview mid-crop. */
+            user-select: none;
+            -webkit-user-select: none;
+            /* Replaced per-pointermove by crop-view.ts with a move/resize cursor
+               when the pointer is over the rectangle or a handle. */
+            cursor: crosshair;
+        }
+
+        .preview-frame img {
+            display: block;
+            max-width: 100%;
+            max-height: 420px;
+            width: auto;
+            height: auto;
+            border-radius: 8px;
+        }
+
+        /* Clips the shade's oversized shadow to the image. Without this layer
+           that shadow covers the entire page. */
+        .crop-clip {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            border-radius: 8px;
+            pointer-events: none;
+        }
+
+        /* Dims everything outside the crop with one property. The box itself is
+           transparent -- what is visible is 9999px of spread shadow filling the
+           clip layer around it, so the cropped region keeps its true colors and
+           only the part being discarded is tinted. */
+        .crop-shade {
+            position: absolute;
+            box-shadow: 0 0 0 9999px rgba(17, 24, 39, 0.55);
+        }
+
+        /* Deliberately outside .crop-clip: the handles are centred on the
+           corners and hang half outside the rectangle, and at a full-image crop
+           those corners sit exactly on the image edge. */
+        .crop-rect {
+            position: absolute;
+            box-sizing: border-box;
+            border: 1px solid rgba(255, 255, 255, 0.95);
+            outline: 1px solid rgba(17, 24, 39, 0.6);
+            pointer-events: none;
+        }
+
+        /* No pointer-events anywhere in the overlay: every gesture lands on
+           .preview-frame and hitTestCrop decides what was grabbed, so the DOM
+           never disagrees with the geometry about which handle is under the
+           finger. */
+        .crop-handle {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            box-sizing: border-box;
+            background-color: #FFFFFF;
+            border: 2px solid #1F2937;
+            border-radius: 3px;
+            pointer-events: none;
+        }
+
+        .crop-handle-nw {
+            top: 0;
+            left: 0;
+            transform: translate(-50%, -50%);
+        }
+
+        .crop-handle-ne {
+            top: 0;
+            right: 0;
+            transform: translate(50%, -50%);
+        }
+
+        .crop-handle-sw {
+            bottom: 0;
+            left: 0;
+            transform: translate(-50%, 50%);
+        }
+
+        .crop-handle-se {
+            bottom: 0;
+            right: 0;
+            transform: translate(50%, 50%);
+        }
+
+        .preview-hint {
+            margin: 0.75rem 0 0;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            color: #6B7280;
+        }
+
         /* NFR-5 / UI-1, UI-2. Below this width the two-column control grid and the
            doubled 2rem body+container padding push content off-screen: at 390 px the
            heading, Generate button, and target-width control were all clipped.

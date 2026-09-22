@@ -38,6 +38,13 @@ import type { Pattern } from '../types';
 
 const outputContainer = requireElement('outputContainer');
 const zoomControls = requireElement('zoomControls');
+/**
+ * The empty state's message, captured once at startup so clearing can put the
+ * real element back rather than re-creating markup that lives in index.html.
+ * It carries inline styles M8 owns; duplicating them here would make that two
+ * places to fix.
+ */
+const placeholderText = requireElement('placeholderText');
 const toggleTextBtn = requireElement<HTMLInputElement>('toggleTextBtn');
 const toggleGridBtn = requireElement<HTMLInputElement>('toggleGridBtn');
 
@@ -108,9 +115,18 @@ export function showProcessing(): void {
     outputContainer.innerHTML = 'Processing...';
 }
 
+/**
+ * The inverse of `renderPattern`, and it has to be a real inverse: the zoom row
+ * is shown there and nothing else hides it, so without this a cleared pattern
+ * left an orphaned row of controls with nothing to control. The placeholder
+ * goes back too -- an empty dashed box says less than the sentence that was
+ * there before anything was generated.
+ */
 export function clearPattern(): void {
     view = null;
     outputContainer.innerHTML = '';
+    outputContainer.appendChild(placeholderText);
+    zoomControls.style.display = 'none';
 }
 
 /** Build the canvas view and open at minimum zoom, whole pattern visible. */

@@ -203,6 +203,12 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
 - [ ] **PAL-7 [v2]** Changing the palette after a pattern exists warns that the pattern will be
   regenerated and manual edits lost, and requires confirmation.
   **Check:** With hand-edited cells present, switching palette prompts before discarding them.
+  _(**This is the only requirement of its shape, and it covers only the palette.** Crop, target
+  width, bead size and color limit all regenerate and destroy manual edits in exactly the same way,
+  and no [v1] requirement covers them — a gap, named here rather than in passing. D21 is v1's
+  answer: the first Generate disables the whole input set, so the discard has to be asked for
+  explicitly through Start over, which is not the same as being warned about it. Whether v1 also
+  wants PAL-7's confirmation on that control is M9's call.)_
 
 ### Generation — GEN
 
@@ -936,3 +942,35 @@ editor state would depend on M5. Do not fix screenshots of these states before t
 
   **Deliberately not done:** no decoder is bundled (Q4), and no preview is built — IN-1's remaining
   half is IN-5's, and M4 owns it. Building a placeholder here would be building it twice.
+
+- **D21 (2026-09-22) — The first Generate fixes the inputs; a new pattern is an explicit act.**
+  Written for M4, and it is a lifecycle decision rather than a crop one. The preview panel appears
+  on a successful upload and is **hidden outright** on a successful generate — no summary row — and
+  the settings inputs are disabled with it. Getting a different pattern goes through one control,
+  **Start over**, which re-enables the inputs and restores the preview with the same image and the
+  same crop rectangle still in place, so it is a revision rather than a reset.
+
+  **The reasoning starts with the interface and ends somewhere else.** The first half is ordinary:
+  a preview panel sitting between the controls and the canvas competes with the pattern for U3's
+  "the pattern is the visual focus," and the stats line already reports the pattern's size, so a
+  summary strip is cost without content. The second half is what makes this a decision worth
+  logging.
+
+  - **Freezing the crop alone would have been arbitrary and would not have closed anything.**
+    Target width, bead size and color limit each re-run the pipeline exactly as a crop change does.
+    A user who can change the width but not the framing is owed an explanation there isn't one for.
+  - **The hazard is real and predates M4.** A second Generate calls `setPattern`, replacing the
+    `Pattern` object M5 has been mutating in place. Every manual edit is gone — no warning, no
+    undo, since history is deliberately not persisted (D19). Nothing in v1 named this; PAL-7 names
+    the same shape for palette switching and is **[v2]**.
+  - **Explicit is not the same as confirmed, and v1 stops at explicit.** A dialog is PAL-7's
+    mechanism and belongs with it; a control that says what it discards is proportionate at this
+    scale. Recorded as a gap beside PAL-7 rather than closed here, for M9 to weigh — the same
+    treatment NFR-2's overrun and IN-6's ceiling got.
+
+  **What it costs is nearly nothing, which is why the decision is about the product and not the
+  budget.** The decoded `HTMLImageElement` is already retained after upload, so restoring the
+  preview is a class toggle and an `input.disabled` loop — no re-upload, no second decode, no new
+  state machine. Recorded because it ticks no box: it satisfies no requirement, threatens neither
+  Check M4 closes (IN-5's is about the state after upload; SET-3's says *before Generate is
+  pressed*), and would otherwise ship as an unexplained behavior.

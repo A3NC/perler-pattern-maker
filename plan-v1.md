@@ -361,6 +361,22 @@ the horizontal overflow at 390 px. Replace the ad-hoc spacing, radius, and font-
 scales defined in `:root`. Give every interactive control a visible focus ring, bring app text to
 WCAG AA contrast, and size touch targets to 44 px at 390 px wide.
 
+**Found before M8 started** (2026-09-22, phone browser, *with a pattern on screen* — which is why
+the 2026-09-13 empty-state measurement missed them; both are UI-1 failures, not new scope):
+
+- **The `.zoom-controls` row overflows at 390 px.** Two zoom buttons plus the "Show Codes" and
+  "Grid" toggles come to roughly 410 px against the ~326 px the container leaves. That row has
+  `flex-wrap` off deliberately, but the comment saying so predates M5's editor bar; M8 picks one of
+  wrapping it, shortening the buttons to icons in the editor bar's idiom, or folding the toggles
+  into that bar.
+- **`#sortOption` truncates "Sort by Largest Count".** `.count-header` is a no-wrap flex row, so the
+  select shares width with the `<h3>` and shrinks below its own option text. Wrapping the header or
+  dropping the redundant "Sort by " prefix both fix it; the prefix restates what the control is.
+- **Already landed on `m4-crop`, don't redo:** the two view toggles are sized and given a 44 px row
+  (UI-6), and `button` carries `touch-action: manipulation` so a double tap on the zoom buttons no
+  longer zooms the page. Their literals were left raw on purpose — UI-3 tokenizes the file in one
+  pass here.
+
 **Why here:** All of v1's UI surface exists by now — the canvas view from M1, crop from M4, editor
 chrome from M5 — so nothing gets styled twice. It is also the last point where this is still cheap:
 after M9 ticks the boxes, reopening them is a regression rather than a task.

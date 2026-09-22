@@ -9,17 +9,34 @@ leaves the browser.
 
 ## What it does today
 
-1. Upload an image (any format the browser can decode).
-2. Choose a finished physical width in inches and a bead size — Standard (5 mm) or Mini (2.6 mm).
-3. The app derives the bead-grid dimensions from the width, the bead pitch, and the image's aspect
-   ratio, resizes the image to that grid, and maps each visible pixel to the nearest palette color.
-   Pixels with alpha < 128 become empty cells rather than beads.
-4. The pattern renders on a canvas: zoom, drag to pan, toggle bead codes, toggle gridlines and the
-   edge rulers that number every tenth row and column.
-5. A bead inventory lists every color used with its count, sortable by count or by name.
+1. **Upload an image** — PNG, JPEG, GIF, WebP or BMP. Files the app cannot use are turned away
+   before anything is decoded, each with a message that says what was actually wrong: a PDF, a text
+   file renamed to `.png`, a download that was cut off partway, an iPhone HEIC photo in a browser
+   that cannot read one, an image too large to work with. The file's own bytes decide this, not its
+   name or its extension — both of which are just the operating system guessing.
+2. **Choose the finished size** — a physical width in inches and a bead size, Standard (5 mm) or
+   Mini (2.6 mm) — and a limit on how many distinct colors the pattern may use.
+3. **Generate.** The app derives the bead grid from the width, the bead pitch, and the image's
+   aspect ratio, then averages the source pixels falling inside each bead cell and matches the
+   result to the nearest Perler color *perceptually* — using a color space built to match how
+   human eyes judge difference, rather than raw RGB distance, which does not. If the pattern
+   uses more colors than the limit allows, the extras are merged away one at a time, always
+   choosing the merge that costs the least visible change. Pixels that are mostly transparent
+   become empty cells rather than beads.
+4. **Read the pattern.** It renders on a canvas: zoom, drag to pan, toggle the bead code on each
+   cell, and toggle gridlines with edge rulers numbering every tenth row and column.
+5. **Fix what the conversion got wrong.** A brush paints a continuous run as you drag, an eraser
+   clears cells back to empty, and a flood fill covers a whole contiguous region of one color — or
+   fills it with empty, which is how you strip a plain background. Every stroke can be undone and
+   redone. A separate pan mode never paints by accident, and alt-clicking any cell adopts its color.
+6. **Read the bead inventory** — every color used, with its count, sortable by count or by name.
+   Those rows double as the color picker, so choosing a color already in the pattern costs the
+   shopping list nothing. For colors not yet in the pattern, a search panel ranks the palette by
+   perceptual closeness and marks which candidates are already in use.
 
-Guard rails: 300 beads per side and 50,000 cells total. Exceeding either is reported with a message
-that names the limit that was actually hit.
+Guard rails: source images up to 8000 pixels per side, and patterns up to 300 beads per side and
+50,000 cells total. Exceeding any of them is reported with a message that names the limit actually
+hit.
 
 ## Quick start
 
@@ -71,10 +88,37 @@ edits, exports, or serializes it.
 
 ## Status
 
-v1 is in progress. **M0** (Vite + TypeScript, Mini pitch corrected to 2.6 mm), **M1** (canvas
-pattern view replacing the element-per-bead grid), and **M10** (gridlines and edge rulers) are
-done. **M2 — the quality core: OkLab matching, per-cell area averaging, and a user-set color limit
-— is in flight**; color matching in the pipeline is still nearest-RGB until it lands.
+v1 is in progress. Six of eleven milestones are done:
 
-Still ahead: input-error handling, crop, the correction editor, PNG export, autosave, and the
-interface floor.
+| | Milestone | What landed |
+|---|---|---|
+| **M0** | Project setup | Vite + TypeScript; Mini bead pitch corrected to 2.6 mm |
+| **M1** | Canvas pattern view | Replaced the element-per-bead grid; zoom and pan by redraw |
+| **M2** | Quality core | Perceptual color matching, per-cell averaging, the color limit |
+| **M3** | Input handling and errors | Every rejected file gets a specific reason, decided from its bytes |
+| **M5** | Correction editor | Brush, eraser, flood fill, undo/redo, two-tier color picker |
+| **M10** | Pattern orientation | Gridlines and edge rulers |
+
+**M2 is the one with a caveat worth stating.** It is closed, and it is what makes the output look
+like the picture rather than like a palette — but its own quality gate is deliberately left open
+rather than ticked to make the milestone look finished. Two things remain: dark and shaded regions
+still band more than they should, and on drawn characters, facial features distort. The second is
+not fixable anywhere in the conversion, because the bead grid is fixed before any of it runs and
+where a cell boundary falls relative to an eye decides what that eye becomes. That is the honest
+reason the editor exists — M5 is not only cleanup, it covers a class of defect the pipeline could
+never reach.
+
+**M3 turned out to rest on one fact:** a browser tells you an image failed to load without ever
+telling you why. So the reason has to be worked out beforehand, from the file itself — which is
+why a truncated download and an unreadable format produce different sentences rather than the
+same shrug. A useful side effect: an image too large to handle is refused in milliseconds,
+because its size is read from the file's header and nothing is ever decoded.
+
+**M5 widened mid-project.** Undo and flood fill were both out of v1 on the reasoning that a
+one-cell brush makes mistakes self-correcting; that reasoning did not survive contact with the fact
+that what an edit overwrites was *generated*, not drawn by the user, so "just paint it again"
+assumes knowledge they do not have. Both moved in before the milestone started rather than during
+it.
+
+**M6 — PNG export — is next**, and it is the last item on the critical path. Still ahead after
+it: crop (M4), autosave (M7), the interface floor (M8), and final verification (M9).

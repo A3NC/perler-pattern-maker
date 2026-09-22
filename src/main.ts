@@ -10,7 +10,7 @@ import { initEditorControls, setEditorPalette } from './render/editor';
 import { initInventoryControls } from './render/inventory';
 import { clearPatternState, onPatternChange, setPattern } from './state/pattern-state';
 import { showStatus } from './status';
-import { readImageFile } from './upload';
+import { UploadError, readImageFile } from './upload';
 import type { Palette } from './types';
 
 declare global {
@@ -84,16 +84,38 @@ loadPalette()
         );
     });
 
+// Reading a file is asynchronous, so two quick picks can finish out of order
+// and leave the older image installed. Each change claims a token and a stale
+// result is dropped.
+let uploadToken = 0;
+
 imageUpload.addEventListener('change', async (event) => {
-    const file = (event.target as HTMLInputElement).files?.[0];
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
     if (!file) return;
 
+    // Clear the input immediately. Without this, re-picking the file that was
+    // just rejected fires no change event at all -- the value has not changed
+    // -- so the app looks silently broken, which is the impression M3 exists
+    // to remove. The File reference above stays valid once cleared.
+    input.value = '';
+
+    const token = ++uploadToken;
+    showStatus(`Reading ${file.name}...`, 'info');
+
     try {
-        uploadedImage = await readImageFile(file);
+        const image = await readImageFile(file);
+        if (token !== uploadToken) return;
+        uploadedImage = image;
     } catch (error) {
+        if (token !== uploadToken) return;
         uploadedImage = null;
         generateBtn.disabled = true;
-        showStatus((error as Error).message, 'error');
+        // Every message from readImageFile names the actual problem
+        // (IN-2 … IN-4, IN-6); anything else reaching here is a bug worth
+        // seeing in the console.
+        if (!(error instanceof UploadError)) console.error('Upload failed:', error);
+        showStatus((error as Error).message || 'That image could not be used.', 'error');
         return;
     }
 

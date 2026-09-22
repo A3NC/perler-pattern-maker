@@ -80,23 +80,45 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
 
 - [ ] **IN-1 [v1]** Accept a single image file via file picker, in PNG, JPEG, GIF, WebP, or BMP.
   **Check:** One valid file of each listed format uploads and produces a preview.
-- [ ] **IN-2 [v1]** Reject non-image files with a specific, readable error naming the problem.
+  _(**Half done at M3.** All five formats — including all three WebP header layouts — upload and
+  reach a generated pattern, verified in Chrome against real encoder output. The outstanding half is
+  the preview, which is IN-5 and belongs to M4; this ticks when that lands.)_
+- [x] **IN-2 [v1]** Reject non-image files with a specific, readable error naming the problem.
   **Check:** Uploading a `.txt`, a `.pdf`, and a zero-byte file each shows a distinct message that
   says what was wrong (not "an error occurred"), and the app stays usable afterward.
-- [ ] **IN-3 [v1]** Reject corrupted or truncated image files with a readable error.
+  _(Satisfied at M3. Seven distinct rejection reasons, each with its own message; a test asserts the
+  messages are pairwise distinct rather than trusting them to be. `.txt`, `.pdf` and a zero-byte
+  file were driven through Chrome, and recovery — a good file loading straight afterward — is
+  checked after every rejection.)_
+- [x] **IN-3 [v1]** Reject corrupted or truncated image files with a readable error.
   **Check:** Upload a JPEG truncated to 50% of its bytes and a file renamed from `.txt` to `.png`.
   Both produce an error mentioning that the file could not be read as an image. No blank screen,
   no console-only failure.
-- [ ] **IN-4 [v1]** Detect files the browser cannot decode (notably iPhone HEIC/HEIF) and say so
+  _(Satisfied at M3, but **not through the decoder** — the reason this Check needed its own
+  mechanism. A browser renders a JPEG truncated to 50% as a partial image and fires `onload`, so
+  nothing downstream of the decode can see the problem. `looksTruncated` in `src/lib/image-file.ts`
+  checks the file's own end marker instead: JPEG's `FFD9`, PNG's `IEND`, GIF's trailer, and the
+  self-declared lengths in WebP and BMP. The marker is searched for within the last 64 bytes rather
+  than demanded at the final byte, because a false positive refuses a file that would have worked.
+  A `.txt` renamed `.png` is caught earlier and more specifically, by sniffing.)_
+- [x] **IN-4 [v1]** Detect files the browser cannot decode (notably iPhone HEIC/HEIF) and say so
   explicitly, naming the format and suggesting JPEG or PNG.
   **Check:** Upload a `.heic` in a browser without HEIC support. Error names HEIC and suggests a
   conversion, rather than reporting a generic failure. See Open question Q4.
+  _(Satisfied at M3, by attempting the decode rather than refusing the format — see Q4, now
+  resolved, and D20. The sniffed format is carried through the decode so that a failure can be
+  named; HEIC's message points at Settings > Camera > Formats.)_
 - [ ] **IN-5 [v1]** Show a preview of the uploaded image before generation.
   **Check:** After a successful upload, the image is visible at a reasonable on-screen size and the
   Generate control becomes enabled.
-- [ ] **IN-6 [v1]** Reject images above a size ceiling with a readable error rather than hanging.
+- [x] **IN-6 [v1]** Reject images above a size ceiling with a readable error rather than hanging.
   **Check:** Upload an image larger than the ceiling defined in NFR-3; an error appears within
   2 seconds and the tab does not freeze.
+  _(Satisfied at M3, with room to spare: a 12000 × 9000 PNG is refused in **15 ms** against the
+  2 s allowance, because the size is read out of the file header and nothing is ever decoded. The
+  8000 px ceiling is also re-checked against `naturalWidth`/`naturalHeight` after the decode, for
+  the files whose header the parser declines to read — a JPEG whose frame header sits past the
+  64 KB window, or a format with no parser at all.)_
 
 ### Settings — SET
 
@@ -525,8 +547,14 @@ editor state would depend on M5. Do not fix screenshots of these states before t
   physical beads and inflates the color count. Decide after the R1–R6 review whether to offer it at
   all — note it would help R4/R5 (photos) most and hurt R1/R2 (flat artwork) most, so if it ships
   it probably should not be on by default. Currently: not in v1.
-- **Q4 — HEIC.** Confirm which target browsers decode HEIC. If most do not, decide between a
-  clear error (IN-4, current plan) and bundling a decoder (adds significant weight).
+- **Q4 — HEIC. RESOLVED (2026-09-22), in M3.** Measured rather than assumed, against a real HEIC
+  written by `sips`: **Safari decodes it** (a 400 × 300 HEIC decoded to 400 × 300), **Chrome refuses
+  it** with an `EncodingError`. So the answer is neither "most browsers do" nor "most browsers do
+  not" — it splits, and it splits exactly along the platform iPhone photos come from. That rules out
+  both original options: refusing HEIC up front would break the case IN-4 exists for on the very
+  browser those users have, and bundling a decoder would carry significant weight for something
+  Safari already does. The shipped answer is the third one, D20: attempt the decode, and use the
+  sniffed format to name the failure only if it actually fails.
 - **Q5 — Units.** Inches only for v1. Add centimeters, and if so, as a unit toggle or a second
   field?
 - **Q6 — Palette sourcing.** Where do the 144 and 291 color sets come from, and are their color
@@ -874,3 +902,37 @@ editor state would depend on M5. Do not fix screenshots of these states before t
   bound that keeps it there is that every piece is small and testable — the history stack, the fill
   search, the drag interpolation and the tally arithmetic are all pure functions under NFR-4, and
   `Pattern` does not change, so M6 and M7 inherit nothing new.
+
+- **D20 (2026-09-22) — Input failures are classified from the file's own bytes, before the decode.**
+  Written in M3, and forced by one fact: **`img.onerror` carries no reason.** The event is empty, so
+  every decode failure looks identical from the inside — a `.txt` renamed `.png`, a truncated JPEG,
+  a HEIC and a genuinely damaged PNG all arrive as the same nothing. Specificity therefore cannot be
+  extracted from the failure; it has to be decided *before* it, from evidence in the file.
+
+  So `src/lib/image-file.ts` reads two byte windows — the first 64 KB and the last 64 bytes — and
+  answers three questions the decoder cannot: what container is this (magic bytes, never the
+  extension and never `file.type`, both of which are just the operating system's extension mapping
+  and are wrong exactly when it matters), is it complete (end markers and self-declared lengths),
+  and how big is it (header dimensions, so IN-6 costs no decode at all). It is pure and testable in
+  Node under NFR-4; `src/upload.ts` keeps only the browser half — two slices, then a decode through
+  an object URL.
+
+  **Three things this settled that are worth not relitigating:**
+  - **Sniff to label, but still attempt the decode.** Only containers no `<img>` will ever turn into
+    pixels are refused up front — PDF, zip, video, plain text, SVG. HEIC, AVIF and TIFF are
+    *attempted*, and the sniffed label is held back and used to word the message only if the decode
+    fails. This is what Q4's measurement demanded: Safari reads HEIC and Chrome does not, so a
+    static allowlist is wrong on one of them whichever way it is written. The general form — *let
+    the browser answer what only the browser knows, and keep our own answer for what it cannot say*
+    — is the transferable part.
+  - **Truncation needs its own check, because the decoder is lenient.** See IN-3. This was the one
+    place the spec's Check was not reachable by the obvious implementation, and it was cheaper to
+    find by predicting it than by trusting it.
+  - **A header we cannot parse is not an error.** Every parser returns `null` rather than throwing or
+    guessing — a JPEG whose frame header sits past the read window, an exotic BMP — and the
+    post-decode `naturalWidth` check is the backstop. A `null` that costs one extra decode is much
+    cheaper than a false rejection of a file that would have worked, and that asymmetry is what
+    settled the tolerance of every check in this file.
+
+  **Deliberately not done:** no decoder is bundled (Q4), and no preview is built — IN-1's remaining
+  half is IN-5's, and M4 owns it. Building a placeholder here would be building it twice.

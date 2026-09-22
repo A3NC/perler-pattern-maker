@@ -1,5 +1,7 @@
 # Perler Pattern Generator
 
+**Demo link:** https://perler-pattern-maker-three.vercel.app/
+
 A browser app that turns an uploaded image into a Perler bead pattern: a grid of bead-sized cells,
 each assigned a real Perler bead color, with the color code on each cell and a bead-count list for
 shopping and sorting.

@@ -34,8 +34,66 @@
                 <input type="number" id="colorLimit" value="30" min="2" step="1">
             </div>
 
+            <!--
+                SET-3's live readout. Deliberately its own element and not
+                #stats: this line describes the pattern that *would* be
+                generated, #stats the one that exists. One element carrying both
+                tenses is how the two end up contradicting each other.
+
+                No aria-live here on purpose -- it updates on every pointermove
+                of a crop drag, and an assertive region firing at that rate is
+                noise rather than help. #statusMessage remains the announced one.
+            -->
+            <div id="dimensions" class="dimensions span-full"></div>
+
             <button id="generateBtn" disabled>Loading color palette...</button>
             <div id="statusMessage" class="status-message info" role="status" aria-live="polite">Loading the default 221-color palette...</div>
+        </div>
+
+        <!--
+            M4's crop preview (IN-5), and the crop rectangle over it. Appears on
+            a successful upload and hidden again on a successful generate: the
+            crop is one-shot per image (D21), and a new upload is what brings it
+            back. The size and colour settings stay live throughout.
+
+            The <img> is inserted here by src/render/crop-view.ts rather than
+            written in this file, and it is *the element upload.ts decoded*, not
+            a new one: the object URL it was decoded from is revoked as soon as
+            decode() resolves, so a second <img> pointed at that URL would fail
+            to load. The element keeps its bitmap and is safe to re-parent.
+
+            Two overlay elements rather than one, and the split is load-bearing.
+            .crop-shade carries the huge box-shadow that dims everything outside
+            the crop, and must be clipped to the image -- unclipped it would
+            cover the whole page. .crop-rect carries the border and the four
+            handles, and must *not* be clipped, or a crop dragged to the image
+            edge loses the outer half of its handles. One element cannot be both,
+            which is why .crop-shade sits inside its own .crop-clip layer and
+            .crop-rect does not. Both are positioned to the same rectangle.
+
+            The handles are plain divs, not buttons: there is no keyboard crop in
+            v1, and focusable controls that do nothing would leave M8 a UI-4
+            problem that looks like a bug. All three overlay layers are
+            pointer-events: none, so every gesture lands on .preview-frame and
+            hitTestCrop in src/lib/crop.ts is the only thing deciding what was
+            grabbed.
+        -->
+        <div class="preview-area" id="previewArea">
+            <div class="preview-frame" id="previewFrame">
+                <div class="crop-clip" aria-hidden="true">
+                    <div class="crop-shade" id="cropShade"></div>
+                </div>
+                <div class="crop-rect" id="cropRect" aria-hidden="true">
+                    <div class="crop-handle crop-handle-nw"></div>
+                    <div class="crop-handle crop-handle-ne"></div>
+                    <div class="crop-handle crop-handle-sw"></div>
+                    <div class="crop-handle crop-handle-se"></div>
+                </div>
+            </div>
+            <p class="preview-hint">
+                Drag inside the box to move it, drag a corner to resize, or drag outside it to
+                draw a new one. Only the bright area becomes beads.
+            </p>
         </div>
 
         <div id="stats"></div>
@@ -43,13 +101,13 @@
         <div class="zoom-controls" id="zoomControls">
             <button id="zoomOutBtn">- Zoom</button>
             <button id="zoomInBtn">+ Zoom</button>
-            <div style="display: flex; align-items: center; margin-left: 1rem;">
-                <input type="checkbox" id="toggleTextBtn" checked style="width: auto; margin-right: 0.5rem; cursor: pointer;">
-                <label for="toggleTextBtn" style="margin: 0; cursor: pointer;">Show Codes</label>
+            <div class="view-toggle">
+                <input type="checkbox" id="toggleTextBtn" checked>
+                <label for="toggleTextBtn">Show Codes</label>
             </div>
-            <div style="display: flex; align-items: center; margin-left: 1rem;">
-                <input type="checkbox" id="toggleGridBtn" checked style="width: auto; margin-right: 0.5rem; cursor: pointer;">
-                <label for="toggleGridBtn" style="margin: 0; cursor: pointer;">Grid</label>
+            <div class="view-toggle">
+                <input type="checkbox" id="toggleGridBtn" checked>
+                <label for="toggleGridBtn">Grid</label>
             </div>
         </div>
 

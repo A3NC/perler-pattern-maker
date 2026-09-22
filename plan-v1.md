@@ -199,7 +199,7 @@ detection, all pure and all tested.
 **IN-1 is deliberately left unticked.** All five formats upload and generate — verified against real
 encoder output including all three incompatible WebP header layouts — but its Check also asks for a
 preview, and the preview is IN-5, which M4 owns. Building a placeholder here would be building it
-twice. It ticks when M4 lands.
+twice. It ticks when M4 lands. _[It did, 2026-09-22.]_
 
 **IN-6 came out far cheaper than its Check allows.** A 12000 × 9000 PNG is refused in **15 ms**
 against a 2-second allowance, because the size is read out of the header and nothing is decoded at
@@ -216,12 +216,17 @@ errors. Two smaller fixes verified the same way: re-picking the *same* rejected 
 twice (the file input is cleared, without which no `change` event fires and the app looks silently
 broken), and a request token makes the last of two rapid picks win.
 
+_[Revised at M4, 2026-09-22 — "Generate is disabled after a rejection" no longer holds, and
+deliberately. A rejection now changes nothing but the status line. The assertion was M3's own, not
+one of IN-2's Checks, and its reason was that with no preview the user could not tell which image
+was still loaded. IN-5 removed that ambiguity. See D21.]_
+
 **No tactical plan was opened.** The milestone started and closed in one sitting, so
 `plans/m3-input-errors.md` would have been written and deleted unread.
 
 ---
 
-### M4 — Crop · M
+### M4 — Crop · M — ✅ **Done** (2026-09-22)
 **Do:** Preview the uploaded image with a draggable, resizable crop rectangle. Feed the cropped
 region to the pipeline. Show the resulting grid dimensions live as the crop changes.
 
@@ -235,6 +240,80 @@ weight than its size suggests. It needs the pipeline settled (M2) to hand off cl
 region; dimensions update as the crop is adjusted. Cropping tight to a subject on a white canvas
 produces a pattern with a visibly small white margin, and the remainder is erasable in M5.
 *(IN-5, SET-3)*
+
+**Delivered (2026-09-22):** **IN-1, IN-5, SET-3 — and SET-1, SET-2 and SET-5 — are ticked.** Six
+requirements from a milestone scoped for two, and the extra four cost no implementation at all:
+each of SET-1, SET-2 and SET-5 had correct arithmetic since M0 and an unticked box, because every
+one of their Checks wants a number **displayed before Generate is pressed**. That display is SET-3.
+One new pure module, `src/lib/crop.ts`, plus `src/render/crop-view.ts` for the pointer wiring.
+`npm run check` is green at 169 tests, up from 152.
+
+**Building SET-3's readout first was the decision that shaped the milestone.** It was written before
+any crop UI existed, which made it the instrument for everything after: "did the crop reach the
+pipeline" became a matter of dragging a handle and watching a number change, rather than generating
+a pattern and squinting at it.
+
+**Three traps, all real, none of them guesses:**
+- **`image.width` silently changed meaning.** M4 puts the decoded element on screen, and
+  `HTMLImageElement.width` reports the *rendered* width once an element is in the document — so
+  `rasterize.ts` had been reading the intrinsic size and would have started reading the preview's.
+  Everything now goes through the crop rectangle or `naturalWidth`.
+- **EXIF orientation was verified rather than assumed**, as the plan insisted, and it holds: on
+  `R5.JPG` (orientation 6) `naturalWidth`/`naturalHeight`, the `<img>` render and `drawImage` all
+  agree in oriented space. Measured by screenshotting the preview element and comparing its
+  top-left quadrant against the pattern the pipeline produced for that same crop — the two agree
+  within palette-snapping tolerance. Had they disagreed the crop would have landed on the wrong
+  region with no error at all.
+- **A drag on a full-image crop had to mean *draw*, not *move*.** At the opening state every point
+  is inside the rectangle, so the obvious reading is "move" — which clamps to a guaranteed no-op,
+  because a full-image crop has nowhere to go. Dragging a box across the part you want is the first
+  thing anyone tries, and it did nothing. Found by driving the real UI, not by reading the code.
+
+**D21 came out of asking what the preview does after Generate, and went one step too far before
+coming back.** It first froze the *whole* input set on a consistency argument — width and bead size
+regenerate exactly as a crop change does — with a Start over control as the only way back. Narrowed
+the same day, on use: re-cropping after the fact is genuinely messy, but changing a width and
+regenerating is the obvious way to try a different size, and freezing both to keep the rule tidy
+made the ordinary case worse to be consistent about the awkward one. **Only the crop is one-shot**;
+the settings stay live and a new upload is what reopens cropping. The thing the frozen version
+closed by accident — a second Generate silently destroying hand edits — is open again and recorded
+beside PAL-7 for M9, which is where a fix of that shape belongs.
+
+**Verified in Chrome, desktop and phone, since every Check here is an interaction.** 32 assertions
+driven end to end: the readout against SET-1/SET-2/SET-5, each gesture against its own rule (moving
+preserves size, resizing holds the opposite corner), the crop reaching the pipeline (a four-quadrant
+test image cropped to one quadrant generates exactly one bead colour, and it is that quadrant's),
+the D21 lifecycle, and touch at 390 px with no page scroll under the drag. The S1 case measured
+rather than eyeballed: cropping `R2.PNG` tight to its subject took the white beads from **68.5% to
+36.7%** of the pattern, with the remainder inside the subject's bounding box and erasable with M5's
+tools — which is D13's v1 story working.
+
+**One bug found after that pass, and it is the useful kind.** Generating a pattern and then
+uploading a new image left the old pattern on the page below the fold — a conversion of an image no
+longer visible anywhere, looking current and belonging to nothing. Nothing had ever discarded the
+pattern on upload; M4 only made it obvious, by putting a preview of the new image above the stale
+one. Two fixes: a successful upload now clears the pattern and its state, and **`clearPattern` was
+not the inverse of `renderPattern`** — the latter shows the zoom row and nothing hid it again, and
+clearing emptied the output box rather than restoring its placeholder, so *any* clear left an
+orphaned row of controls over an empty dashed box. That had been true of the generate-failure path
+all along.
+
+Fixing it surfaced a second incoherence in the same family: after a rejected upload the app kept the
+pattern but dropped the loaded image, its crop and D21's freeze, leaving no way back to the preview.
+**A rejected upload now changes nothing but the status line.** That revises M3, which cleared the
+loaded image and disabled Generate on rejection — correct when written, because with no preview the
+user could not tell which image was still loaded, so refusing to generate was the safe reading of an
+ambiguous state. IN-5 removed the ambiguity and with it the reason. It was M3's own assertion rather
+than one of IN-2's Checks, so no Check regresses; both edges are recorded in D21.
+
+**Worth carrying forward:** the automated pass asserted "a new upload resets the crop to the whole
+image" and it passed — while the pattern sat there stale. The check was aimed at the thing the
+milestone had just built rather than at the thing around it, which is exactly how a regression of
+this shape survives a green suite.
+
+**Left undone deliberately:** no keyboard crop, so the handles are non-focusable divs rather than
+buttons M8 would inherit as UI-4 no-ops. The preview's CSS literals are raw, for UI-3 to tokenize in
+one pass.
 
 ---
 
@@ -361,6 +440,22 @@ the horizontal overflow at 390 px. Replace the ad-hoc spacing, radius, and font-
 scales defined in `:root`. Give every interactive control a visible focus ring, bring app text to
 WCAG AA contrast, and size touch targets to 44 px at 390 px wide.
 
+**Found before M8 started** (2026-09-22, phone browser, *with a pattern on screen* — which is why
+the 2026-09-13 empty-state measurement missed them; both are UI-1 failures, not new scope):
+
+- **The `.zoom-controls` row overflows at 390 px.** Two zoom buttons plus the "Show Codes" and
+  "Grid" toggles come to roughly 410 px against the ~326 px the container leaves. That row has
+  `flex-wrap` off deliberately, but the comment saying so predates M5's editor bar; M8 picks one of
+  wrapping it, shortening the buttons to icons in the editor bar's idiom, or folding the toggles
+  into that bar.
+- **`#sortOption` truncates "Sort by Largest Count".** `.count-header` is a no-wrap flex row, so the
+  select shares width with the `<h3>` and shrinks below its own option text. Wrapping the header or
+  dropping the redundant "Sort by " prefix both fix it; the prefix restates what the control is.
+- **Already landed on `m4-crop`, don't redo:** the two view toggles are sized and given a 44 px row
+  (UI-6), and `button` carries `touch-action: manipulation` so a double tap on the zoom buttons no
+  longer zooms the page. Their literals were left raw on purpose — UI-3 tokenizes the file in one
+  pass here.
+
 **Why here:** All of v1's UI surface exists by now — the canvas view from M1, crop from M4, editor
 chrome from M5 — so nothing gets styled twice. It is also the last point where this is still cheap:
 after M9 ticks the boxes, reopening them is a regression rather than a task.
@@ -425,7 +520,11 @@ M0 → M1 → M2 → M5 → M6 are sequential; each genuinely needs the one befo
 any point** — slot it in whenever you want a quick, satisfying win, the way M10 was. M4 needs M2
 done. M7 needs the pattern data settled by M5.
 
-**M0, M1, M2, M3, M5 and M10 are done. M6 is next**, and it is the last item on the critical path.
+**M0, M1, M2, M3, M4, M5 and M10 are done. M6 is next**, and it is the last item on the critical
+path. M4 closed 2026-09-22 having ticked six requirements rather than two — see its Delivered block
+for why the extra four were free — and it added D21, which freezes the settings once a pattern
+exists. M6 inherits nothing from it: the crop is applied inside `rasterize.ts` as a `drawImage`
+source rectangle, so `SourcePixels`, `Pattern` and the GEN-6 boundary are all unchanged.
 M3 was slotted in as the quick win this section anticipated, and closed the same day it opened. M2
 closed 2026-09-21 with GEN-8 unticked (see its Delivered block); M5 closed 2026-09-22 with all seven
 of its requirements ticked, and the bound D19 set for it held — every new piece is a pure, tested

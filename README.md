@@ -14,22 +14,36 @@ leaves the browser.
    file renamed to `.png`, a download that was cut off partway, an iPhone HEIC photo in a browser
    that cannot read one, an image too large to work with. The file's own bytes decide this, not its
    name or its extension — both of which are just the operating system guessing.
-2. **Choose the finished size** — a physical width in inches and a bead size, Standard (5 mm) or
-   Mini (2.6 mm) — and a limit on how many distinct colors the pattern may use.
-3. **Generate.** The app derives the bead grid from the width, the bead pitch, and the image's
-   aspect ratio, then averages the source pixels falling inside each bead cell and matches the
+2. **Crop to what you actually want.** The image appears with a rectangle over it: drag a box
+   across the part you want, drag it around, or pull a corner. Everything outside it is dimmed,
+   because everything outside it is thrown away. This is the most effective quality control in the
+   app — on a photo it multiplies the detail available per bead, and on a drawing sitting on a
+   blank canvas it is how you avoid a pattern that is mostly white beads nobody wants to buy.
+   It works with a mouse or a finger.
+3. **Choose the finished size** — a physical width in inches and a bead size, Standard (5 mm) or
+   Mini (2.6 mm) — and a limit on how many distinct colors the pattern may use. The resulting bead
+   grid is shown as you go — `51 × 38 beads · 1,938 beads total` — and updates as you drag the
+   crop or change a setting, so the size is something you choose rather than something you
+   discover afterwards. A setting too large to build says which limit it hit, before you press
+   anything.
+4. **Generate.** The app derives the bead grid from the width, the bead pitch, and the cropped
+   region's aspect ratio, then averages the source pixels falling inside each bead cell and matches the
    result to the nearest Perler color *perceptually* — using a color space built to match how
    human eyes judge difference, rather than raw RGB distance, which does not. If the pattern
    uses more colors than the limit allows, the extras are merged away one at a time, always
    choosing the merge that costs the least visible change. Pixels that are mostly transparent
    become empty cells rather than beads.
-4. **Read the pattern.** It renders on a canvas: zoom, drag to pan, toggle the bead code on each
-   cell, and toggle gridlines with edge rulers numbering every tenth row and column.
-5. **Fix what the conversion got wrong.** A brush paints a continuous run as you drag, an eraser
+5. **Read the pattern.** It renders on a canvas: zoom, drag to pan, toggle the bead code on each
+   cell, and toggle gridlines with edge rulers numbering every tenth row and column. Generating
+   settles the framing: the crop preview closes and stays closed, because re-cropping an image you
+   can no longer see is a good way to make a mess. The size and color settings stay live, so a
+   different width or bead size is one change and one more Generate away. Uploading a new image is
+   what reopens cropping.
+6. **Fix what the conversion got wrong.** A brush paints a continuous run as you drag, an eraser
    clears cells back to empty, and a flood fill covers a whole contiguous region of one color — or
    fills it with empty, which is how you strip a plain background. Every stroke can be undone and
    redone. A separate pan mode never paints by accident, and alt-clicking any cell adopts its color.
-6. **Read the bead inventory** — every color used, with its count, sortable by count or by name.
+7. **Read the bead inventory** — every color used, with its count, sortable by count or by name.
    Those rows double as the color picker, so choosing a color already in the pattern costs the
    shopping list nothing. For colors not yet in the pattern, a search panel ranks the palette by
    perceptual closeness and marks which candidates are already in use.
@@ -138,5 +152,14 @@ that what an edit overwrites was *generated*, not drawn by the user, so "just pa
 assumes knowledge they do not have. Both moved in before the milestone started rather than during
 it.
 
+**M4 gave the app its second real quality lever.** Cropping is filed under convenience and is not:
+for a photo it decides how much detail each bead gets, and for a drawing on a blank canvas it is
+the whole answer to a background the app cannot yet remove by itself. Measured on one test drawing,
+cropping tight took the white beads from 68% of the pattern to 37%. It also turned out to settle a
+question nothing had asked: what a *second* Generate means once a pattern has been hand-edited. It
+means losing every edit, silently. The first answer — lock everything after the first Generate —
+was too broad and lasted about a day: it made the ordinary case, "try that again a bit smaller,"
+needlessly awkward in order to be tidy about the awkward one. What shipped locks only the framing.
+
 **M6 — PNG export — is next**, and it is the last item on the critical path. Still ahead after
-it: crop (M4), autosave (M7), the interface floor (M8), and final verification (M9).
+it: autosave (M7), the interface floor (M8), and final verification (M9).

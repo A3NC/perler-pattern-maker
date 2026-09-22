@@ -1,4 +1,5 @@
 import { requireElement } from './dom';
+import type { CropRect } from './lib/crop';
 import type { SourcePixels } from './types';
 
 const canvas = requireElement<HTMLCanvasElement>('canvas');
@@ -18,7 +19,16 @@ const SUPERSAMPLE = 8;
 const MAX_INTERMEDIATE_PIXELS = 4_000_000;
 
 /**
- * Decode the image into pixels for the pipeline to average down (GEN-4).
+ * Decode the cropped region of the image into pixels for the pipeline to average
+ * down (GEN-4, and M4's crop).
+ *
+ * **`crop` is in source pixels, and every measurement here must be too.** Note
+ * what is *not* used below: `image.width`. Since M4 the decoded element is also
+ * the on-screen preview, and `HTMLImageElement.width` reports the element's
+ * *rendered* width once it is in the document -- so it silently became the
+ * preview's size rather than the image's. The crop rectangle carries the only
+ * numbers this function needs, and `naturalWidth` is the only safe way to ask
+ * the element itself.
  *
  * This deliberately does *not* shrink to the bead grid. Averaging each cell's
  * source pixels is the pipeline's job, in linear light, where it is testable in
@@ -32,18 +42,25 @@ const MAX_INTERMEDIATE_PIXELS = 4_000_000;
  * innermost 8x8 of each cell and is negligible against the exact averaging done
  * over the result.
  */
-export function imageToPixels(image: HTMLImageElement, gridWidth: number, gridHeight: number): SourcePixels {
+export function imageToPixels(
+    image: HTMLImageElement,
+    gridWidth: number,
+    gridHeight: number,
+    crop: CropRect
+): SourcePixels {
     const scale = Math.min(
         1,
-        (gridWidth * SUPERSAMPLE) / image.width,
-        (gridHeight * SUPERSAMPLE) / image.height,
-        Math.sqrt(MAX_INTERMEDIATE_PIXELS / (image.width * image.height))
+        (gridWidth * SUPERSAMPLE) / crop.width,
+        (gridHeight * SUPERSAMPLE) / crop.height,
+        Math.sqrt(MAX_INTERMEDIATE_PIXELS / (crop.width * crop.height))
     );
 
     // Never below the bead grid -- that would make the box filter upscale -- and
-    // never above the source, which would be the blurry upscale D4 forbids.
-    const width = Math.min(image.width, Math.max(gridWidth, Math.round(image.width * scale)));
-    const height = Math.min(image.height, Math.max(gridHeight, Math.round(image.height * scale)));
+    // never above the cropped region, which would be the blurry upscale D4
+    // forbids. A crop smaller than the grid is legal and lands on the first
+    // clamp: fewer source pixels than beads is a blurrier pattern, not an error.
+    const width = Math.min(crop.width, Math.max(gridWidth, Math.round(crop.width * scale)));
+    const height = Math.min(crop.height, Math.max(gridHeight, Math.round(crop.height * scale)));
 
     canvas.width = width;
     canvas.height = height;
@@ -54,9 +71,11 @@ export function imageToPixels(image: HTMLImageElement, gridWidth: number, gridHe
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
 
-    // Clear first (prevents transparency ghosting), then draw.
+    // Clear first (prevents transparency ghosting), then draw the cropped source
+    // rectangle into the whole buffer. This nine-argument form is the entirety
+    // of how the crop reaches the pipeline -- generate.ts never learns it exists.
     ctx.clearRect(0, 0, width, height);
-    ctx.drawImage(image, 0, 0, width, height);
+    ctx.drawImage(image, crop.x, crop.y, crop.width, crop.height, 0, 0, width, height);
 
     const imageData = ctx.getImageData(0, 0, width, height);
     return { data: imageData.data, width, height };

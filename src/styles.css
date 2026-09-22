@@ -274,6 +274,257 @@
             font-size: 0.9rem;
         }
 
+        /* M5's editor bar. Spacing and radius literals here are deliberate and
+           temporary -- UI-3 replaces every literal in this file with a scale in
+           M8, and hand-tokenizing one new block ahead of that would just make
+           the file inconsistent in a second way. */
+        .editor-controls {
+            display: none; /* Shown by the editor once a pattern exists */
+            justify-content: center;
+            align-items: center;
+            /* .zoom-controls deliberately does not wrap and stays one row. This
+               one has to: six 44px targets plus a swatch is ~300px of control
+               against roughly 340px of usable width at 390px (UI-6). */
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+        }
+
+        .editor-controls.is-active {
+            display: flex;
+        }
+
+        /* Beats the 640px media query's `button { width: 100% }` on specificity
+           -- a media query adds none -- which is what keeps the bar a bar on a
+           phone instead of a column of full-width blocks. */
+        .editor-controls .tool-button {
+            grid-column: auto;
+            /* inline-flex so an icon centres in the box; the box is sized by the
+               44px minimums (UI-6), not by the icon. */
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: auto;
+            min-width: 44px;
+            min-height: 44px;
+            padding: 0.5rem;
+            font-size: 0.95rem;
+            background-color: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        /* The icon takes its color from the button, which is the whole reason
+           the pressed (white on indigo) and disabled (grey) states need no
+           second drawing. A swapped-in icon inherits the same way as long as it
+           keeps stroke="currentColor" or fill="currentColor". */
+        .editor-controls .icon {
+            display: block;
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+        }
+
+        .editor-controls .tool-button:hover:not(:disabled) {
+            background-color: var(--bg);
+            border-color: var(--primary);
+        }
+
+        /* The pressed tool, which is the only indication of what a drag will do. */
+        .editor-controls .tool-button[aria-pressed="true"] {
+            background-color: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .editor-controls .tool-button:disabled {
+            background-color: var(--surface);
+            color: #9CA3AF;
+            border-color: var(--border);
+            cursor: not-allowed;
+        }
+
+        /* EDIT-3's "visibly indicated": the active color is on screen whenever
+           the editor is, not only while the picker is open. */
+        /* The only control in the bar that is still text: the bead code is
+           information, not a label, so there is no icon that could replace it. */
+        .editor-controls .active-color {
+            gap: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            font-family: monospace;
+            font-weight: 700;
+        }
+
+        .active-color-swatch {
+            width: 22px;
+            height: 22px;
+            border-radius: 4px;
+            border: 1px solid rgba(0, 0, 0, 0.35);
+            flex-shrink: 0;
+            /* A checker, so "empty" reads as empty rather than as a white bead --
+               the eraser and fill-with-empty both need that distinction. */
+            background-color: transparent;
+            background-image:
+                linear-gradient(45deg, #D1D5DB 25%, transparent 25%, transparent 75%, #D1D5DB 75%),
+                linear-gradient(45deg, #D1D5DB 25%, transparent 25%, transparent 75%, #D1D5DB 75%);
+            background-size: 10px 10px;
+            background-position: 0 0, 5px 5px;
+        }
+
+        .color-picker {
+            display: none;
+            margin-top: 0.75rem;
+            padding: 1rem;
+            background-color: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        .color-picker.is-open {
+            display: block;
+        }
+
+        .picker-query {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .picker-query label {
+            white-space: nowrap;
+        }
+
+        .picker-query input[type="color"] {
+            width: 44px;
+            height: 44px;
+            padding: 2px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background-color: var(--surface);
+            cursor: pointer;
+        }
+
+        .picker-query input[type="text"] {
+            flex: 1 1 12rem;
+            min-width: 0;
+            min-height: 44px;
+            padding: 0.6rem 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        .picker-hint {
+            margin: 0.75rem 0 0.5rem;
+            font-size: 0.85rem;
+            color: #6B7280;
+        }
+
+        .picker-results {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            max-height: 220px;
+            overflow-y: auto;
+        }
+
+        .picker-empty {
+            font-size: 0.9rem;
+            color: #6B7280;
+        }
+
+        /* Ranked strictly by OkLab distance. In-pattern candidates are badged,
+           never re-sorted to the top: "nearest" has to keep meaning nearest or
+           the list stops being worth reading. */
+        .picker-results .picker-swatch {
+            grid-column: auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            width: auto;
+            min-height: 44px;
+            padding: 0.4rem 0.7rem;
+            background-color: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .picker-results .picker-swatch:hover {
+            background-color: var(--surface);
+            border-color: var(--primary);
+        }
+
+        .picker-results .picker-swatch.selected {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.3);
+        }
+
+        .picker-swatch .color-swatch {
+            width: 20px;
+            height: 20px;
+        }
+
+        .picker-swatch .picker-code {
+            font-family: monospace;
+            font-weight: 700;
+        }
+
+        /* "P17 . 340 in pattern" beside "P19 . new". Without this a user picking
+           a blue silently adds a color to the shopping list that SET-4 and GEN-3
+           exist to keep off it. */
+        .picker-swatch .picker-badge {
+            font-size: 0.75rem;
+            padding: 0.1rem 0.45rem;
+            border-radius: 999px;
+            background-color: var(--border);
+            color: #374151;
+        }
+
+        .picker-swatch .picker-badge.in-pattern {
+            background-color: #DCFCE7;
+            color: #166534;
+        }
+
+        /* The inventory rows are tier 1 of the picker, so they are real buttons
+           now. These override only what the global `button` rule sets and
+           .bead-item does not; the layout above is untouched. */
+        .bead-list .bead-item {
+            grid-column: auto;
+            width: 100%;
+            /* A tap target now that it is tier 1 of the picker (UI-6). */
+            min-height: 44px;
+            color: var(--text);
+            font-family: inherit;
+            font-size: 1rem;
+            font-weight: 400;
+            text-align: left;
+            cursor: pointer;
+        }
+
+        .bead-list .bead-item:hover {
+            background-color: var(--surface);
+            border-color: var(--primary);
+        }
+
+        .bead-list .bead-item.selected {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.3);
+        }
+
+        /* A paint tool is active: the cursor says so, and beginPan is gated off
+           in canvas-view.ts. touch-action is the half that cannot be done in JS
+           -- the canvas lives in a native scroll container, so without this a
+           touch-drag scrolls the container instead of painting. It is scoped to
+           this class precisely so pan mode gets native touch scrolling back. */
+        #pattern-canvas.painting {
+            cursor: crosshair;
+            touch-action: none;
+        }
+
         /* NFR-5 / UI-1, UI-2. Below this width the two-column control grid and the
            doubled 2rem body+container padding push content off-screen: at 390 px the
            heading, Generate button, and target-width control were all clipped.
@@ -301,5 +552,13 @@
             button {
                 width: 100%;
                 box-sizing: border-box;
+            }
+
+            /* The editor bar wraps to as many rows as it needs and its targets
+               stay 44px; the rule above would otherwise make each one a
+               full-width block and the bar seven rows tall. */
+            .editor-controls .tool-button {
+                width: auto;
+                flex: 0 0 auto;
             }
         }

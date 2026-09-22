@@ -12,11 +12,12 @@ import {
     ZOOM_STEP,
     clampCellSize,
     fitCellSize,
+    cellAtClientPoint,
     shouldDrawCodes,
     visibleCellRange,
     zoomedScrollOffset
 } from '../lib/viewport';
-import type { CellRange } from '../lib/viewport';
+import type { CellPosition, CellRange } from '../lib/viewport';
 import type { Pattern } from '../types';
 
 // The canvas pattern view (D1), replacing the element-per-bead grid.
@@ -93,6 +94,15 @@ let view: View | null = null;
 let pan: Pan | null = null;
 let redrawHandle = 0;
 
+/**
+ * What a drag on the canvas does. M5's editor owns the choice; the view owns
+ * the consequences, because both of them belong to the canvas element this
+ * module creates and replaces on every generate.
+ */
+let pointerMode: PointerMode = 'pan';
+
+export type PointerMode = 'pan' | 'paint';
+
 export function showProcessing(): void {
     view = null;
     outputContainer.innerHTML = 'Processing...';
@@ -139,11 +149,65 @@ export function renderPattern(pattern: Pattern): void {
     };
 
     layout();
+    applyPointerMode();
     outputContainer.scrollLeft = 0;
     outputContainer.scrollTop = 0;
     draw();
 
     zoomControls.style.display = 'flex';
+}
+
+function applyPointerMode(): void {
+    // Re-applied here as well as in setPointerMode: renderPattern builds a new
+    // canvas element on every generate, and the class lives on the element.
+    view?.canvas.classList.toggle('painting', pointerMode === 'paint');
+}
+
+/**
+ * Gate drag-to-pan, and hand touch over to the right consumer (EDIT-5).
+ *
+ * The touch half is the trap. beginPan deliberately ignores touch because the
+ * canvas sits in a native scroll container that already pans it -- which means
+ * that in a paint mode a touch-drag would scroll instead of painting. The fix is
+ * `touch-action: none` on the canvas, and it has to come back off in pan mode or
+ * native touch scrolling is gone. Both live on the .painting class.
+ */
+export function setPointerMode(mode: PointerMode): void {
+    pointerMode = mode;
+    applyPointerMode();
+}
+
+/** The bead under a screen point, or null outside the pattern. M5's seam (D1). */
+export function cellAtPoint(clientX: number, clientY: number): CellPosition | null {
+    if (!view) return null;
+    const rect = view.canvas.getBoundingClientRect();
+
+    return cellAtClientPoint({
+        clientX,
+        clientY,
+        canvasLeft: rect.left,
+        canvasTop: rect.top,
+        scrollLeft: outputContainer.scrollLeft,
+        scrollTop: outputContainer.scrollTop,
+        cellSize: view.cellSize,
+        patternWidth: view.pattern.width,
+        patternHeight: view.pattern.height
+    });
+}
+
+/**
+ * Whether an event landed on the pattern itself. The editor's listeners sit on
+ * the container alongside the pan ones, and a pointerdown on the container's
+ * native scrollbar targets the container too -- which maps to a perfectly valid
+ * cell and would paint one.
+ */
+export function isPatternCanvas(target: EventTarget | null): boolean {
+    return view !== null && target === view.canvas;
+}
+
+/** Repaint after an edit. Coalesced to one draw per frame, like scrolling. */
+export function redrawPattern(): void {
+    queueRedraw();
 }
 
 /** Resize the spacer to the zoomed pattern and the canvas to the container. */
@@ -414,6 +478,14 @@ function beginPan(event: PointerEvent): void {
     // handling touch here would move the view twice per drag. Mouse and pen
     // have no such default, and that gap is what VIEW-1 is asking us to fill.
     if (!view || event.pointerType === 'touch' || event.button !== 0) return;
+
+    // A paint tool is selected: this drag belongs to the editor (EDIT-5). Pan
+    // mode is the default, so the view still pans until the user opts in.
+    if (pointerMode !== 'pan') return;
+
+    // Alt-click is the eyedropper in every mode, and a pan started under it
+    // would fight the editor's own handler for the same gesture.
+    if (event.altKey) return;
 
     // Only the pattern itself starts a pan. The listener is on the container,
     // and a pointerdown on its native scrollbar targets the container too --

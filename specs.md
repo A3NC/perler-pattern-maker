@@ -1,6 +1,6 @@
 # Perler Pattern Generator — Specification
 
-_Last updated: 2026-09-15 · Status: v1 in progress_
+_Last updated: 2026-09-21 · Status: v1 in progress_
 
 ## Purpose
 
@@ -61,8 +61,9 @@ the palette code with S1–S3. See Decision log D6.
 ### Deferred (not "won't" — just not in v1)
 
 **Planned for v2:** the advanced settings panel and everything in it — background removal (SET-7),
-subject auto-trim (SET-8), pixel-art passthrough (SET-9) — plus palette switching, undo/redo, flood
-fill, and a legend in the export. _(Gridlines were on this list until D16 moved them into v1.)_
+subject auto-trim (SET-8), pixel-art passthrough (SET-9) — plus palette switching and a legend in
+the export. _(Gridlines were on this list until D16 moved them into v1; undo/redo and flood fill
+until D19 did the same.)_
 
 **Later, undated:** drawing from scratch (S4), user-facing algorithm selection, a multi-project
 library, printable multi-page PDF export.
@@ -280,26 +281,40 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
 
 ### Editing — EDIT
 
-- [ ] **EDIT-1 [v1]** Single-cell brush: clicking or dragging over cells sets them to the currently
+- [x] **EDIT-1 [v1]** Single-cell brush: clicking or dragging over cells sets them to the currently
   selected palette color.
   **Check:** Clicking a cell changes exactly that cell; dragging paints a continuous run with no
   skipped cells at any zoom level.
-- [ ] **EDIT-2 [v1]** Eraser: sets cells to empty.
+- [x] **EDIT-2 [v1]** Eraser: sets cells to empty.
   **Check:** Erased cells render as empty and leave the bead count.
-- [ ] **EDIT-3 [v1]** Color picker: select the active color from the loaded palette, showing each
+- [x] **EDIT-3 [v1]** Color picker: select the active color from the loaded palette, showing each
   color's swatch and code.
   **Check:** The selected color is visibly indicated, and painting uses it.
-- [ ] **EDIT-4 [v1]** Edits update the bead count list immediately.
+- [x] **EDIT-4 [v1]** Edits update the bead count list immediately.
   **Check:** Painting one cell from color A to color B decrements A by 1 and increments B by 1.
-- [ ] **EDIT-5 [v1]** Pan works while the editor is active without painting accidentally.
+- [x] **EDIT-5 [v1]** Pan works while the editor is active without painting accidentally.
   **Check:** A dedicated pan mode, or a modifier/second-finger gesture, moves the view without
   modifying any cell.
-- [ ] **EDIT-6 [v1]** No undo in v1. Correcting a mistake means painting the cell again.
-  **Check:** Not applicable — this records a deliberate omission. See Decision log D7.
-- [ ] **EDIT-7 [v2]** Undo/redo covering paint strokes and erases.
-  **Check:** Undo reverses the last stroke as one unit, not one cell at a time.
-- [ ] **EDIT-8 [v2]** Flood fill. Blocked on EDIT-7 — fill without undo is unsafe.
+- **EDIT-6 — retired (2026-09-21).** Originally "[v1] No undo in v1. Correcting a mistake means
+  painting the cell again," recording the deliberate omission argued in D7. **D19 reverses it**
+  and EDIT-7 now carries the requirement. The ID is kept rather than reused so that D7 and
+  `plan-v1.md`'s references still resolve.
+- [x] **EDIT-7 [v1]** Undo/redo covering paint strokes, erases, and fills. Promoted from [v2]; see
+  Decision log D19.
+  **Check:** Undo reverses the last stroke as one unit, not one cell at a time, and redo reapplies
+  it. Bead counts after an undo match the counts before the stroke. A new edit made after undoing
+  discards the redone-away tail rather than leaving it replayable.
+  _(In-memory only: the history is deliberately **not** persisted by SAVE-1. Both directions apply
+  through one function, so EDIT-4 holds by construction rather than by separate paint and undo
+  paths agreeing.)_
+- [x] **EDIT-8 [v1]** Flood fill, with the palette color and with empty. Unblocked by EDIT-7 —
+  fill without undo is unsafe. Promoted from [v2]; see Decision log D19.
   **Check:** Fill affects only the contiguous same-color region under the cursor, and is undoable.
+  Filling with empty over a uniform background canvas clears it in one action and removes those
+  beads from the inventory.
+  _(Exact palette match only — no tolerance, deliberately. A background that is several near-whites
+  rather than one color is an R2/GEN-3 defect and is fixed there, not absorbed by a tolerance
+  constant here.)_
 
 ### Output — OUT
 
@@ -537,6 +552,21 @@ editor state would depend on M5. Do not fix screenshots of these states before t
   class of defect M2 could never have reached, which makes M5 load-bearing for artwork rather than
   merely a tidy-up. Decide at M5 whether the editor needs anything specific for it — a mirror or
   copy-region tool would turn "fix twelve beads twice, symmetrically" into one action.
+  _(2026-09-21: D19 lowers the stakes on this. "Twice" is only expensive while a mistake is
+  unrecoverable, and undo makes it recoverable; mirror also needs a region selection model that
+  fill does not. M5 still decides, and records the answer in its Delivered block either way.)_
+  _(**Answered 2026-09-22, in M5: no.** The editor gets no mirror and no copy-region tool. Two
+  reasons, neither of them "we ran out of time." **(1)** Every M5 tool addresses a cell, or a region
+  the pattern itself defines — fill's region comes from the bead colors, so there is no selection
+  model anywhere in the milestone. Mirror and copy-region both need one: an anchor, an axis or a
+  destination, a marquee to draw it with, and a way to show and cancel it. That is the largest
+  single thing in M5 and it would serve one requirement that does not exist. **(2)** The premise
+  weakened. "Fix twelve beads twice, symmetrically" was expensive because each of the twenty-four
+  was unrecoverable; with EDIT-7 it is one Cmd+Z per misjudgement, and the eyedropper makes matching
+  the opposite eye's bead a single alt-click rather than a hunt through 221 codes. Q10 stays open as
+  a **generation** question — nothing in the editor makes the grid fall in a better place — and
+  reopening it as a tool question needs a real report of the work being painful, not the
+  anticipation of it.)_
 - **Q9 — Visual identity for the v2 redesign.** The current palette is Tailwind's defaults
   (indigo-600, gray-50, gray-200) carried over from the original single-file build, and the type is
   the bare system stack. Whether the v2 redesign keeps that and merely tightens it, or adopts an
@@ -574,6 +604,11 @@ editor state would depend on M5. Do not fix screenshots of these states before t
 - **D7 (2026-09-07) — No undo in v1, and therefore no flood fill.** With a one-cell brush a mistake
   is self-correcting: paint it again. Undo is expensive to build correctly and becomes mandatory
   only once a tool can change many cells at once. (EDIT-6, EDIT-8)
+  _[Superseded, 2026-09-21, by D19 — kept because the half of it that survived is load-bearing.
+  D7 bundled two claims. "Fill needs undo" stands, and is why the two move together. "A one-cell
+  brush makes mistakes self-correcting" does not: EDIT-1's own Check requires dragging to paint a
+  continuous run, so the brush was never one-cell, and the state an edit overwrites is generated
+  rather than authored, so "paint it again" assumes knowledge the user does not have.]_
 - **D8 (2026-09-07) — Keep the pipeline on the main thread for now.** At NFR-3's hard limit the
   work is 50,000 cells against 221 colors, and 10,000 at the design target, which should complete
   in well under a second with palette values precomputed. Move to a background thread only if
@@ -799,3 +834,43 @@ editor state would depend on M5. Do not fix screenshots of these states before t
   protected the D18 color specks — a wrong bead that sits far from every other color is exactly the
   shape D17 defends. Reduction therefore cannot be a safety net for upstream color errors, which is
   what made the speck fix unavoidable rather than tunable.
+
+- **D19 (2026-09-21) — Undo/redo and flood fill move into v1, reversing D7.** Reopened deliberately
+  before M5 started, which is the process `plan-v1.md`'s scope-creep row asks for: each deferral is
+  a logged decision, so reopening one is too. D7's two claims are separated — "fill needs undo"
+  is kept and is why the two move together; "a one-cell brush is self-correcting" is discarded.
+  (EDIT-6, EDIT-7, EDIT-8, M5)
+
+  **Four consequences recorded deliberately:**
+  - **D7's premise was already false, and not because of M2.** EDIT-1's Check requires dragging to
+    paint a continuous run, so the brush is multi-cell as specified. More importantly the state an
+    edit destroys is **generated, not authored**: the overwritten cell held a bead chosen by
+    `reduce.ts` out of 221 colors. "Paint it again" works in a paint program because you know what
+    you drew; here, on R3/R4/R5 shaded regions — bands of near-neighbours — the user cannot
+    reconstruct it by eye. This is the argument, and it does not depend on M2's results at all.
+  - **The strongest case for fill is D13, not M2's defects.** Being precise about the mapping, since
+    the milestone will be judged on it: M2's open GEN-8 item (dark regions banding) is diffuse
+    quality across a whole shaded region, and **no editor tool realistically fixes it** — nobody
+    hand-repaints a gradient; that stays a `DEFAULT_CONTRAST_TUNING` question or an accepted one.
+    Q10 is helped by undo, not by fill. What fill serves is the white-canvas background (S1, the
+    majority input, and the deferral D13 calls most likely to bite): one click instead of erasing
+    200+ cells. It works *because* GEN-3 Phase A makes that canvas one color, which is R2's own
+    pass condition — so R2 passing is what makes fill cheap.
+  - **Redo costs nothing the data does not already carry, and the real cost was misjudged as UI.**
+    A record is `{index, prev, next}`: undo writes `prev`, redo writes `next`, same array. The cost
+    that was briefly assumed — no room in the control bar, citing D16's note — does not survive
+    looking at the markup. That note was about adding one checkbox to one nowrap flex row; the
+    editor gets its own bar, which is a sibling `<div>` and hidden until edit mode the way
+    `.zoom-controls` is already hidden until a pattern exists. So **redo ships with a visible
+    button.** What is real is that the new bar needs `flex-wrap: wrap` to hold 44 px targets (UI-6)
+    at 390 px, which `.zoom-controls` does not have.
+  - **Two refusals, to keep this from becoming M2.** **No fill tolerance:** a tolerance value is a
+    judgment constant, and `MERGE_FLOOR`, `MIN_CODE_FONT_PX` and `DEFAULT_CONTRAST_TUNING` are three
+    standing demonstrations of what those cost here. Exact palette match only; a speckled background
+    is an upstream R2/GEN-3 defect. **No history in autosave:** SAVE-1 is pattern, settings and
+    edits, not history, so M7's scope is unchanged.
+
+  **The cost, stated plainly:** M5 goes from M to a large M, on the critical path (M5 → M6). The
+  bound that keeps it there is that every piece is small and testable — the history stack, the fill
+  search, the drag interpolation and the tally arithmetic are all pure functions under NFR-4, and
+  `Pattern` does not change, so M6 and M7 inherit nothing new.

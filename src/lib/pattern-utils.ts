@@ -1,4 +1,4 @@
-import type { ColorTally, PaletteColor, PatternDimensions } from '../types';
+import type { ColorTally, PaletteColor, Pattern, PatternDimensions } from '../types';
 
 const HEX_COLOR_PATTERN = /^#?[0-9a-f]{6}$/i;
 
@@ -164,4 +164,38 @@ export function addColorTally(tallies: Record<string, ColorTally>, color: Palett
         };
     }
     tallies[color.name].count += 1;
+}
+
+/**
+ * The inverse of addColorTally, for M5's editor. Deletes the entry at zero
+ * rather than leaving a count-0 row behind: the inventory renders whatever is
+ * in this record, and the stats line counts its keys, so a lingering zero would
+ * show an erased color as still required and inflate `Colors Used`.
+ */
+export function removeColorTally(tallies: Record<string, ColorTally>, color: PaletteColor): void {
+    const tally = tallies[color.name];
+    if (!tally) return;
+
+    tally.count -= 1;
+    if (tally.count <= 0) delete tallies[color.name];
+}
+
+/**
+ * Tally a whole pattern from scratch. The editor keeps its tallies incrementally
+ * during a stroke -- cheap, one add and one remove per cell -- and then calls
+ * this at stroke end and after every undo and redo. A full pass at NFR-3's
+ * 50,000-cell limit is about a millisecond, and it removes tally drift as a
+ * class rather than leaving it to be caught by tests.
+ *
+ * Row-major, matching generatePattern's final loop, so first appearance -- and
+ * therefore the inventory's sort tie-break -- is identical either way.
+ */
+export function tallyPattern(pattern: Pattern): Record<string, ColorTally> {
+    const tallies: Record<string, ColorTally> = {};
+
+    for (const cell of pattern.cells) {
+        if (cell) addColorTally(tallies, cell);
+    }
+
+    return tallies;
 }

@@ -6,7 +6,9 @@ import { loadPalette } from './palette';
 import { generatePattern } from './pipeline/generate';
 import { imageToPixels } from './rasterize';
 import { clearPattern, initPatternViewControls, renderPattern, showProcessing } from './render/canvas-view';
-import { initInventoryControls, renderBeadCounts, setBeadCounts } from './render/inventory';
+import { initEditorControls, setEditorPalette } from './render/editor';
+import { initInventoryControls } from './render/inventory';
+import { clearPatternState, onPatternChange, setPattern } from './state/pattern-state';
 import { showStatus } from './status';
 import { readImageFile } from './upload';
 import type { Palette } from './types';
@@ -31,6 +33,19 @@ let uploadedImage: HTMLImageElement | null = null;
 
 initPatternViewControls();
 initInventoryControls();
+initEditorControls();
+
+// The stats line reads the shared owner too, so an edit and a generate reach it
+// by the same path and `Colors Used` cannot drift from the inventory (EDIT-4).
+onPatternChange((state) => {
+    if (!state) {
+        statsDiv.textContent = '';
+        return;
+    }
+    const distinctColors = Object.keys(state.tallies).length;
+    statsDiv.textContent = `Pattern Size: ${state.pattern.width} x ${state.pattern.height} beads | `
+        + `Total Beads Required: ${state.beadCount} | Colors Used: ${distinctColors}`;
+});
 
 // Startup wiring succeeded, so the boot guard in index.html can stand down and
 // leave the status line to us. Deliberately set here rather than at the top of
@@ -44,6 +59,9 @@ loadPalette()
     .then((palette) => {
         perlerColors = palette;
         paletteReady = true;
+        // The editor's color picker queries the same palette the pipeline
+        // matches against, using the same OkLab table (EDIT-3).
+        setEditorPalette(perlerColors);
         // SET-4's range is 2 to the palette size, and the palette size is not
         // known until now.
         colorLimitInput.max = String(perlerColors.length);
@@ -125,6 +143,7 @@ generateBtn.addEventListener('click', () => {
     } catch (error) {
         console.error('Pattern generation failed:', error);
         clearPattern();
+        clearPatternState();
         showStatus((error as Error).message || 'Something went wrong while generating the pattern.', 'error');
     }
 });
@@ -139,7 +158,7 @@ function buildPattern(
     showProcessing();
 
     const source = imageToPixels(image, pixelWidth, pixelHeight);
-    const { pattern, tallies, beadCount } = generatePattern(source, perlerColors, {
+    const { pattern, tallies } = generatePattern(source, perlerColors, {
         gridWidth: pixelWidth,
         gridHeight: pixelHeight,
         colorLimit
@@ -149,10 +168,7 @@ function buildPattern(
     showStatus('Pattern generated successfully.', 'success');
     renderPattern(pattern);
 
-    const distinctColors = Object.keys(tallies).length;
-    statsDiv.textContent = `Pattern Size: ${pixelWidth} x ${pixelHeight} beads | `
-        + `Total Beads Required: ${beadCount} | Colors Used: ${distinctColors}`;
-
-    setBeadCounts(Object.values(tallies));
-    renderBeadCounts();
+    // One handoff, after the view exists: the stats line, the inventory, and the
+    // editor all subscribe to this rather than each being pushed their own copy.
+    setPattern(pattern, tallies);
 }

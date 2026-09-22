@@ -163,7 +163,7 @@ cheap A/B before any code was written, the same way the `MERGE_FLOOR` diagnostic
 
 ---
 
-### M3 — Input handling and errors · S
+### M3 — Input handling and errors · S — ✅ **Done** (2026-09-22)
 **Do:** Specific, readable errors for non-images, corrupted files, unsupported formats (name HEIC
 explicitly), and oversized images. Enforce the source-image size ceiling.
 
@@ -174,6 +174,50 @@ reports.
 **Done when:** A `.txt`, a truncated JPEG, a `.txt` renamed to `.png`, a zero-byte file, a `.heic`,
 and an oversized image each produce a distinct, specific message, and the app stays usable after
 each. *(IN-1 … IN-4, IN-6)*
+
+**Delivered (2026-09-22):** **IN-2, IN-3, IN-4 and IN-6 are ticked.** `npm run check` is green at
+152 tests, up from 128. One new pure module, `src/lib/image-file.ts`, plus a rewritten
+`src/upload.ts` that is now only the browser half.
+
+**The milestone's whole shape came from one fact: `img.onerror` carries no reason.** The event is
+empty, so every decode failure looks identical from the inside and a specific message cannot be
+extracted from it — it has to be decided *before* the decode, from the file's own bytes. That is
+D20, and it is what turned an S of error-string editing into an S with real deterministic content:
+magic-byte sniffing, header dimension parsing for all five formats, and end-marker truncation
+detection, all pure and all tested.
+
+**Two predictions in the plan were worth making, and both held:**
+- **The decoder is lenient about truncation.** A JPEG truncated to 50% renders as a partial image
+  and fires `onload`, so IN-3's Check is unreachable through the decode path. Predicting it is why
+  `looksTruncated` exists; had it been trusted instead, IN-3 would have been ticked against a Check
+  that silently never ran.
+- **HEIC splits by browser, and the split matters.** Measured, not assumed: Safari decodes a real
+  HEIC, Chrome refuses it with `EncodingError`. **This resolves Q4** — and it retired the strict
+  allowlist that was the obvious design, since refusing HEIC up front would break the iPhone photo
+  case on the one browser those users actually have.
+
+**IN-1 is deliberately left unticked.** All five formats upload and generate — verified against real
+encoder output including all three incompatible WebP header layouts — but its Check also asks for a
+preview, and the preview is IN-5, which M4 owns. Building a placeholder here would be building it
+twice. It ticks when M4 lands.
+
+**IN-6 came out far cheaper than its Check allows.** A 12000 × 9000 PNG is refused in **15 ms**
+against a 2-second allowance, because the size is read out of the header and nothing is decoded at
+all. The 8000 px ceiling is still high for a phone — 8000 × 8000 is ~256 MB decoded, and NFR-5 puts
+one in scope — so it is recorded against NFR-3 for M9 to weigh rather than quietly lowered here, the
+same way M2 recorded NFR-2.
+
+**Verified in a real browser, since every Check here is an interaction.** Seventeen files were driven
+through Chrome end to end against the dev server — the five good formats plus three WebP layouts, a
+real HEIC from `sips`, a real truncated JPEG and PNG, a `.txt`, a `.pdf`, an SVG, a zero-byte file, a
+`.txt` renamed `.png`, a 12000 px PNG and an 8000 px one — each asserting its own message, that
+Generate is disabled after a rejection, and that a good file loads immediately afterward. No console
+errors. Two smaller fixes verified the same way: re-picking the *same* rejected file now speaks
+twice (the file input is cleared, without which no `change` event fires and the app looks silently
+broken), and a request token makes the last of two rapid picks win.
+
+**No tactical plan was opened.** The milestone started and closed in one sitting, so
+`plans/m3-input-errors.md` would have been written and deleted unread.
 
 ---
 
@@ -381,7 +425,8 @@ M0 → M1 → M2 → M5 → M6 are sequential; each genuinely needs the one befo
 any point** — slot it in whenever you want a quick, satisfying win, the way M10 was. M4 needs M2
 done. M7 needs the pattern data settled by M5.
 
-**M0, M1, M2, M5 and M10 are done. M6 is next**, and it is the last item on the critical path. M2
+**M0, M1, M2, M3, M5 and M10 are done. M6 is next**, and it is the last item on the critical path.
+M3 was slotted in as the quick win this section anticipated, and closed the same day it opened. M2
 closed 2026-09-21 with GEN-8 unticked (see its Delivered block); M5 closed 2026-09-22 with all seven
 of its requirements ticked, and the bound D19 set for it held — every new piece is a pure, tested
 function, and `Pattern` did not change, so **M6 and M7 inherit nothing new**. M6 reads the same

@@ -281,25 +281,25 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
 
 ### Editing — EDIT
 
-- [ ] **EDIT-1 [v1]** Single-cell brush: clicking or dragging over cells sets them to the currently
+- [x] **EDIT-1 [v1]** Single-cell brush: clicking or dragging over cells sets them to the currently
   selected palette color.
   **Check:** Clicking a cell changes exactly that cell; dragging paints a continuous run with no
   skipped cells at any zoom level.
-- [ ] **EDIT-2 [v1]** Eraser: sets cells to empty.
+- [x] **EDIT-2 [v1]** Eraser: sets cells to empty.
   **Check:** Erased cells render as empty and leave the bead count.
-- [ ] **EDIT-3 [v1]** Color picker: select the active color from the loaded palette, showing each
+- [x] **EDIT-3 [v1]** Color picker: select the active color from the loaded palette, showing each
   color's swatch and code.
   **Check:** The selected color is visibly indicated, and painting uses it.
-- [ ] **EDIT-4 [v1]** Edits update the bead count list immediately.
+- [x] **EDIT-4 [v1]** Edits update the bead count list immediately.
   **Check:** Painting one cell from color A to color B decrements A by 1 and increments B by 1.
-- [ ] **EDIT-5 [v1]** Pan works while the editor is active without painting accidentally.
+- [x] **EDIT-5 [v1]** Pan works while the editor is active without painting accidentally.
   **Check:** A dedicated pan mode, or a modifier/second-finger gesture, moves the view without
   modifying any cell.
 - **EDIT-6 — retired (2026-09-21).** Originally "[v1] No undo in v1. Correcting a mistake means
   painting the cell again," recording the deliberate omission argued in D7. **D19 reverses it**
   and EDIT-7 now carries the requirement. The ID is kept rather than reused so that D7 and
   `plan-v1.md`'s references still resolve.
-- [ ] **EDIT-7 [v1]** Undo/redo covering paint strokes, erases, and fills. Promoted from [v2]; see
+- [x] **EDIT-7 [v1]** Undo/redo covering paint strokes, erases, and fills. Promoted from [v2]; see
   Decision log D19.
   **Check:** Undo reverses the last stroke as one unit, not one cell at a time, and redo reapplies
   it. Bead counts after an undo match the counts before the stroke. A new edit made after undoing
@@ -307,7 +307,7 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
   _(In-memory only: the history is deliberately **not** persisted by SAVE-1. Both directions apply
   through one function, so EDIT-4 holds by construction rather than by separate paint and undo
   paths agreeing.)_
-- [ ] **EDIT-8 [v1]** Flood fill, with the palette color and with empty. Unblocked by EDIT-7 —
+- [x] **EDIT-8 [v1]** Flood fill, with the palette color and with empty. Unblocked by EDIT-7 —
   fill without undo is unsafe. Promoted from [v2]; see Decision log D19.
   **Check:** Fill affects only the contiguous same-color region under the cursor, and is undoable.
   Filling with empty over a uniform background canvas clears it in one action and removes those
@@ -555,6 +555,18 @@ editor state would depend on M5. Do not fix screenshots of these states before t
   _(2026-09-21: D19 lowers the stakes on this. "Twice" is only expensive while a mistake is
   unrecoverable, and undo makes it recoverable; mirror also needs a region selection model that
   fill does not. M5 still decides, and records the answer in its Delivered block either way.)_
+  _(**Answered 2026-09-22, in M5: no.** The editor gets no mirror and no copy-region tool. Two
+  reasons, neither of them "we ran out of time." **(1)** Every M5 tool addresses a cell, or a region
+  the pattern itself defines — fill's region comes from the bead colors, so there is no selection
+  model anywhere in the milestone. Mirror and copy-region both need one: an anchor, an axis or a
+  destination, a marquee to draw it with, and a way to show and cancel it. That is the largest
+  single thing in M5 and it would serve one requirement that does not exist. **(2)** The premise
+  weakened. "Fix twelve beads twice, symmetrically" was expensive because each of the twenty-four
+  was unrecoverable; with EDIT-7 it is one Cmd+Z per misjudgement, and the eyedropper makes matching
+  the opposite eye's bead a single alt-click rather than a hunt through 221 codes. Q10 stays open as
+  a **generation** question — nothing in the editor makes the grid fall in a better place — and
+  reopening it as a tool question needs a real report of the work being painful, not the
+  anticipation of it.)_
 - **Q9 — Visual identity for the v2 redesign.** The current palette is Tailwind's defaults
   (indigo-600, gray-50, gray-200) carried over from the original single-file build, and the type is
   the bare system stack. Whether the v2 redesign keeps that and merely tightens it, or adopts an

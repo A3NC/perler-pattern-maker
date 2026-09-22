@@ -53,6 +53,74 @@
             </div>
         </div>
 
+        <!--
+            M5's editor bar. A sibling of .zoom-controls rather than more
+            controls inside it: that row is already tight at 390px and does not
+            wrap, and six 44px targets (UI-6) do not fit beside the zoom
+            buttons. Hidden until a pattern exists, the same way .zoom-controls
+            is. Pan is the default tool, so nothing paints until the user picks
+            a paint tool (EDIT-5).
+        -->
+        <!--
+            SWAPPING THE ICONS. Each is a plain inline <svg class="icon">, which
+            is the exact form every icon set hands you, so replacing one is a
+            paste: keep `class="icon"` and `aria-hidden="true"`, drop everything
+            else in. Nothing else has to change -- the button carries the
+            accessible name in aria-label, and the drawing inherits its color
+            from the button through `currentColor`, which is what makes the
+            pressed and disabled states work without a second icon.
+
+            These placeholders are drawn in the 24x24 stroke style Lucide,
+            Feather and Heroicons-outline all share, so a set in that family
+            drops in at the same weight. A *filled* set (Material, Heroicons
+            solid) will look heavier beside the rest and wants its own pass.
+
+            aria-label is not optional here: with the text labels gone it is the
+            only accessible name these buttons have. Keep title too -- it is the
+            hover tooltip, and it is how anyone learns what the icons mean.
+        -->
+        <div class="editor-controls" id="editorControls">
+            <button type="button" id="toolPanBtn" class="tool-button" aria-pressed="true" aria-label="Pan" title="Pan: drag to move the view without editing">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 9l-3 3 3 3"/><path d="M9 5l3-3 3 3"/><path d="M15 19l-3 3-3-3"/><path d="M19 9l3 3-3 3"/><path d="M2 12h20"/><path d="M12 2v20"/></svg>
+            </button>
+            <button type="button" id="toolBrushBtn" class="tool-button" aria-pressed="false" aria-label="Brush" title="Brush: paint cells with the active color">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+            </button>
+            <button type="button" id="toolEraserBtn" class="tool-button" aria-pressed="false" aria-label="Eraser" title="Eraser: clear cells to empty">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m7 21-4.3-4.3a1.98 1.98 0 0 1 0-2.8l9.6-9.6a1.98 1.98 0 0 1 2.8 0l5.6 5.6a1.98 1.98 0 0 1 0 2.8L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
+            </button>
+            <button type="button" id="toolFillBtn" class="tool-button" aria-pressed="false" aria-label="Fill" title="Fill: flood the contiguous same-color region">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m19 11-8-8-8.6 8.6a2 2 0 0 0 0 2.8l5.2 5.2a2 2 0 0 0 2.8 0Z"/><path d="m5 2 5 5"/><path d="M2 13h15"/><path d="M22 20a2 2 0 1 1-4 0c0-1.6 1.7-2.4 2-4 .3 1.6 2 2.4 2 4Z"/></svg>
+            </button>
+            <button type="button" id="undoBtn" class="tool-button" disabled aria-label="Undo" title="Undo the last stroke (Ctrl/Cmd+Z)">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
+            </button>
+            <button type="button" id="redoBtn" class="tool-button" disabled aria-label="Redo" title="Redo (Ctrl/Cmd+Shift+Z)">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg>
+            </button>
+            <button type="button" id="activeColorBtn" class="tool-button active-color" aria-expanded="false" title="Active color: choose another from the palette">
+                <span class="active-color-swatch" id="activeColorSwatch"></span>
+                <span id="activeColorName">--</span>
+            </button>
+        </div>
+
+        <!--
+            Tier 2 of the color picker (EDIT-3). Tier 1 is the bead inventory
+            itself, further down: clicking a row there makes that color active
+            and adds nothing to the shopping list. This panel is the query over
+            the whole palette, and it stays closed until the swatch is clicked.
+        -->
+        <div class="color-picker" id="colorPicker">
+            <div class="picker-query">
+                <label for="pickerColorInput">Match a color</label>
+                <input type="color" id="pickerColorInput" value="#ffffff">
+                <label for="pickerFilterInput" class="sr-only">Filter by code or name</label>
+                <input type="text" id="pickerFilterInput" placeholder="Filter by code or name, e.g. P17">
+            </div>
+            <p class="picker-hint">Nearest palette colors, closest first. Alt-click a bead in the pattern to pick its color.</p>
+            <div class="picker-results" id="pickerResults"></div>
+        </div>
+
         <div class="output-container" id="outputContainer">
             <div id="placeholderText" style="display: flex; justify-content: center; align-items: center; height: 100%; color: #6B7280;">
                 Pattern will appear here

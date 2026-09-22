@@ -65,25 +65,43 @@ public/colors_221.json  the default 221-color palette (name, hex, rgb), fetched 
 src/
   main.ts               startup wiring: DOM refs, palette load, upload/generate listeners
   types.ts              PaletteColor, Palette, Pattern, PatternDimensions, ColorTally, SourcePixels
-  lib/
-    pattern-utils.ts    palette normalization/validation, dimension math, color matching, tallying
-    viewport.ts         zoom limits, scroll offset on zoom, visible cell range, screen point → cell
+  lib/                  deterministic logic: no DOM, no canvas, every module covered by tests
+    pattern-utils.ts    palette normalization/validation, dimension math, RGB matching, tallying
+    oklab.ts            OkLab conversion and distance; the sRGB → linear table every pixel uses
+    image-file.ts       what a picked file really is: format, dimensions, whether it is complete
+    viewport.ts         zoom limits, scroll offset on zoom, visible range, screen point → cell
     guides.ts           gridline interval, ruler label step, which boundaries are visible
-  pipeline/
+    pattern-edit.ts     the edit primitive — one applyEdits serves paint, undo and redo alike
+    edit-history.ts     the undo/redo stack, bounded by total recorded cells, not stroke count
+    cell-path.ts        Bresenham between two cells, so a fast drag paints no gaps
+    flood-fill.ts       the contiguous same-color region, found iteratively
+    palette-query.ts    the picker's ranking: text filter plus nearest by perceptual distance
+  pipeline/             image → Pattern behind one boundary, so algorithms stay swappable
     generate.ts         pixels in, Pattern out — no DOM
-  rasterize.ts          hidden canvas: image → SourcePixels
+    downscale.ts        per-cell area averaging in linear light, plus the lineart classifier
+    color-match.ts      perceptual matching, with the palette's OkLab values computed once
+    reduce.ts           merges colors down to the limit, cheapest visible change first
+  state/
+    pattern-state.ts    single owner of the live pattern and its tallies; everything subscribes
   render/
     canvas-view.ts      the canvas pattern view: zoom, pan, codes, gridlines, rulers
-    inventory.ts        the bead-count list
+    editor.ts           the editor's pointer wiring, tool state, and picker DOM
+    inventory.ts        the bead-count list, which doubles as tier 1 of the color picker
+  rasterize.ts          hidden canvas: image → SourcePixels
   palette.ts  upload.ts  status.ts  dom.ts  contrast.ts
   styles.css            all styling, including the narrow-viewport media query
 helper.py               adds RGB tuples to a hex-only palette JSON
 colors.json             291-record hex-only palette; input to helper.py, not loaded by the app
+specs.md                the requirements, each with a verification Check, plus the decision log
+plan-v1.md              v1 broken into milestones M0–M10, in dependency order
 ```
 
-`Pattern` — width, height, and a row-major array of cells that are either a palette color or
-`null` — is the durable contract between the pipeline and everything downstream that renders,
-edits, exports, or serializes it.
+Two conventions hold this together. **Anything deterministic lives in `lib/` or `pipeline/` and has
+a test**; anything touching the DOM, canvas or `FileReader` stays out of them, which is what keeps
+the suite runnable without a browser. And **`Pattern`** — width, height, and a row-major array of
+cells that are either a palette color or `null` — is the durable contract between the pipeline and
+everything downstream that renders, edits, exports, or serializes it. The editor mutates it in
+place; it has not changed shape since it was defined.
 
 
 ## Status

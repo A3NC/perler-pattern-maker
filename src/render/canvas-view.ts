@@ -19,6 +19,7 @@ import {
 } from '../lib/viewport';
 import type { CellPosition, CellRange } from '../lib/viewport';
 import type { Pattern } from '../types';
+import { GRID_RULE_DARK, GRID_RULE_LIGHT, RULER_TEXT } from './guide-style';
 
 // The canvas pattern view (D1), replacing the element-per-bead grid.
 //
@@ -51,11 +52,8 @@ const toggleGridBtn = requireElement<HTMLInputElement>('toggleGridBtn');
 /** How much of a cell's width a code may fill before the font is shrunk to fit. */
 const CODE_MAX_WIDTH_RATIO = 0.86;
 
-// A gridline crosses many cells, so contrast.ts's per-cell choice cannot apply:
-// there is no single bead colour to contrast against. Drawn instead as a
-// dark/light pair one CSS pixel apart, so one half of the rule always reads.
-const GRID_RULE_DARK = 'rgba(0, 0, 0, 0.55)';
-const GRID_RULE_LIGHT = 'rgba(255, 255, 255, 0.6)';
+// The gridline and ruler-text colours live in guide-style.ts, shared with the
+// PNG export (D22).
 
 // Ruler chrome is fixed-size: it labels the view, not the beads, so unlike code
 // text it does not scale with zoom. rulerLabelStep is what stops it colliding.
@@ -63,7 +61,6 @@ const RULER_FONT_PX = 10;
 const RULER_BAND_PX = 15;
 const RULER_PADDING_PX = 3;
 const RULER_BACKGROUND = 'rgba(255, 255, 255, 0.86)';
-const RULER_TEXT = '#1F2937';
 
 interface View {
     pattern: Pattern;

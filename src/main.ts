@@ -2,7 +2,8 @@ import './styles.css';
 
 import { requireElement } from './dom';
 import { fullImageCrop } from './lib/crop';
-import { calculateDimensions } from './lib/pattern-utils';
+import type { SavedSettings } from './lib/pattern-save';
+import { calculateDimensions, tallyPattern } from './lib/pattern-utils';
 import { loadPalette } from './palette';
 import { generatePattern } from './pipeline/generate';
 import { imageToPixels } from './rasterize';
@@ -13,9 +14,11 @@ import {
     hideCropPreview,
     initCropControls,
     onCropChange,
+    restoreCropPreview,
     showCropPreview
 } from './render/crop-view';
 import { initEditorControls, setEditorPalette } from './render/editor';
+import { initAutosave, loadSavedSession } from './state/autosave';
 import { ExportError, exportPatternPng } from './render/export-png';
 import { initInventoryControls } from './render/inventory';
 import { clearPatternState, getPatternState, onPatternChange, setPattern } from './state/pattern-state';
@@ -45,11 +48,19 @@ const exportBtn = requireElement<HTMLButtonElement>('exportBtn');
 let perlerColors: Palette = [];
 let paletteReady = false;
 let uploadedImage: HTMLImageElement | null = null;
+/** The file `uploadedImage` was decoded from, kept for the autosave (D23). */
+let uploadedFile: File | null = null;
 
 initPatternViewControls();
 initInventoryControls();
 initEditorControls();
 initCropControls();
+
+// SAVE-1: mirrors the pattern, its settings and the image it came from into
+// IndexedDB. Read at each generate, so the image saved is the one on screen.
+initAutosave(() => (uploadedImage && uploadedFile
+    ? { file: uploadedFile, crop: currentCrop(uploadedImage) }
+    : null));
 
 // The stats line reads the shared owner too, so an edit and a generate reach it
 // by the same path and `Colors Used` cannot drift from the inventory (EDIT-4).
@@ -158,7 +169,11 @@ onCropChange(refreshDimensions);
 window.__perlerBooted = true;
 
 // Load and validate the default palette before enabling generation (PAL-2, PAL-3).
-loadPalette()
+// The restore waits for it to settle either way: the editor resolves its
+// opening color and the inventory's picks through the loaded palette, and the
+// restore's status line has to come after the palette's rather than be
+// overwritten by it.
+const paletteSettled = loadPalette()
     .then((palette) => {
         perlerColors = palette;
         paletteReady = true;
@@ -187,6 +202,9 @@ loadPalette()
         );
     });
 
+// Every upload and restore claims a token; see below.
+paletteSettled.then(() => restoreSavedSession());
+
 // Reading a file is asynchronous, so two quick picks can finish out of order
 // and leave the older image installed. Each change claims a token and a stale
 // result is dropped.
@@ -210,6 +228,7 @@ imageUpload.addEventListener('change', async (event) => {
         const image = await readImageFile(file);
         if (token !== uploadToken) return;
         uploadedImage = image;
+        uploadedFile = file;
         // A new image brings the crop preview back -- it is the one thing that
         // does, since the crop is one-shot per image (D21) -- and it takes the
         // old pattern with it. Leaving that pattern up would leave a conversion
@@ -276,21 +295,25 @@ generateBtn.addEventListener('click', () => {
     // image's own dimensions, which describe the uncropped picture.
     const crop = currentCrop(uploadedImage);
 
+    // Captured here, with the pattern, because the inputs stay editable after
+    // a generate (D21) and so cannot be read back later as this pattern's
+    // settings (D23).
+    const settings: SavedSettings = {
+        targetWidth: parseFloat(targetWidthInput.value),
+        beadSize: parseFloat(beadSizeSelect.value),
+        colorLimit
+    };
+
     let dimensions;
     try {
-        dimensions = calculateDimensions(
-            parseFloat(targetWidthInput.value),
-            parseFloat(beadSizeSelect.value),
-            crop.width,
-            crop.height
-        );
+        dimensions = calculateDimensions(settings.targetWidth, settings.beadSize, crop.width, crop.height);
     } catch (error) {
         showStatus((error as Error).message, 'error');
         return;
     }
 
     try {
-        buildPattern(uploadedImage, crop, dimensions.pixelWidth, dimensions.pixelHeight, colorLimit);
+        buildPattern(uploadedImage, crop, dimensions.pixelWidth, dimensions.pixelHeight, settings);
         // D21, and only on the path where a pattern actually exists: the crop is
         // settled for this image. The size and colour settings stay live, so the
         // pattern can be regenerated at a different size without re-uploading;
@@ -310,7 +333,7 @@ function buildPattern(
     crop: CropRect,
     pixelWidth: number,
     pixelHeight: number,
-    colorLimit: number
+    settings: SavedSettings
 ): void {
     showProcessing();
 
@@ -318,7 +341,7 @@ function buildPattern(
     const { pattern, tallies } = generatePattern(source, perlerColors, {
         gridWidth: pixelWidth,
         gridHeight: pixelHeight,
-        colorLimit
+        colorLimit: settings.colorLimit
     });
 
     clearPattern();
@@ -327,5 +350,97 @@ function buildPattern(
 
     // One handoff, after the view exists: the stats line, the inventory, and the
     // editor all subscribe to this rather than each being pushed their own copy.
-    setPattern(pattern, tallies);
+    setPattern(pattern, tallies, settings);
+}
+
+/**
+ * SAVE-1: put back the last session (D23). The pattern is the part that
+ * matters -- it is the hand-edited work -- so an image that cannot be restored
+ * costs only the ability to regenerate without re-uploading, never the pattern.
+ *
+ * The image is decoded *before* the pattern is installed, because installing
+ * it fires the autosave's 'set', which rewrites the slot from whatever image is
+ * loaded at that moment. Done in this order, the rewrite puts back what was
+ * read (and drops an image that failed), rather than deleting a good image
+ * because it had not finished decoding yet.
+ *
+ * Never throws: `__perlerBooted` is already set, so nothing above would report it.
+ */
+async function restoreSavedSession(): Promise<void> {
+    // Claims a token like an upload does, so an upload started while a large
+    // saved image is still decoding wins, and nothing flickers back over it.
+    const token = ++uploadToken;
+
+    try {
+        const session = await loadSavedSession();
+        if (token !== uploadToken) return;
+
+        if (session.kind === 'invalid') {
+            console.warn('Saved pattern discarded:', session.reason);
+            showStatus('Your last pattern could not be restored, so the page has started fresh.', 'error');
+            return;
+        }
+        if (session.kind === 'none') return;
+
+        let image: HTMLImageElement | null = null;
+        let imageProblem = session.imageProblem;
+        if (session.image) {
+            try {
+                image = await readImageFile(session.image.file);
+            } catch (error) {
+                imageProblem = (error as Error).message;
+            }
+            if (token !== uploadToken) return;
+        }
+        if (imageProblem) console.warn('Saved image not restored:', imageProblem);
+
+        if (image && session.image) {
+            uploadedImage = image;
+            uploadedFile = session.image.file;
+            restoreCropPreview(image, session.image.crop);
+            // The crop was settled for this image when the pattern was generated (D21).
+            hideCropPreview();
+        }
+
+        applySettings(session.settings);
+
+        clearPattern();
+        renderPattern(session.pattern);
+        setPattern(session.pattern, tallyPattern(session.pattern), session.settings);
+        syncControls();
+
+        const { width, height } = session.pattern;
+        let message = `Restored your last pattern (${width} × ${height} beads, saved ${formatSavedAt(session.savedAt)}).`;
+        if (!image) {
+            message += ' Its source image could not be restored, so upload it again to regenerate.';
+        }
+        if (!paletteReady) {
+            message += ' The color palette could not be loaded, so generation is disabled.';
+        }
+        showStatus(message, image && paletteReady ? 'success' : 'info');
+    } catch (error) {
+        console.error('Restore failed:', error);
+        if (token !== uploadToken) return;
+        clearPattern();
+        clearPatternState();
+        showStatus('Your last pattern could not be restored, so the page has started fresh.', 'error');
+    }
+}
+
+/** Put a restored pattern's settings back in the inputs, skipping any the page cannot show. */
+function applySettings(settings: SavedSettings): void {
+    targetWidthInput.value = String(settings.targetWidth);
+    colorLimitInput.value = String(settings.colorLimit);
+    const option = Array.from(beadSizeSelect.options)
+        .find((candidate) => parseFloat(candidate.value) === settings.beadSize);
+    if (option) beadSizeSelect.value = option.value;
+}
+
+function formatSavedAt(iso: string): string {
+    const saved = new Date(iso);
+    if (Number.isNaN(saved.getTime())) return 'earlier';
+    const sameDay = saved.toDateString() === new Date().toDateString();
+    return sameDay
+        ? `at ${saved.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
+        : saved.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
 }

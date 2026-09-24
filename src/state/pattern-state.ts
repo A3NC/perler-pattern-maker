@@ -1,4 +1,5 @@
 import { tallyPattern } from '../lib/pattern-utils';
+import type { SavedSettings } from '../lib/pattern-save';
 import type { ColorTally, Pattern } from '../types';
 
 /**
@@ -23,6 +24,13 @@ export interface PatternState {
     tallies: Record<string, ColorTally>;
     /** Non-empty cells. Derived, because every non-empty cell contributes exactly one tally. */
     beadCount: number;
+    /**
+     * The settings that produced this pattern (M7, D23). Held here rather than
+     * by the autosave so there is still one owner: the live inputs stay
+     * editable after a generate (D21), so they cannot be read back as the
+     * pattern's settings, and a second holder would have to be kept in step.
+     */
+    settings: SavedSettings;
 }
 
 /**
@@ -54,8 +62,12 @@ function notify(reason: PatternChangeReason): void {
 }
 
 /** Install a freshly generated pattern, discarding whatever was here. */
-export function setPattern(pattern: Pattern, tallies: Record<string, ColorTally>): void {
-    current = { pattern, tallies, beadCount: beadCountOf(tallies) };
+export function setPattern(
+    pattern: Pattern,
+    tallies: Record<string, ColorTally>,
+    settings: SavedSettings
+): void {
+    current = { pattern, tallies, beadCount: beadCountOf(tallies), settings };
     notify('set');
 }
 

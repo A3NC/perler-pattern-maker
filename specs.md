@@ -420,14 +420,22 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
 
 ### Persistence — SAVE
 
-- [ ] **SAVE-1 [v1]** Autosave the single current pattern, its settings, and its manual edits to
+- [x] **SAVE-1 [v1]** Autosave the single current pattern, its settings, and its manual edits to
   browser-local storage, so a refresh or accidental tab close does not lose work.
   **Check:** Generate, edit several cells, reload the page: the pattern and edits are restored.
-- [ ] **SAVE-2 [v1]** Nothing is uploaded anywhere. All storage is browser-local.
+  _(See D23: the source image and crop are saved too, in IndexedDB; undo history is not. Verified
+  at M7 in headless Chrome: brush, eraser and undo, then a reload, restore the pattern cell for
+  cell with matching stats, inventory and generate-time settings; regenerating from the restored
+  image and crop reproduces the original pattern exactly, for a PNG and for an orientation-6
+  JPEG.)_
+- [x] **SAVE-2 [v1]** Nothing is uploaded anywhere. All storage is browser-local.
   **Check:** With the network disabled after first load, upload, generate, edit, and export all
   work. No outbound requests appear in the network log during those actions.
-  _(Export clause verified at M6: offline after load, an export succeeds and the network log
-  records zero requests. It stays unticked until M7, since the Check covers the whole flow.)_
+  _(Verified at M7 against the production build: offline after load, upload, generate, a brush
+  stroke, undo, redo and export all succeed, and the autosave writes. The network log's only entry
+  is the `blob:` URL the upload decodes through, which is in-memory and never leaves the page. A
+  *reload* while offline is outside this Check: with no service worker the app cannot be fetched
+  at all.)_
 - [ ] **SAVE-3 [later]** A library of multiple named projects the user can browse and return to.
 
 ### User interface — UI
@@ -960,7 +968,8 @@ editor state would depend on M5. Do not fix screenshots of these states before t
     judgment constant, and `MERGE_FLOOR`, `MIN_CODE_FONT_PX` and `DEFAULT_CONTRAST_TUNING` are three
     standing demonstrations of what those cost here. Exact palette match only; a speckled background
     is an upstream R2/GEN-3 defect. **No history in autosave:** SAVE-1 is pattern, settings and
-    edits, not history, so M7's scope is unchanged.
+    edits, not history, so M7's scope is unchanged. _(Held at M7 by D23, which widened the save to
+    the source image but kept history out, and records the two further costs that confirm it.)_
 
   **The cost, stated plainly:** M5 goes from M to a large M, on the critical path (M5 → M6). The
   bound that keeps it there is that every piece is small and testable — the history stack, the fill
@@ -1088,3 +1097,41 @@ editor state would depend on M5. Do not fix screenshots of these states before t
   - **The export ignores the view's toggles.** Codes and gridlines are always drawn. A file whose
     contents depend on a checkbox the user may have forgotten is the opposite of OUT-3's
     "predictable", and OUT-1 says every cell.
+
+- **D23 (2026-09-24) — Autosave keeps the pattern, its settings and its source image in IndexedDB;
+  never the undo history.** Written for M7, before any code. (SAVE-1, SAVE-2)
+
+  **The goal it is sized to:** surviving an accidental refresh or tab close. It is not an archive,
+  and every choice below is measured against that.
+
+  - **The image and crop are saved.** Without them a reload restores the pattern but leaves
+    Generate disabled until a new upload, and by D21 a new upload discards the pattern. So the
+    ordinary case D21 protects — regenerate at a different width — would not survive the refresh
+    this exists for. The crop is four integers; the image is the uploaded `File`'s own bytes, so a
+    HEIC stays HEIC and a restored image goes back through the same M3 gate as a fresh upload.
+  - **Undo history is not saved** — D19's refusal, and two costs found while scoping M7 that
+    confirm it. Its writes grow with every stroke (up to ~2.4 MB at `DEFAULT_CELL_BUDGET`). And
+    `applyEdits` writes a record's `prev` without checking it, so a history restored against a
+    pattern from a different moment would repaint cells wrongly rather than fail. A restored
+    pattern opens with an empty stack.
+  - **IndexedDB, not `localStorage`.** The image decides it: `localStorage` holds strings, so an
+    image would be base64, a third larger, and an ordinary 4 MB phone photo would exceed the
+    ~5 MB per-origin quota on its own. IndexedDB stores blobs directly, has a quota measured
+    against the disk, and has transactions, which is how the image and the pattern are kept from
+    disagreeing.
+  - **The slot exists only while a pattern does, and mirrors the screen.** An upload alone saves
+    nothing; the image is written with the pattern at Generate. Clearing the pattern deletes the
+    slot, so after a new upload (which clears it, D21) a reload restores nothing rather than
+    resurrecting a pattern the user watched disappear.
+  - **The settings saved are the ones that produced the pattern**, captured at Generate — not the
+    live inputs, which D21 leaves editable and which can therefore describe a pattern that was
+    never generated. A restore writes them back into the inputs.
+  - **One slot, last write wins across tabs.** No cross-tab sync or locking. SAVE-3 is the
+    multi-project answer and is **[later]**.
+  - **Eviction is accepted, not fought.** Safari deletes a site's script-writable storage after
+    seven days without a visit, and any browser may evict under disk pressure. Neither threatens
+    a refresh, so `navigator.storage.persist()` — which prompts in Firefox — is not requested.
+  - **Failure degrades, it never blocks.** Storage that is missing, blocked or full leaves the app
+    working exactly as it did before M7, with one message saying the pattern will not survive a
+    reload. An image that cannot be restored still lets the pattern restore: the hand-edited
+    pattern is what SAVE-1 exists for, and losing the image must not cost it.

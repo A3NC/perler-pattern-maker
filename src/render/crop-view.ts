@@ -1,5 +1,5 @@
 import { requireElement } from '../dom';
-import { cropFromPoints, fullImageCrop, hitTestCrop, moveCrop, resizeCrop } from '../lib/crop';
+import { clampCrop, cropFromPoints, fullImageCrop, hitTestCrop, moveCrop, resizeCrop } from '../lib/crop';
 import type { CropRect, CropTarget } from '../lib/crop';
 
 /**
@@ -79,6 +79,21 @@ export function getCrop(): CropRect | null {
  * URL would fail to load. This one keeps its bitmap and re-parents cleanly.
  */
 export function showCropPreview(next: HTMLImageElement): void {
+    installImage(next, fullImageCrop(next.naturalWidth, next.naturalHeight));
+}
+
+/**
+ * Put back an image and the crop it was generated with (M7, D23). The crop is
+ * clamped through `crop.ts` rather than trusted: it was stored, not drawn, and
+ * a rectangle that no longer fits the decoded image must still come back as a
+ * valid one. The caller hides the preview straight after, exactly as a generate
+ * does (D21) -- the crop was already settled for this image.
+ */
+export function restoreCropPreview(next: HTMLImageElement, saved: CropRect): void {
+    installImage(next, clampCrop(saved, next.naturalWidth, next.naturalHeight));
+}
+
+function installImage(next: HTMLImageElement, initial: CropRect): void {
     previewFrame.querySelector('img')?.remove();
 
     next.alt = 'Uploaded image, with the area that will become beads highlighted';
@@ -88,7 +103,7 @@ export function showCropPreview(next: HTMLImageElement): void {
     previewFrame.prepend(next);
 
     image = next;
-    crop = fullImageCrop(next.naturalWidth, next.naturalHeight);
+    crop = initial;
     previewArea.classList.add('is-visible');
     measure();
     paint();

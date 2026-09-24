@@ -481,6 +481,11 @@ holds the stats, the zoom row and the editor bar. M8 owns its final placement.
 **Do:** Save the current pattern, its settings, and its manual edits to browser-local storage.
 Restore on load. One slot, no project list.
 
+**Scope change, 2026-09-24:** the source image and its crop are saved too, so a restored pattern
+can be regenerated at a new size without re-uploading; undo history still is not (D19). The image
+moves the save from `localStorage` to IndexedDB. Both are recorded in D23, written at the
+milestone's start.
+
 **Why last:** Lowest risk, and it needs the final shape of the pattern data to be settled. It
 prevents the most enraging failure mode — losing an hour of hand-editing to an accidental refresh.
 
@@ -582,7 +587,7 @@ added D22 and ticked OUT-1, OUT-2, OUT-3 and GEN-5. Like M4 and M5, it left `Pat
 items for M9: the export's canvas budget is unmeasured on Safari and a phone, and it sits beside
 NFR-5.
 
-**No tactical plan is open.** Write `plans/m7-autosave.md` the day M7 starts, not before.
+**M7 is in flight; its tactical plan is `plans/m7-autosave.md`** (written 2026-09-24).
 
 The two large items, **M1 and M2, are the project.** If time runs short, everything after them can
 be trimmed; neither of them can be.

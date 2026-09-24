@@ -185,6 +185,16 @@
             </div>
         </div>
 
+        <!--
+            M6's export (OUT-1). Below the pattern rather than above it: the
+            space over the canvas already holds the stats line, the zoom row and
+            the editor bar, and the zoom row overflows at 390 px (recorded under
+            M8). Hidden until a pattern exists. M8 owns the final placement.
+        -->
+        <div class="export-controls" id="exportControls">
+            <button type="button" id="exportBtn">Download PNG</button>
+        </div>
+
         <div id="beadCountsContainer">
             <div class="count-header">
                 <h3>Required Beads</h3>

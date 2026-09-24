@@ -202,6 +202,28 @@
             font-weight: 500;
         }
 
+        /* M6's export button. Hidden until a pattern exists, the same lifecycle
+           as the zoom row and the editor bar. */
+        .export-controls {
+            display: none;
+            justify-content: center;
+            margin-top: 0.75rem;
+        }
+
+        .export-controls.is-active {
+            display: flex;
+        }
+
+        /* Beats `button`'s grid-column and the 640px query's `width: 100%` on
+           specificity, the way .editor-controls .tool-button does. */
+        .export-controls button {
+            grid-column: auto;
+            width: auto;
+            min-height: 44px; /* UI-6 */
+            padding: 0.5rem 1.25rem;
+            font-size: 1rem;
+        }
+
         .status-message {
             /* Span the panel instead of inheriting one grid cell, which left it
                orphaned at half width next to the full-width button (UI-2). */

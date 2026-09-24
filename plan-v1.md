@@ -410,15 +410,70 @@ is ~29 ms end to end, so NFR-2's budget is untouched by this milestone.
 
 ---
 
-### M6 — PNG export · S
+### M6 — PNG export · S — ✅ **Done** (2026-09-24)
 **Do:** Render the current pattern to an image at a fixed cell size independent of screen zoom,
-with codes on every cell, and download it.
+with codes on every cell and gridlines visible, and download it.
 
 **Why here:** Needs the finished render (M1) and edits (M5) so the export reflects real state.
 
 **Done when:** The file opens as a valid PNG; every non-empty cell shows a legible code; manual
 edits appear; exporting at two different screen zoom levels produces identical files.
 *(OUT-1, OUT-2, OUT-3)*
+
+**Delivered (2026-09-24):** **OUT-1, OUT-2, OUT-3 — and GEN-5 — are ticked.** GEN-5's Check wants a
+hard edge "in the rendered pattern *and* in the exported PNG", so it had been uncheckable until
+there was a PNG. `npm run check` is green at 188 tests, up from 169. One new pure module,
+`src/lib/export-layout.ts`, plus `src/render/export-png.ts` for the canvas work and
+`src/render/guide-style.ts` for the gridline colours both renderers now share. **D22** was written
+first, before any code, because the gridline clause in this milestone's Do contradicted D16 as it
+then read.
+
+**D22 settled three things, and they shaped the milestone:**
+- **Gridlines and edge numbers ship**, with the numbers in a margin *outside* the cells. A file
+  cannot be panned, so a label over a bead would hide its code for good.
+- **The export is a screen reference, not a print artifact.** A large pattern cannot be printed
+  legibly as one file at any scale, so the bar is "every code readable when zoomed in on a
+  screen". Splitting into page-sized files went to OUT-6, with a note on why its hard part is
+  delivery rather than geometry.
+- **The export ignores the view's toggles.** Codes and gridlines are always drawn.
+
+**The one real unknown was the canvas ceiling, and it was measured before a cell size was
+chosen.** An oversized canvas does not throw — it encodes to nothing, the same reasonless failure
+as M3's `img.onerror`. So the limit is respected *before* the draw, by one pixel budget of 4096²
+for every browser. Each pattern gets the largest integer cell from 32 px down to an 18 px
+legibility floor that fits. The design target exports at 32 px (3274 × 3248); the hard limit,
+272 × 182, at 18 px (4970 × 3324). OUT-3 holds exactly, because the choice depends on the
+pattern's size and nothing else. A `null` blob is still treated as its own error rather than
+trusted never to happen.
+
+**Verified by driving the real app in headless Chrome over the DevTools protocol**, not only in
+Node:
+- **OUT-3:** byte-identical files (same SHA-256) at fit zoom, maximum zoom, both checkboxes off,
+  and dpr 2 — stricter than the Check's two zoom levels.
+- **OUT-2:** a cell painted through the real brush appears with its exact colour and code, and
+  after undo the export is byte-identical to the pre-edit one.
+- **GEN-5 read back from pixels on both halves:** every cell's edge strip is one colour in the
+  export, and there is no blended pixel at any colour change on the canvas, at dpr 1 or 2.
+- **Offline:** an export succeeds with zero network requests — the export clause of SAVE-2, which
+  stays unticked for M7.
+- **Around the thing just built, per M4's lesson:** an export leaves the pattern, tallies and undo
+  history untouched, and a new upload hides the button.
+
+**Honest about OUT-1's wording:** its Check says "legible at 100%". That holds at 32 px. At the
+hard limit's 18 px the 7 px codes are readable at 100% but small, and clear once magnified. D22's
+bar is the magnified one, and OUT-1 carries a note saying which was run.
+
+**Left open, recorded for M9:**
+- **Desktop Safari and a phone were not measured.** Headless Chrome passed every size to 16384².
+  Safari's WebDriver needs "Allow remote automation", which was left for the user to enable, and
+  the phone needs a hand. If either fails below 4096², only `EXPORT_MAX_PIXELS` moves. This sits
+  beside NFR-5 for M9.
+- **The two legibility constants are judgment calls**, in the `MERGE_FLOOR` family: the 7 px
+  code-glyph floor and the 16 px edge-number font. The numbers were raised from 12 px on review.
+
+**Two review changes:** the edge numbers grew from 12 px to 16 px, and the Download PNG button
+moved from beside the stats line to **below the canvas**. The space above the canvas already
+holds the stats, the zoom row and the editor bar. M8 owns its final placement.
 
 ---
 
@@ -520,19 +575,14 @@ M0 → M1 → M2 → M5 → M6 are sequential; each genuinely needs the one befo
 any point** — slot it in whenever you want a quick, satisfying win, the way M10 was. M4 needs M2
 done. M7 needs the pattern data settled by M5.
 
-**M0, M1, M2, M3, M4, M5 and M10 are done. M6 is next**, and it is the last item on the critical
-path. M4 closed 2026-09-22 having ticked six requirements rather than two — see its Delivered block
-for why the extra four were free — and it added D21, which freezes the settings once a pattern
-exists. M6 inherits nothing from it: the crop is applied inside `rasterize.ts` as a `drawImage`
-source rectangle, so `SourcePixels`, `Pattern` and the GEN-6 boundary are all unchanged.
-M3 was slotted in as the quick win this section anticipated, and closed the same day it opened. M2
-closed 2026-09-21 with GEN-8 unticked (see its Delivered block); M5 closed 2026-09-22 with all seven
-of its requirements ticked, and the bound D19 set for it held — every new piece is a pure, tested
-function, and `Pattern` did not change, so **M6 and M7 inherit nothing new**. M6 reads the same
-`Pattern` the editor has been mutating, so OUT-2 ("manual edits appear in the export") needs no work
-beyond exporting what is there.
+**M0 through M6, and M10, are done — the critical path is closed** (M6, 2026-09-24). What remains
+is off it: **M7 (autosave) is next**, then M8 (interface floor) and M9 (final verification). M6
+added D22 and ticked OUT-1, OUT-2, OUT-3 and GEN-5. Like M4 and M5, it left `Pattern` unchanged, so
+**M7 serializes exactly the shape the editor mutates and the export draws.** M6 also recorded two
+items for M9: the export's canvas budget is unmeasured on Safari and a phone, and it sits beside
+NFR-5.
 
-**No tactical plan is open.** Write `plans/m6-export.md` the day M6 starts, not before.
+**No tactical plan is open.** Write `plans/m7-autosave.md` the day M7 starts, not before.
 
 The two large items, **M1 and M2, are the project.** If time runs short, everything after them can
 be trimmed; neither of them can be.

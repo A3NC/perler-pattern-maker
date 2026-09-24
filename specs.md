@@ -262,10 +262,16 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
   moiré pattern. See Decision log D4 and D18.
   _(M2: `src/pipeline/downscale.ts`. Exact fractional-coverage box filter in linear light,
   alpha-weighted. D18 adds the lineart strategy alongside it.)_
-- [ ] **GEN-5 [v1]** Each cell's assigned color is flat and hard-edged — no gradient, blur, or
+- [x] **GEN-5 [v1]** Each cell's assigned color is flat and hard-edged — no gradient, blur, or
   anti-aliasing within or between cells.
   **Check:** Zoom to a cell boundary in the rendered pattern and in the exported PNG: adjacent
   cells meet at a hard edge with exactly two colors present.
+  _(Ticked at M6, which made the second half checkable. **Export:** the edge strip of all 10,000
+  cells of a 100 × 100 export (the part clear of the code text) is a single colour, and cell edges
+  are integers by construction. **View:** a pixel read-back of the canvas at maximum zoom, codes and
+  grid off, found no blended pixel at any of 481 colour changes at dpr 1 or 959 at dpr 2. The Check
+  applies *between* gridlines: every 10th boundary carries the grid rule by design (D16, D22), and
+  code text is anti-aliased as text, not as cell colour.)_
 - [x] **GEN-6 [v1]** The conversion pipeline is a single replaceable unit, so alternative
   algorithms can be swapped in without touching UI code.
   **Check:** A second algorithm can be added and selected by changing one identifier, with no
@@ -370,16 +376,33 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
 
 ### Output — OUT
 
-- [ ] **OUT-1 [v1]** Export the pattern as a downloadable PNG with the color code drawn on every
+- [x] **OUT-1 [v1]** Export the pattern as a downloadable PNG with the color code drawn on every
   cell.
   **Check:** The downloaded file opens as a valid PNG; every non-empty cell shows its code; codes
   are legible at 100% zoom in an image viewer.
-- [ ] **OUT-2 [v1]** The export reflects the current state of the pattern, including manual edits.
+  _(M6, 2026-09-24. The export also carries gridlines every 10 cells, a frame, and row and column
+  numbers in a margin outside the cells — see D22. **"Legible at 100%" is read as *legible when
+  zoomed in on a screen*, per D22**, and this note records exactly what was run: a 100 × 100
+  pattern exports at 32 px per cell and its codes are legible at a true 100%. The hard limit steps
+  down to 18 px per cell, where the 7 px codes are readable at 100% but small, and clear once
+  magnified. `file` reports both as valid PNGs. The Check's wording asks for more than D22
+  promises at the hard limit, so it is annotated here rather than quietly tested against something
+  else.)_
+- [x] **OUT-2 [v1]** The export reflects the current state of the pattern, including manual edits.
   **Check:** Paint a cell, export, and confirm the exported PNG shows the edited color and code.
-- [ ] **OUT-3 [v1]** Export cell size is fixed and independent of on-screen zoom, so output size is
+  _(M6: one cell painted E9 through the real brush. The exported pixels at that cell are exactly
+  E9's `rgb(233, 112, 204)` with its code. After undo, the next export is **byte-identical** to the
+  pre-edit one. Free by construction: the export reads `pattern-state.ts`'s live `Pattern`, which
+  every edit mutates in place.)_
+- [x] **OUT-3 [v1]** Export cell size is fixed and independent of on-screen zoom, so output size is
   predictable.
   **Check:** Exporting the same pattern at two different on-screen zoom levels produces
   pixel-identical files.
+  _(M6: passed more strictly than asked. The files are **byte-identical** (same SHA-256) at fit
+  zoom, at maximum zoom, with both view checkboxes off, and at `devicePixelRatio` 2, and identical
+  across separate runs. "Fixed" means fixed per pattern: the cell size is a function of the
+  pattern's width and height only — 32 px, stepping down to fit a pixel budget, 18 px at the hard
+  limit. See D22.)_
 - [ ] **OUT-4 [v1]** Show the bead inventory on screen: each required color's code, swatch, and
   count, plus the total bead count and the number of distinct colors. Sortable.
   **Check:** Counts sum to the number of non-empty cells. _(Partially implemented.)_
@@ -388,6 +411,12 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
   every code and the finished size.
 - [ ] **OUT-6 [later]** Printable multi-page PDF, split into pegboard-sized sections with grid
   coordinates and a legend on each page.
+  _(Considered at M6 and deferred with D22: a cheaper first step than the PDF is splitting the
+  pattern into several page-sized PNGs, numbered in whole-pattern coordinates, which M6's edge
+  numbers already are. The geometry is simple, since `src/lib/export-layout.ts` would take a cell
+  range. **The hard part is delivery** — dozens of files from one click wants a zip, because
+  browsers prompt for or drop multiple downloads — not the drawing. Splitting would also lift the
+  canvas-size ceiling D22 records.)_
 
 ### Persistence — SAVE
 
@@ -397,6 +426,8 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
 - [ ] **SAVE-2 [v1]** Nothing is uploaded anywhere. All storage is browser-local.
   **Check:** With the network disabled after first load, upload, generate, edit, and export all
   work. No outbound requests appear in the network log during those actions.
+  _(Export clause verified at M6: offline after load, an export succeeds and the network log
+  records zero requests. It stays unticked until M7, since the Check covers the whole flow.)_
 - [ ] **SAVE-3 [later]** A library of multiple named projects the user can browse and return to.
 
 ### User interface — UI
@@ -783,6 +814,9 @@ editor state would depend on M5. Do not fix screenshots of these states before t
     precisely so M6 reuses it rather than reinventing it. The v1 story for a printed pattern is
     therefore unchanged — which is worth stating, because the user who reported this works from
     both the screen and paper.
+    _(Decided at M6, 2026-09-24: gridlines **do** ship in the export, with edge numbers in a margin
+    — see D22. The printed-pattern story is still unchanged, but now deliberately: D22 makes the
+    export a screen reference.)_
   - **A minimap was considered and declined.** A thumbnail with a viewport rectangle answers "where
     am I" more directly, but needs a second canvas inside `#outputContainer`, which is cleared
     wholesale on every generate, and sticky positioning of its own. Edge numbers answer the same
@@ -1013,3 +1047,44 @@ editor state would depend on M5. Do not fix screenshots of these states before t
   Recorded because it ticks no box: it satisfies no requirement, threatens neither Check M4 closes
   (IN-5's is about the state after upload; SET-3's says *before Generate is pressed*), and would
   otherwise ship as an unexplained behavior.
+
+- **D22 (2026-09-24) — The export carries gridlines and edge numbers, and is a screen reference,
+  not a print artifact.** Written for M6. Reverses the third bullet of D16, which deferred
+  gridlines in the export to M6 rather than deciding against them. (OUT-1, OUT-3, OUT-6)
+
+  **What ships:** gridlines every `GRID_INTERVAL` cells as the view's dark/light double rule, a
+  frame just outside the cells, and column numbers across the top and row numbers down the left,
+  in a margin *outside* the cells. **Not** a legend, the grid dimensions, or a title — those are
+  OUT-5, **[v2]**. The margin is the thin end of OUT-5's wedge. Widening it is a logged decision,
+  not a tweak.
+
+  **Why the numbers ship with the lines,** for D16's own reason: uniform gridlines give local
+  structure without absolute position. An image viewer has none of the app's sticky rulers, so
+  once you zoom into the file, the numbers baked into it are the only answer to "where am I".
+  **Why they sit outside the cells:** the on-screen rulers can cover beads because the view pans.
+  A file cannot be panned, so a label over a cell would hide that cell's code for good.
+
+  **Why the bar is the screen.** A large pattern cannot be printed legibly as one file. Fitted to a
+  page, a 300-cell row is under 1 mm per cell. At true bead scale a cell is 2.6 mm (Mini) to 5 mm
+  (Standard), too small for a readable code at Mini and many pages wide at either. So v1's
+  promise is **every code readable when the file is zoomed in on a screen**. A printer scaling the
+  PNG to the page is acceptable for small patterns and a known limitation for large ones.
+  Splitting into page-sized files, zip delivery, print DPI and true-scale output were all
+  considered and deferred with OUT-6, where the note on the cheaper first step lives.
+
+  **Three consequences recorded deliberately:**
+  - **"Fixed cell size" means fixed per pattern.** An oversized canvas does not throw — it
+    encodes to nothing, the same reasonless failure as M3's `img.onerror` — so the size limit is
+    respected before the draw. `EXPORT_MAX_PIXELS` is one budget for every browser, 4096², the
+    reported iOS canvas cap. A per-browser value would make the same pattern a different file on
+    different devices. The cell is the largest integer from 32 px down to an 18 px floor (a 7 px
+    code glyph) that fits. The design target exports at 32 px, the hard limit at 18 px. OUT-3
+    holds exactly, because the choice depends on the pattern's size and nothing else. Nothing
+    generation can produce is refused today.
+  - **The budget is measured in one browser only.** Headless Chrome passed every size to 16384²,
+    but desktop Safari and a phone were not measured at M6. If either fails below 4096², only the
+    constant moves. Recorded for M9 beside NFR-5, the same way NFR-2's overrun and IN-6's ceiling
+    were.
+  - **The export ignores the view's toggles.** Codes and gridlines are always drawn. A file whose
+    contents depend on a checkbox the user may have forgotten is the opposite of OUT-3's
+    "predictable", and OUT-1 says every cell.

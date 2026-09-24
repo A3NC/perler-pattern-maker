@@ -16,10 +16,12 @@ import {
     showCropPreview
 } from './render/crop-view';
 import { initEditorControls, setEditorPalette } from './render/editor';
+import { ExportError, exportPatternPng } from './render/export-png';
 import { initInventoryControls } from './render/inventory';
-import { clearPatternState, onPatternChange, setPattern } from './state/pattern-state';
+import { clearPatternState, getPatternState, onPatternChange, setPattern } from './state/pattern-state';
 import { showStatus } from './status';
 import { UploadError, readImageFile } from './upload';
+import { exportFileName } from './lib/export-layout';
 import type { CropRect } from './lib/crop';
 import type { Palette } from './types';
 
@@ -37,6 +39,8 @@ const beadSizeSelect = requireElement<HTMLSelectElement>('beadSize');
 const colorLimitInput = requireElement<HTMLInputElement>('colorLimit');
 const statsDiv = requireElement('stats');
 const dimensionsDiv = requireElement('dimensions');
+const exportControls = requireElement('exportControls');
+const exportBtn = requireElement<HTMLButtonElement>('exportBtn');
 
 let perlerColors: Palette = [];
 let paletteReady = false;
@@ -57,6 +61,35 @@ onPatternChange((state) => {
     const distinctColors = Object.keys(state.tallies).length;
     statsDiv.textContent = `Pattern Size: ${state.pattern.width} x ${state.pattern.height} beads | `
         + `Total Beads Required: ${state.beadCount} | Colors Used: ${distinctColors}`;
+});
+
+// The export button exists exactly when a pattern does.
+onPatternChange((state) => {
+    exportControls.classList.toggle('is-active', state !== null);
+});
+
+// OUT-1 … OUT-3. Reads the shared owner at click time rather than holding a
+// copy: the editor mutates that same Pattern in place, so whatever is on screen
+// -- manual edits and undos included -- is what gets exported (OUT-2).
+exportBtn.addEventListener('click', async () => {
+    const state = getPatternState();
+    if (!state) return;
+    const { width, height } = state.pattern;
+
+    exportBtn.disabled = true;
+    showStatus('Exporting...', 'info');
+    try {
+        // Let the status line paint before the draw, which at the pixel budget
+        // is a noticeable synchronous stretch.
+        await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
+        await exportPatternPng(state.pattern);
+        showStatus(`Pattern downloaded as ${exportFileName(width, height)}.`, 'success');
+    } catch (error) {
+        if (!(error instanceof ExportError)) console.error('Export failed:', error);
+        showStatus((error as Error).message || 'The pattern could not be exported.', 'error');
+    } finally {
+        exportBtn.disabled = false;
+    }
 });
 
 /**

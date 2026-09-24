@@ -477,15 +477,63 @@ holds the stats, the zoom row and the editor bar. M8 owns its final placement.
 
 ---
 
-### M7 — Autosave · S
+### M7 — Autosave · S (small M, as widened) — ✅ **Done** (2026-09-24)
 **Do:** Save the current pattern, its settings, and its manual edits to browser-local storage.
 Restore on load. One slot, no project list.
+
+**Scope change, 2026-09-24:** the source image and its crop are saved too, so a restored pattern
+can be regenerated at a new size without re-uploading; undo history still is not (D19). The image
+moves the save from `localStorage` to IndexedDB. Both are recorded in D23, written at the
+milestone's start.
 
 **Why last:** Lowest risk, and it needs the final shape of the pattern data to be settled. It
 prevents the most enraging failure mode — losing an hour of hand-editing to an accidental refresh.
 
 **Done when:** Generate, edit several cells, reload: pattern and edits come back. With the network
 disabled after first load, everything still works. *(SAVE-1, SAVE-2)*
+
+**Delivered (2026-09-24):** **SAVE-1 and SAVE-2 are ticked.** `npm run check` is green at 208
+tests, up from 188. **D23** was written first and governs it. The one new pure module is
+`src/lib/pattern-save.ts`: two versioned records, one for the pattern and one for the image, tied
+by a per-generate id, with decoders that never throw. The browser half is `src/state/save-store.ts`
+(IndexedDB, no dependency) and `src/state/autosave.ts`, which is a `pattern-state` subscriber.
+`PatternState` gained the generate-time `settings`, and `crop-view.ts` gained
+`restoreCropPreview`. **`Pattern` did not change.**
+
+**Why IndexedDB:** saving the image forced it. As base64 an ordinary phone photo exceeds
+`localStorage`'s quota on its own, while IndexedDB stores the uploaded `File` byte for byte and
+writes the image and the pattern in one transaction.
+
+**Measured, in headless Chrome:**
+- An edit's write at the 50,000-cell hard limit costs **~1–2 ms** end to end, ~1 ms of it
+  encoding, so each stroke is saved synchronously with no deferral.
+- A generate's write, including the 2.9 MB R5 photo, costs **~14 ms**. It is asynchronous either
+  way.
+- A 218 × 218 pattern exports to the same SHA-256 before and after a reload (OUT-3 survives the
+  round trip).
+
+**Verified around the thing just built:**
+- Fill-with-empty across a background restores exactly.
+- Undo is disabled after a reload, because history is not saved.
+- A new upload empties the slot.
+- A bad version or an out-of-range cell index boots fresh with one message.
+- A non-image blob or a mismatched generation restores the pattern and drops only the image.
+- An upload made while a slow restore is still reading wins.
+- With IndexedDB throwing, the app works as before and reports once.
+
+**One bug was found by testing that last case.** Every upload clears the pattern and so deletes the
+slot, and with storage blocked that failed delete put the autosave error over "Image ready". Now
+only failed *pattern* writes are reported. A failed delete has nothing to lose.
+
+**Restore waits for the palette load to settle**, which the tactical plan had not planned for. The
+editor resolves its opening color and the inventory's picks through the loaded palette, so
+restoring earlier opened the brush on Empty. Waiting also orders the two status messages without
+extra work.
+
+**Not verified, recorded for M9:**
+- **Safari:** HEIC round trip, and IndexedDB `Blob` storage in general. This is the same
+  WebDriver gap as M6's canvas budget.
+- **Two tabs:** last write wins by design (D23). This was reasoned about, not driven.
 
 ---
 
@@ -575,14 +623,13 @@ M0 → M1 → M2 → M5 → M6 are sequential; each genuinely needs the one befo
 any point** — slot it in whenever you want a quick, satisfying win, the way M10 was. M4 needs M2
 done. M7 needs the pattern data settled by M5.
 
-**M0 through M6, and M10, are done — the critical path is closed** (M6, 2026-09-24). What remains
-is off it: **M7 (autosave) is next**, then M8 (interface floor) and M9 (final verification). M6
-added D22 and ticked OUT-1, OUT-2, OUT-3 and GEN-5. Like M4 and M5, it left `Pattern` unchanged, so
-**M7 serializes exactly the shape the editor mutates and the export draws.** M6 also recorded two
-items for M9: the export's canvas budget is unmeasured on Safari and a phone, and it sits beside
-NFR-5.
+**M0 through M7, and M10, are done — the critical path is closed** (M6, 2026-09-24). What remains
+is off it: **M8 (interface floor) is next**, then M9 (final verification). M6 added D22 and ticked
+OUT-1, OUT-2, OUT-3 and GEN-5. M7 added D23 and ticked SAVE-1 and SAVE-2. It serialized `Pattern`
+unchanged and widened the save to the source image. Recorded for M9 beside NFR-5: M6's export
+canvas budget and M7's IndexedDB behavior are both unmeasured on Safari and a phone.
 
-**No tactical plan is open.** Write `plans/m7-autosave.md` the day M7 starts, not before.
+**No tactical plan is open.** Write `plans/m8-interface.md` the day M8 starts, not before.
 
 The two large items, **M1 and M2, are the project.** If time runs short, everything after them can
 be trimmed; neither of them can be.

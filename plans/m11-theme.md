@@ -338,6 +338,35 @@ Then:
 
 **Done when:** all of the above pass.
 
+**Done (2026-09-26). No layout change was forced.**
+- **390 px gutter: left at 0.75 rem.** The sky shows as a thin dithered frame down each side and
+  a strip above the card. Widening it would take width from a phone layout M8 already had to
+  fight for (the zoom row overflowed there), and UI-8 puts the sky *outside* the card, not around
+  a smaller one. A thin frame is the honest result on a phone.
+- **1280 px top margin: left at 2 rem.** The side gutters carry the sky and clouds, so a cloud
+  above the card adds nothing.
+
+**Verification, all on the final state:**
+- `ui:audit`: green in six states at both widths. 122 Tab stops; lowest pair 5.05 (the accent).
+- `ui:focus`: 36 Tab stops per width, re-shot. The `#3d70b2` ring is clear. Its offset gap
+  keeps it visible on the filled Generate button, and a selected, focused row shows both edges
+  (UI-4).
+- `ui:file-picker` and `ui:fonts` pass, and canvas codes are still in the body face.
+- `npm run check`: 211 tests pass. `npm run build`: clean.
+- **Export hash:** `42ac415b…93d85`, 88,021 bytes, identical to step 0's baseline (OUT-3).
+- **UI-8, measured:** body, label, stats and field text compute to `#06266d`. The title,
+  Generate's fill, the pressed tool, the outlined button's border and the checkbox
+  `accent-color` compute to `#3d70b2`. The unpressed zoom button stays white. The card is white,
+  and the inner panel keeps `#f9fafb`. `body` paints no background over the sky. The built
+  CSS/HTML reference no outside host and no bitmap.
+- **UI-8, cursors:** verified by computed style (steps 3, 4 and 4b). Headless screenshots cannot
+  draw the cursor, so the on-screen look is the user's check in a real browser.
+- **U1–U5 by eye:** all pass. U1 reads as a finished tool at rest. U2 shows the file and the
+  "Will generate" line with nothing shifted. In U3 and U5 the pattern is the focus. In U4 the
+  pink error is the most prominent thing and says what to do. M8's two recorded weak spots
+  (Generate enabled beside the size error, and the tall empty box under a short pattern) are
+  unchanged and stay in v2.
+
 ---
 
 ## Milestone exit

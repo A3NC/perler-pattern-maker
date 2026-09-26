@@ -90,13 +90,20 @@
     /* D26's pixel cursor. The keyword after the image is the fallback, so a
        browser that cannot draw the SVG shows the native arrow. The hotspot
        (1 1) is the arrow's tip pixel. Only the page's default arrow is
-       replaced, with the pointing hand below: the crosshair, the crop
-       cursors, the text I-beam and not-allowed stay native, because they
-       point at an exact cell or edge. */
+       replaced, with the hands below: the crosshair, the crop cursors, the
+       text I-beam and not-allowed stay native, because they point at an
+       exact cell or edge. */
     --cursor-default: url("./assets/cursors/arrow.svg") 1 1, default;
     /* The pointing hand, for clickable controls; the hotspot is the
        fingertip. */
     --cursor-pointer: url("./assets/cursors/pointer.svg") 10 1, pointer;
+    /* The pan hands, on the pattern canvas in pan mode: an open hand, and a
+       fist while dragging. Unlike the crosshair they target no cell -- a pan
+       moves the whole view -- so they are drawn (D26, revised). Both share
+       the palm-centre hotspot, so the cursor does not jump when a drag
+       starts. */
+    --cursor-grab: url("./assets/cursors/grab.svg") 14 20, grab;
+    --cursor-grabbing: url("./assets/cursors/grabbing.svg") 14 20, grabbing;
 
     /* D26: the error variant moves from red to pink, one of the theme's
        three stand-out colours; the text stays a dark red, so it still
@@ -505,11 +512,11 @@ button:disabled {
     top: 0;
     left: 0;
     display: block;
-    cursor: grab;
+    cursor: var(--cursor-grab);
 }
 
 .output-container.panning #pattern-canvas {
-    cursor: grabbing;
+    cursor: var(--cursor-grabbing);
 }
 
 .zoom-controls {

@@ -289,6 +289,24 @@ would be the most visible mismatch left.
 **Done when:** the pan-mode canvas shows the open hand, and the fist while dragging. The paint
 crosshair and the crop cursors are still native.
 
+**Done (2026-09-26), pending a look in a real browser.**
+- **The drawings:** `grab.svg` (an open hand) and `grabbing.svg` (a fist), 13 × 16 like the
+  pointing hand. Rows 8–15 (thumb, palm, wrist) are identical across all three, and so are the
+  finger columns: a 2 px shaded index and three 1 px fingers. The open hand raises all four
+  fingers, the middle tallest and the pinky lowest. The fist cuts them to knuckle bumps. Since the
+  palm does not move, pressing reads as the hand closing, not jumping. Both use the palm-centre
+  hotspot `14 20`.
+- **The wiring:** `--cursor-grab` and `--cursor-grabbing`, with `grab` and `grabbing` as
+  fallbacks, swapped into `#pattern-canvas` and `.output-container.panning #pattern-canvas`.
+- **Verified by a synthetic drag** on the canvas scrolled into view: open hand, then the fist
+  with the button held, then the open hand on release, and the crosshair once the brush is
+  selected. A re-scan finds no native `grab` or `pointer` left. The only native cursors
+  remaining are the ones D26 keeps: text, not-allowed and the crosshair (the hidden file input
+  aside).
+- **Build:** both SVGs are over 4 KB and are emitted as hashed files, like the pointing hand.
+
+`ui:audit` is green, the export hash is unchanged, and `npm run check` passes 211.
+
 If this step is cut, add a note to D26 and restore "grab stays native" in UI-8.
 
 ### 5. Layout the background forces, then verify

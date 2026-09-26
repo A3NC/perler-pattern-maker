@@ -1,14 +1,14 @@
-<!-- D26's cursor (M11): the fist, for the pan-mode canvas while dragging, one unit per art pixel, drawn at 2 CSS px
+<!-- D26's cursor (M11): the fist, for the pan-mode canvas while dragging. The open hand's three fingers folded to knuckles, one unit per art pixel, drawn at 2 CSS px
      per art pixel. B outline #052048, W fill white, S shading #edf3f8.
      Hotspot: the palm centre, art pixel (7, 10): `14 20` in CSS px, shared with grab so the cursor does not jump when a drag starts.
      .............
      .............
      .............
      .............
-     ....BB.B.B...
-     ...BWSBWBWBB.
-     ...BWSBWBWBWB
-     BB.BWSBWBWBWB
+     ....BB.BB....
+     ...BWSBWSBBB.
+     ...BWSBWSBWSB
+     BB.BWSBWSBWSB
      BWBBWWWWWWWSB
      BWSBWWWWWWWSB
      .BWWWWWWWWWSB
@@ -21,22 +21,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 13 16" width="26" height="32" shape-rendering="crispEdges">
     <g fill="#052048"> <!-- outline -->
         <rect x="4" y="4" width="2" height="1"/>
-        <rect x="7" y="4" width="1" height="1"/>
-        <rect x="9" y="4" width="1" height="1"/>
+        <rect x="7" y="4" width="2" height="1"/>
         <rect x="3" y="5" width="1" height="1"/>
         <rect x="6" y="5" width="1" height="1"/>
-        <rect x="8" y="5" width="1" height="1"/>
-        <rect x="10" y="5" width="2" height="1"/>
+        <rect x="9" y="5" width="3" height="1"/>
         <rect x="3" y="6" width="1" height="1"/>
         <rect x="6" y="6" width="1" height="1"/>
-        <rect x="8" y="6" width="1" height="1"/>
-        <rect x="10" y="6" width="1" height="1"/>
+        <rect x="9" y="6" width="1" height="1"/>
         <rect x="12" y="6" width="1" height="1"/>
         <rect x="0" y="7" width="2" height="1"/>
         <rect x="3" y="7" width="1" height="1"/>
         <rect x="6" y="7" width="1" height="1"/>
-        <rect x="8" y="7" width="1" height="1"/>
-        <rect x="10" y="7" width="1" height="1"/>
+        <rect x="9" y="7" width="1" height="1"/>
         <rect x="12" y="7" width="1" height="1"/>
         <rect x="0" y="8" width="1" height="1"/>
         <rect x="2" y="8" width="2" height="1"/>
@@ -59,15 +55,12 @@
     <g fill="#FFFFFF"> <!-- fill -->
         <rect x="4" y="5" width="1" height="1"/>
         <rect x="7" y="5" width="1" height="1"/>
-        <rect x="9" y="5" width="1" height="1"/>
         <rect x="4" y="6" width="1" height="1"/>
         <rect x="7" y="6" width="1" height="1"/>
-        <rect x="9" y="6" width="1" height="1"/>
-        <rect x="11" y="6" width="1" height="1"/>
+        <rect x="10" y="6" width="1" height="1"/>
         <rect x="4" y="7" width="1" height="1"/>
         <rect x="7" y="7" width="1" height="1"/>
-        <rect x="9" y="7" width="1" height="1"/>
-        <rect x="11" y="7" width="1" height="1"/>
+        <rect x="10" y="7" width="1" height="1"/>
         <rect x="1" y="8" width="1" height="1"/>
         <rect x="4" y="8" width="7" height="1"/>
         <rect x="1" y="9" width="1" height="1"/>
@@ -80,8 +73,13 @@
     </g>
     <g fill="#edf3f8"> <!-- shading -->
         <rect x="5" y="5" width="1" height="1"/>
+        <rect x="8" y="5" width="1" height="1"/>
         <rect x="5" y="6" width="1" height="1"/>
+        <rect x="8" y="6" width="1" height="1"/>
+        <rect x="11" y="6" width="1" height="1"/>
         <rect x="5" y="7" width="1" height="1"/>
+        <rect x="8" y="7" width="1" height="1"/>
+        <rect x="11" y="7" width="1" height="1"/>
         <rect x="11" y="8" width="1" height="1"/>
         <rect x="2" y="9" width="1" height="1"/>
         <rect x="11" y="9" width="1" height="1"/>

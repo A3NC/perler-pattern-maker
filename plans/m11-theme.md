@@ -291,9 +291,15 @@ crosshair and the crop cursors are still native.
 
 **Done (2026-09-26), pending a look in a real browser.**
 - **The drawings:** `grab.svg` (an open hand) and `grabbing.svg` (a fist), 13 × 16 like the
-  pointing hand. Rows 8–15 (thumb, palm, wrist) are identical across all three, and so are the
-  finger columns: a 2 px shaded index and three 1 px fingers. The open hand raises all four
-  fingers, the middle tallest and the pinky lowest. The fist cuts them to knuckle bumps. Since the
+  pointing hand. Rows 8–15 (thumb, palm, wrist) are identical across all three. **Three fingers
+  plus the thumb, each 2 px wide and shaded**, the same width as the pointing hand's index. The
+  pointing hand's wider index is perspective, but an open hand or fist should have equal fingers.
+  Three 2 px fingers fill exactly the palm's 10 columns, so the hand is no wider. The open hand's
+  middle finger is tallest; the fist folds the three to knuckle bumps. _(First drawn with the
+  pointing hand's mixed widths, a 2 px index and three 1 px fingers. The user noted the fingers
+  should be equal. A true 1.5 px finger would need a half-size grid for these two cursors,
+  mismatching the others' pixel size. Four equal 1 px fingers were rendered and rejected as
+  outline-heavy. The user chose three 2 px fingers.)_ Since the
   palm does not move, pressing reads as the hand closing, not jumping. Both use the palm-centre
   hotspot `14 20`.
 - **The wiring:** `--cursor-grab` and `--cursor-grabbing`, with `grab` and `grabbing` as

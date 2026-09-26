@@ -5,7 +5,7 @@ import { fullImageCrop } from './lib/crop';
 import type { SavedSettings } from './lib/pattern-save';
 import { calculateDimensions, tallyPattern } from './lib/pattern-utils';
 import { loadPalette } from './palette';
-import { generatePattern } from './pipeline/generate';
+import { countBeads, generatePattern } from './pipeline/generate';
 import { imageToPixels } from './rasterize';
 import { clearPattern, initPatternViewControls, renderPattern, showProcessing } from './render/canvas-view';
 import {
@@ -118,38 +118,100 @@ function syncControls(): void {
 
 /**
  * SET-3: the pattern the current crop and settings *would* produce, updated as
- * either changes. It stays live after a pattern exists, because the settings do
- * -- changing the width and watching this line is how the next generate is
- * aimed. It is labelled "Will generate" for that reason: once a pattern is on
- * screen the stats line below reports what *is*, and without the label the two
- * read as the same claim made twice.
+ * either changes.
+ *
+ * **Shown only while it says something the screen does not** (D24). Once a
+ * pattern exists, the stats line reports what *is*; this line stays hidden
+ * until the target width or bead size stops matching the settings that produced
+ * that pattern, i.e. until the next Generate would come out a different size.
+ * That is derived from the settings `pattern-state.ts` already holds rather
+ * than from a flag each handler would have to remember to set, so a restore,
+ * a failed generate, and a width changed and changed back all come out right
+ * without a case of their own. The maximum colours do not bring it back: they
+ * change neither the size nor the bead count.
+ *
+ * The total is **beads**, not cells: transparent cells are left empty by the
+ * pipeline and so are not billed, and the count comes from the same
+ * rasterization and the same coverage math a generate would use, so it equals
+ * the "Total Beads Required" the stats line shows afterwards.
  *
  * `calculateDimensions` throwing is the useful case rather than the awkward one:
  * it carries SET-5's message naming the limit that was hit, which until now
- * could only be seen by pressing Generate.
+ * could only be seen by pressing Generate. It is always shown: it is about the
+ * settings, and settings over the limit never produced a pattern to match.
  */
-function refreshDimensions(): void {
+function renderDimensions(): void {
     if (!uploadedImage) {
-        dimensionsDiv.textContent = '';
-        dimensionsDiv.classList.remove('is-error');
+        showDimensions('', false);
         return;
     }
 
     const crop = currentCrop(uploadedImage);
+    const targetWidth = parseFloat(targetWidthInput.value);
+    const beadSize = parseFloat(beadSizeSelect.value);
+    let dimensions;
     try {
-        const { pixelWidth, pixelHeight, cellCount } = calculateDimensions(
-            parseFloat(targetWidthInput.value),
-            parseFloat(beadSizeSelect.value),
-            crop.width,
-            crop.height
-        );
-        dimensionsDiv.classList.remove('is-error');
-        dimensionsDiv.textContent = `Will generate: ${pixelWidth} × ${pixelHeight} beads · `
-            + `${cellCount.toLocaleString()} beads total`;
+        dimensions = calculateDimensions(targetWidth, beadSize, crop.width, crop.height);
     } catch (error) {
-        dimensionsDiv.classList.add('is-error');
-        dimensionsDiv.textContent = (error as Error).message;
+        showDimensions((error as Error).message, true);
+        return;
     }
+
+    const generated = getPatternState()?.settings;
+    if (generated && generated.targetWidth === targetWidth && generated.beadSize === beadSize) {
+        showDimensions('', false);
+        return;
+    }
+
+    const { pixelWidth, pixelHeight } = dimensions;
+    let text = `Will generate: ${pixelWidth} × ${pixelHeight} beads`;
+    try {
+        const beads = beadCountFor(uploadedImage, crop, pixelWidth, pixelHeight);
+        text += ` · ${beads.toLocaleString()} beads total`;
+    } catch (error) {
+        // The dimensions are still right; a count that cannot be computed is
+        // left off rather than guessed at as width x height.
+        console.error('Bead count failed:', error);
+    }
+    showDimensions(text, false);
+}
+
+function showDimensions(text: string, isError: boolean): void {
+    dimensionsDiv.textContent = text;
+    dimensionsDiv.classList.toggle('is-error', isError);
+}
+
+/** The last count, since the same crop and grid are asked for repeatedly (a restore, syncControls). */
+let beadCountCache: { image: HTMLImageElement; key: string; beads: number } | null = null;
+
+/**
+ * The beads a generate would bill at this crop and grid: the same
+ * `imageToPixels` call `buildPattern` makes, then only the coverage half of the
+ * downsample. The buffer is bounded by the grid size (SUPERSAMPLE per side), so
+ * this is cheap at ordinary sizes and costs one rasterization near the limit.
+ */
+function beadCountFor(image: HTMLImageElement, crop: CropRect, gridWidth: number, gridHeight: number): number {
+    const key = `${crop.x},${crop.y},${crop.width},${crop.height}:${gridWidth}x${gridHeight}`;
+    if (beadCountCache?.image === image && beadCountCache.key === key) return beadCountCache.beads;
+
+    const beads = countBeads(imageToPixels(image, gridWidth, gridHeight, crop), gridWidth, gridHeight);
+    beadCountCache = { image, key, beads };
+    return beads;
+}
+
+/**
+ * Coalesce refreshes to one per frame. A crop drag or a held arrow key fires
+ * far more often than the screen repaints, and near the size limit each
+ * refresh rasterizes; one per frame still reads as immediate (SET-3's Check).
+ */
+let dimensionsFrame = 0;
+
+function refreshDimensions(): void {
+    if (dimensionsFrame) return;
+    dimensionsFrame = requestAnimationFrame(() => {
+        dimensionsFrame = 0;
+        renderDimensions();
+    });
 }
 
 /** The live crop, or the whole image before the preview has one. */
@@ -160,6 +222,8 @@ function currentCrop(image: HTMLImageElement): CropRect {
 targetWidthInput.addEventListener('input', refreshDimensions);
 beadSizeSelect.addEventListener('change', refreshDimensions);
 onCropChange(refreshDimensions);
+// A generate hides the line and a cleared pattern brings it back (D24).
+onPatternChange(() => refreshDimensions());
 
 // Startup wiring succeeded, so the boot guard in index.html can stand down and
 // leave the status line to us. Deliberately set here rather than at the top of

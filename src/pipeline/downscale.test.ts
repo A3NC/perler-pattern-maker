@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import {
     boxAverage,
+    cellCoverage,
     contrastPreserving,
     contrastPreservingWith,
     type CellColors,
@@ -418,5 +419,21 @@ test('D18: an identical shading step is judged the same way at every tone', () =
             cellLinear(boxAverage(source, 1, 1), 0),
             `a ${low}/${low + 30} step must keep its plain mean`
         );
+    }
+});
+
+test('cellCoverage reproduces both strategies\' alpha exactly (SET-3)', () => {
+    // A 5 x 3 source into 3 x 2 cells: fractional on both axes, with clear,
+    // opaque and partial pixels mixed so every cell straddles several.
+    const quads = [
+        CLEAR, RED, [0, 0, 0, 127], WHITE, CLEAR,
+        [9, 9, 9, 128], CLEAR, BLACK, [200, 10, 10, 30], RED,
+        WHITE, [0, 0, 0, 200], CLEAR, CLEAR, [50, 50, 50, 255]
+    ];
+    const source = pixels(5, 3, quads);
+    const coverage = cellCoverage(source, 3, 2);
+
+    for (const [name, downsampler] of BOTH) {
+        assert.deepEqual(Array.from(coverage), Array.from(downsampler(source, 3, 2).alpha), name);
     }
 });

@@ -144,15 +144,21 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
   102 × (0.197 / 0.102) = 197.0, one bead inside the tolerance. Q1 resolved — Mini is 2.6 mm /
   0.102 in as of M0.)_
 - [x] **SET-3 [v1]** Display the computed grid dimensions (width × height in beads) and total bead
-  count before generating.
+  count before generating. The total counts beads, not cells: transparent cells are left empty and
+  are not included.
   **Check:** Changing target width or bead size updates the displayed dimensions immediately,
-  before Generate is pressed.
+  before Generate is pressed. On an image with a transparent background, the displayed total equals
+  the "Total Beads Required" the stats line shows after Generate.
   _(Satisfied at M4, in `#dimensions`, and it also tracks the **crop** — which is what made it the
   first thing M4 built rather than the last: with it live, "did the crop reach the pipeline" is
   answered by dragging a handle and watching a number. Deliberately a separate element from
   `#stats`: this line describes the pattern that would be generated, `#stats` the one that exists.
-  It stays live after a pattern exists, because the settings do, and is labelled "Will generate:"
-  so the two tenses cannot be read as one claim made twice.)_
+  **Revised by D24 (2026-09-26)**, which fixed two defects in it: the total was width × height, so
+  on a transparent PNG it overstated the beads (a 51 × 38 disc read 1,938 against 730 generated),
+  and it stayed on screen after Generate, repeating the stats line. It now counts exactly what a
+  generate would bill, and it is hidden while the target width and bead size match the pattern on
+  screen. Measured in Chrome: the disc reads 730 before Generate and 730 after, at Standard and at
+  Mini.)_
 - [x] **SET-4 [v1]** User sets a maximum number of distinct colors for the output. Default 30,
   range 2 to the palette size.
   **Check:** With the limit set to 12, the generated pattern's bead list contains at most 12
@@ -1135,3 +1141,28 @@ editor state would depend on M5. Do not fix screenshots of these states before t
     working exactly as it did before M7, with one message saying the pattern will not survive a
     reload. An image that cannot be restored still lets the pattern restore: the hand-edited
     pattern is what SAVE-1 exists for, and losing the image must not cost it.
+
+- **D24 (2026-09-26) — The "Will generate" readout counts beads, not cells, and is shown only while
+  it differs from the pattern on screen.** A bug fix against SET-3 as M4 shipped it, which got two
+  things wrong.
+  - **The total was `width × height`.** The pipeline leaves a cell empty when its mean coverage is
+    under the GEN-1 alpha threshold, and the stats line counts only filled cells, so on any image
+    with a transparent background the two numbers disagreed. The count cannot be computed once per
+    image and scaled: whether an edge cell is empty depends on the grid, since the same edge can
+    cover 60% of a cell at one width and 40% at another. So the readout runs the same
+    `imageToPixels` call a generate makes, then `cellCoverage`, which is only the alpha half of the
+    downsample. **It must equal the generated count exactly, not approximately**, because it is
+    shown directly above the number it predicts. A cell whose coverage lands on the threshold
+    decides differently on a one-ulp difference, so `cellCoverage` repeats the downsample's
+    accumulation order line for line, and `generate.test.ts` pins the agreement at fractional
+    scales. Cost measured in Chrome on a transparent 4000 × 3000 PNG at 254 × 191: within the two
+    frames the measurement itself takes, so no drag-end fallback was needed. Refreshes are still
+    batched to one per animation frame, because a crop drag fires more often than that.
+  - **It stayed live after Generate**, on M4's reasoning that the settings do. The "Will generate:"
+    label kept the two tenses distinct, but a line restating the stats line right after Generate
+    was still noise. It is now hidden while the target width and bead size equal the settings that
+    produced the pattern (held by `pattern-state.ts` since D23), and shown whenever they differ.
+    Deriving this from state rather than tracking a flag through each handler handles a restore, a
+    failed generate, and a width changed and changed back without special cases. **Maximum colours
+    does not bring it back**, since it changes neither the size nor the count. SET-5's error is
+    always shown, because settings over the limit cannot match a pattern that exists.

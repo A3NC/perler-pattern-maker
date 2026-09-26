@@ -227,6 +227,70 @@ export const contrastPreserving: Downsampler = contrastPreservingWith();
  */
 export const ACTIVE_DOWNSAMPLER: Downsampler = contrastPreserving;
 
+/**
+ * Mean coverage per cell and nothing else -- the `alpha` half of CellColors,
+ * without linearizing a single channel. It exists so SET-3's readout can count
+ * the beads a generate would bill before Generate is pressed, at a fraction of
+ * a downsample's cost.
+ *
+ * **It must agree with `downsample` bit for bit**, because the readout sits
+ * above a stats line that reports the real count, and a cell whose mean lands
+ * on the GEN-1 threshold decides differently on a one-ulp difference. So the
+ * geometry and the accumulation order below are `downsample`'s, line for line;
+ * change one and change the other. generate.test.ts pins the agreement across
+ * fractional scales. Both strategies share this: D18 never touches alpha.
+ */
+export function cellCoverage(source: SourcePixels, outWidth: number, outHeight: number): Float64Array {
+    const { data, width: srcWidth, height: srcHeight } = source;
+
+    if (!Number.isInteger(outWidth) || !Number.isInteger(outHeight) || outWidth < 1 || outHeight < 1) {
+        throw new Error('Downscale target must be at least 1 x 1 whole cells.');
+    }
+    if (srcWidth < 1 || srcHeight < 1) {
+        throw new Error('Source pixels have invalid dimensions.');
+    }
+
+    const alpha = new Float64Array(outWidth * outHeight);
+    const scaleX = srcWidth / outWidth;
+    const scaleY = srcHeight / outHeight;
+
+    for (let cy = 0; cy < outHeight; cy += 1) {
+        const y0 = cy * scaleY;
+        const y1 = (cy + 1) * scaleY;
+        const syStart = Math.floor(y0);
+        const syEnd = Math.min(srcHeight, Math.ceil(y1));
+
+        for (let cx = 0; cx < outWidth; cx += 1) {
+            const x0 = cx * scaleX;
+            const x1 = (cx + 1) * scaleX;
+            const sxStart = Math.floor(x0);
+            const sxEnd = Math.min(srcWidth, Math.ceil(x1));
+
+            let weightSum = 0;
+            let alphaSum = 0;
+
+            for (let sy = syStart; sy < syEnd; sy += 1) {
+                const wy = Math.min(sy + 1, y1) - Math.max(sy, y0);
+                if (wy <= 0) continue;
+                const rowOffset = sy * srcWidth;
+
+                for (let sx = sxStart; sx < sxEnd; sx += 1) {
+                    const wx = Math.min(sx + 1, x1) - Math.max(sx, x0);
+                    if (wx <= 0) continue;
+
+                    const weight = wx * wy;
+                    weightSum += weight;
+                    alphaSum += weight * (data[(rowOffset + sx) * 4 + 3] / 255);
+                }
+            }
+
+            alpha[cy * outWidth + cx] = weightSum > 0 ? alphaSum / weightSum : 0;
+        }
+    }
+
+    return alpha;
+}
+
 /** Scratch entries are [alpha-weight, linear r, g, b, luminance]. */
 const SCRATCH_STRIDE = 5;
 
@@ -339,6 +403,8 @@ function downsample(
                 }
             }
 
+            // cellCoverage repeats this computation for SET-3's count and must
+            // stay identical to it.
             const cell = cy * outWidth + cx;
             alpha[cell] = weightSum > 0 ? alphaSum / weightSum : 0;
 

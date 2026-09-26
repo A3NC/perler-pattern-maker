@@ -1,4 +1,4 @@
-import { ACTIVE_DOWNSAMPLER } from './downscale';
+import { ACTIVE_DOWNSAMPLER, cellCoverage } from './downscale';
 import { addColorTally, isTransparentAlpha } from '../lib/pattern-utils';
 import { ACTIVE_MATCHER, paletteToOklab } from './color-match';
 import { reduceColors } from './reduce';
@@ -116,4 +116,25 @@ export function generatePattern(
         tallies,
         beadCount
     };
+}
+
+/**
+ * SET-3: how many beads `generatePattern` would bill for this source at this
+ * grid size -- the cells at or above the alpha threshold, not width x height.
+ * Whether a cell is empty depends on the grid (the same transparent edge can
+ * cover 60% of a cell at one width and 40% at another), so this cannot be
+ * computed once per image and scaled.
+ *
+ * Runs only the coverage half of the downsample, so it costs a small fraction
+ * of a generate. Its answer equals `generatePattern(...).beadCount` exactly;
+ * generate.test.ts holds that, since the readout promises the number the stats
+ * line will then show.
+ */
+export function countBeads(source: SourcePixels, gridWidth: number, gridHeight: number): number {
+    const alpha = cellCoverage(source, gridWidth, gridHeight);
+    let beads = 0;
+    for (let cell = 0; cell < alpha.length; cell += 1) {
+        if (!isTransparentAlpha(alpha[cell] * 255)) beads += 1;
+    }
+    return beads;
 }

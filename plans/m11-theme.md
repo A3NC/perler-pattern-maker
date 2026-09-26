@@ -70,8 +70,15 @@ All in `:root`:
 The starting values were computed for this plan and still need measuring in the page.
 `--bg`, `--surface`, `--surface-sunken` and `--border` stay as they are, per the requirement.
 
-The title, checkboxes (`accent-color`), outlined buttons and focus ring already read `--primary`,
-so they follow automatically. Button labels set their own colour, which keeps them out of
+**The accent replaces the indigo role for role, and nothing more.** Every use of the old indigo
+reads `--primary` or `--primary-hover` already: the title, Generate's fill, checkboxes
+(`accent-color`), the outlined buttons' border and text, pressed tools, the focus ring, and the
+selected-row edge. So changing the two tokens is the whole job. Checked while writing this plan: the indigo
+appears only in those two `:root` lines, in no `.ts` file and no shadow. Four `styles.css` comments
+still say "indigo" by name (the focus-ring note, the 6.29:1 outlined-button note, the pressed-tool
+note), so reword them and update the ratio.
+Do **not** extend the accent to anything that was not indigo: the unpressed zoom and tool buttons
+stay white. Button labels set their own colour, which keeps them out of
 `--text` as the requirement says.
 
 **The remaining colours, by the "readable and fits" rule.** The status variants are where pink,
@@ -94,19 +101,22 @@ Two things change:
   `body` stops painting `--bg`.
 
 - **Stepped gradient:** a `linear-gradient` with hard stops, so each band starts where the last
-  ends. Use about 6–10 bands from `--sky-top` to `--sky-bottom`, with intermediate colours
+  ends. The blue spans roughly the top two-thirds of the window (about `66vh`; approximate, tune
+  by eye) and everything below is `--sky-bottom`. Because the layer is fixed, `vh`/`%` of it is the
+  window, which is what "two-thirds of a screen" means. Use about 6–10 bands from `--sky-top` to
+  `--sky-bottom`, with intermediate colours
   interpolated by hand and written as tokens or inline stops. Band heights are whole multiples of
   the art pixel size. Optionally, a one-art-pixel checker row at each band edge makes it read as
   dithered pixel art rather than stripes. Judge it by eye.
 - **Clouds:** two or three SVGs in `src/assets/sky/`, layered as extra `background-image`s with
   their own positions. One art pixel is 4–8 CSS px, and set `image-rendering: pixelated`.
-  **White clouds disappear on the white lower bands.** Keep them in the upper, bluer part, or give
-  them an `#edf3f8` underside, the cursor's shading colour, which ties the two together.
+  Clouds that fade into the white lower bands are intended (an aesthetic choice), so place them
+  freely.
 - **The card:** keep its white surface. Its shadow was tuned for a grey page and may need
   retuning against blue, and that is a token change.
 
-**Done when:** the sky is visible outside the card at 1280 px, stays fixed while scrolling a long
-bead list, is absent inside the card, and the audit is still green.
+**Done when:** the sky is visible outside the card at 1280 px, reaches white at roughly two-thirds
+of the window, stays fixed while scrolling a long bead list, is absent inside the card, and the audit is still green.
 
 ### 3. The arrow cursor
 

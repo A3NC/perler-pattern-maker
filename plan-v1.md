@@ -645,13 +645,17 @@ by a CSS class. M1's canvas contract was untouched: no CSS change, no `Pattern` 
 **Do:** Give the page the light-mode theme D26 chose: soft, pastel, pixel-fantasy, in light blue and
 white.
 - **Background:** a pixel sky drawn *outside* the main card only, as a stepped (hard-edged)
-  gradient from `#d3effe` at the top to white, with white pixel clouds on it. The canvas, inputs and
+  gradient from `#d3effe` at the top that reaches white roughly two-thirds of the way down the
+  window (approximate, by eye), with white pixel clouds on it. Clouds that fade into the white are
+  intended. The canvas, inputs and
   panels inside the card keep their pre-M11 backgrounds.
 - **Cursor:** a pixel arrow for the page, and a pixel hand for clickable controls. Both have a
   white fill, `#edf3f8` shading and a `#052048` outline. The canvas tool cursors stay native.
 - **Text:** body text `#06266d`. The title and button labels are exempt.
-- **Accent:** one accent for Generate's fill, the title, checkboxes, outlined buttons and the
-  focus ring. It is a darker shade of `#6893cb`'s hue, chosen to pass AA.
+- **Accent:** one accent that replaces the original indigo wherever indigo was used, and nowhere
+  else: Generate's fill, the title, checkboxes, the outlined buttons' border and text, pressed
+  tools, the focus ring. Anything that was not indigo keeps its colour, so the unpressed zoom and
+  tool buttons stay white. It is a darker shade of `#6893cb`'s hue, chosen to pass AA.
 - **Everything else:** colours that stay readable and fit the scheme, with pink, light green or
   white where something has to stand out (the status variants are the obvious place).
 - **Layout:** changes only where the background forces them.
@@ -683,7 +687,6 @@ rather than left failing, so M9 never inherits a box it cannot tick.
   under 4.5. That is why the accent is a darker shade, starting at `#3d70b2` (5.05:1 on white).
 - **`--bg` paints the page *and* the inner panels today.** The sky needs its own token, or every
   panel turns blue.
-- **White clouds vanish into the white bottom of the gradient.**
 - **Keep `transform`, `filter` and `contain` off `body`, `.container` and `#grid-wrapper`.** On
   either of the first two they stop the sky staying fixed; on `#grid-wrapper` they break M1's
   sticky canvas.

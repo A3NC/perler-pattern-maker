@@ -527,16 +527,19 @@ stated as checkable facts so that it can be a [v1] box.
 - [ ] **UI-8 [v1]** In light mode, the page carries the sky theme (D26): a pixel sky drawn outside
   the main card, navy body text, one blue accent, and a pixel cursor.
   **Check:** At 1280 px and 390 px, in U1–U5:
-  - **Sky.** Outside `.container`, the page shows a stepped gradient from `#d3effe` at the top to
-    white, with visibly hard band edges rather than a smooth blend, and white pixel clouds on it.
+  - **Sky.** Outside `.container`, the page shows a stepped gradient from `#d3effe` at the top that
+    is fully white by roughly two-thirds of the window's height (approximate; judged by eye, not
+    measured), with visibly hard band edges rather than a smooth blend, and white pixel clouds on
+    it. Clouds lower down may fade into the white; that is intended.
     It stays put while the page scrolls. Inside `.container` no sky is drawn: the pattern canvas,
     the inputs and the panels keep their pre-M11 backgrounds.
   - **Drawn, not supplied.** The sky, the clouds and the cursors are defined in the repo as CSS or
     SVG. No bitmap image supplies them, and nothing is fetched from another host.
   - **Text.** Body text computes to `#06266d`. The title and button labels are exempt.
-  - **Accent.** Generate's fill, the title, checkboxes, outlined buttons and the focus ring read
-    one token. That token is a darker shade of `#6893cb`'s hue, at which white text on it, and it
-    on white, both reach 4.5:1.
+  - **Accent.** Every place the pre-M11 indigo (`#4F46E5` and its hover `#4338CA`) appeared now
+    reads one accent token, and nothing that was not indigo does: the unpressed zoom and tool
+    buttons stay white. The token is a darker shade of `#6893cb`'s hue, at which white text on it,
+    and it on white, both reach 4.5:1.
   - **Cursor.** Over page chrome, the default pointer is a pixel arrow and clickable controls show
     a pixel hand. Both have a white fill, `#edf3f8` shading and a `#052048` outline, with the
     hotspot on the tip. The canvas's paint, pan and crop cursors, the text I-beam and
@@ -1319,11 +1322,17 @@ editor state would depend on M5. Do not fix screenshots of these states before t
   - **The direction, chosen before styling rather than while.** Soft, pastel, pixel-fantasy, in
     light blue and white:
     - **Sky:** a stepped gradient from `#d3effe` to white with white pixel clouds, drawn only
-      outside the main card. Inner surfaces keep their pre-M11 colours.
+      outside the main card. The blue occupies roughly the top two-thirds of the window and the
+      rest is white; the figure is approximate. Clouds fading into the white are an aesthetic
+      choice, not a contrast problem. Inner surfaces keep their pre-M11 colours.
     - **Body text:** `#06266d`. The title and button labels are exempt.
     - **Cursor:** white fill, `#edf3f8` shading, `#052048` outline.
     - **Other components:** colours that stay readable and fit the scheme, with pink, light green or
       white where something has to stand out.
+  - **The accent replaces the original indigo, role for role.** It goes wherever the pre-M11
+    `--primary` and `--primary-hover` did, and nowhere new. A button that was white stays white
+    (the unpressed zoom and tool buttons), so "the colour of buttons" means the buttons that were
+    indigo, not every button.
   - **The accent is a darker shade of `#6893cb`, not `#6893cb` itself, applied everywhere.**
     `#6893cb` fails UI-5 as a button fill: white text on it is 3.17:1, and even `#06266d` on it is
     4.40:1, both under 4.5. The darker shade keeps the hue (~214°) and is used for *every* accent

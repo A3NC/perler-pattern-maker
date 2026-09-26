@@ -90,9 +90,13 @@
     /* D26's pixel cursor. The keyword after the image is the fallback, so a
        browser that cannot draw the SVG shows the native arrow. The hotspot
        (1 1) is the arrow's tip pixel. Only the page's default arrow is
-       replaced: crosshair, grab, the crop-resize arrows, the text I-beam and
-       not-allowed stay native, because they point at an exact cell or edge. */
+       replaced, with the pointing hand below: the crosshair, the crop
+       cursors, the text I-beam and not-allowed stay native, because they
+       point at an exact cell or edge. */
     --cursor-default: url("./assets/cursors/arrow.svg") 1 1, default;
+    /* The pointing hand, for clickable controls; the hotspot is the
+       fingertip. */
+    --cursor-pointer: url("./assets/cursors/pointer.svg") 12 1, pointer;
 
     /* D26: the error variant moves from red to pink, one of the theme's
        three stand-out colours; the text stays a dark red, so it still
@@ -441,7 +445,7 @@ button {
     border-radius: var(--radius-md);
     font-size: var(--text-lg);
     font-weight: 600;
-    cursor: pointer;
+    cursor: var(--cursor-pointer);
     transition: background-color 0.2s;
 }
 
@@ -543,12 +547,12 @@ button:disabled {
     height: 1.25rem;
     margin: 0;
     accent-color: var(--primary);
-    cursor: pointer;
+    cursor: var(--cursor-pointer);
 }
 
 .view-toggle label {
     margin: 0;
-    cursor: pointer;
+    cursor: var(--cursor-pointer);
 }
 
 #stats {
@@ -620,7 +624,7 @@ button:disabled {
     color: var(--primary);
     font-size: var(--text-md);
     font-weight: 600;
-    cursor: pointer;
+    cursor: var(--cursor-pointer);
     transition: background-color 0.2s;
 }
 
@@ -905,7 +909,7 @@ button:disabled {
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
     background-color: var(--surface);
-    cursor: pointer;
+    cursor: var(--cursor-pointer);
 }
 
 .picker-query input[type="text"] {
@@ -1019,7 +1023,7 @@ button:disabled {
     font-size: var(--text-md);
     font-weight: 400;
     text-align: left;
-    cursor: pointer;
+    cursor: var(--cursor-pointer);
 }
 
 .bead-list .bead-item:hover {

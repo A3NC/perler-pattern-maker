@@ -252,6 +252,22 @@ Disabled controls keep `not-allowed`.
 
 **Done when:** every clickable control shows the hand, and disabled ones show `not-allowed`.
 
+**Done (2026-09-26), pending a look in a real browser.**
+- **The drawing:** `src/assets/cursors/pointer.svg` is a 16 × 16 art grid (32 × 32 CSS px, the
+  cursor size limit). A shaded index finger, three finger bumps stepping down to the right with
+  separator lines, the thumb out to the left, and an even 1:1 diagonal from thumb to wrist.
+  Hotspot `12 1`, the fingertip. Same palette and conversion as the arrow.
+- **The wiring:** `--cursor-pointer: url(...) 12 1, pointer`, swapped into all six former
+  `cursor: pointer` declarations. A re-scan of every rendered element finds no native `pointer`
+  left: every control that had it now has the hand, and the picker rows are `<button>`s, so the
+  `button` rule covers them.
+- **Build:** at 4,991 bytes the SVG is over Vite's 4 KB inline limit, so unlike the arrow and the
+  clouds it is emitted as a hashed file (`assets/pointer-*.svg`). Served from `dist/` by `vite
+  preview`, the computed cursor resolves to it and it loads as `200 image/svg+xml`, so the
+  relative `url()` inside the custom property holds for a file too.
+
+`ui:audit` is green, the export hash is unchanged, and `npm run check` passes 211.
+
 If this step is cut, add a note to D26 and edit UI-8's Cursor bullet to say "arrow only".
 
 ### 4b. The pan hands (cut first if time runs out)

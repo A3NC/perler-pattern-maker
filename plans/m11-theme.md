@@ -54,6 +54,20 @@ Screenshot U1–U5 at both widths as "before".
 **Export a pattern from a fixed image and settings, and keep its SHA-256.** Step 5 compares
 against it, and that comparison is UI-8's OUT-3 check.
 
+**Done (2026-09-26), on `39a3cb5`:**
+- `ui:audit` passes at both widths in all six states, over 122 Tab stops. The lowest contrast
+  pairs are `#6b7280` on `#f9fafb` at 4.63, `#6b7280` on white at 4.83, and `#4b5563` on
+  `#e5e7eb` at 6.10. The only "verify" line is the sort select's known over-report at 1280 px
+  (~123 of ~120 px). M8 recorded it as a false positive on an auto-width select.
+- `ui:focus`: 36 Tab stops at each width, 25 captured.
+- Audit and focus screenshots are in `scripts/ui-check/out/m11-before/`, which is git-ignored and
+  kept locally for step 5's side-by-side.
+- **Export baseline:** `fixtures/art.png` at default settings gives
+  `42ac415bdf8c4b392a6e643a6e04d4871767c924ec52ac17dbc321766ed93d85` (88,021 bytes). It is
+  identical across both exports in a run and across two fresh runs. It comes from the new
+  `npm run ui:export-hash` (`scripts/ui-check/export-hash.mjs`), which hooks `URL.createObjectURL`
+  to hash the blob in the page, so it does not depend on headless download handling.
+
 ### 1. Colour tokens (core)
 
 All in `:root`:

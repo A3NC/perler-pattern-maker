@@ -57,7 +57,7 @@ Requires Node >= 22. `npm install` first.
 - `npm test` — Vitest, browser-free (`npm run test:watch` to iterate)
 - `npm run typecheck` — `tsc --noEmit`; Vite strips types without checking them, so this is the only thing that enforces them
 - `npm run check` — typecheck + tests, the full gate
-- `npm run ui:audit` — the mechanical UI Checks (UI-1, UI-4, UI-5, UI-6) in every screen state at 1280 and 390 px, against a **running** app (`npm run dev` first; `APP=` to point elsewhere). Exits non-zero on a failure. `ui:focus`, `ui:file-picker` and `ui:fonts` are the companions; see `scripts/ui-check/` below
+- `npm run ui:audit` — the mechanical UI Checks (UI-1, UI-4, UI-5, UI-6) in every screen state at 1280 and 390 px, against a **running** app (`npm run dev` first; `APP=` to point elsewhere). Exits non-zero on a failure. `ui:focus`, `ui:file-picker`, `ui:fonts` and `ui:export-hash` are the companions; see `scripts/ui-check/` below
 
 ### How to run it
 
@@ -113,7 +113,7 @@ In all three failure cases the module never executes, so `main.ts`'s own error h
   - the tool-button rules are scoped `:is(.editor-controls, .zoom-controls)`, keeping the two-class specificity that beats the 640 px query's full-width `button`;
   - `--text-title` is a px value (56 / 37.333 px) because Jersey 10 is crisp only at multiples of its 18.67 px grid, while the rest of the type scale is rem.
   The `@font-face` rules load self-hosted Latin-subset `woff2` from `src/assets/fonts/` (Jersey 10 and Space Grotesk, each beside its OFL license). They are imported through Vite, so the build hashes them and a bad path fails the build.
-- `scripts/ui-check/` — M8's measurement harness, kept for M9: headless Chrome over the DevTools protocol, using nothing but Node 22's built-in `WebSocket`. `cdp.mjs` is the shared driver. `audit.mjs` measures overflow, select truncation, 44 px targets, WCAG contrast (placeholders included) and the focus ring on every Tab stop, in six screen states at both widths. `focus-shots.mjs` screenshots each control focused. `file-picker.mjs` checks the upload control's behaviour. `fonts.mjs` reports which face Chrome actually painted and captures the canvas codes after a generate and after a restore. Output goes to the git-ignored `scripts/ui-check/out/`.
+- `scripts/ui-check/` — M8's measurement harness, kept for M9: headless Chrome over the DevTools protocol, using nothing but Node 22's built-in `WebSocket`. `cdp.mjs` is the shared driver. `audit.mjs` measures overflow, select truncation, 44 px targets, WCAG contrast (placeholders included) and the focus ring on every Tab stop, in six screen states at both widths. `focus-shots.mjs` screenshots each control focused. `file-picker.mjs` checks the upload control's behaviour. `fonts.mjs` reports which face Chrome actually painted and captures the canvas codes after a generate and after a restore. `export-hash.mjs` (M11) prints the SHA-256 of two exports of `fixtures/art.png` at default settings: they must match each other (OUT-3) and the baseline recorded before a styling change. Output goes to the git-ignored `scripts/ui-check/out/`.
   Three traps the harness already handles, and a new script must too:
   - Chrome's full-page capture does not paint a nested scroll container outside the viewport (use `captureElement`);
   - after `blur()`, Tab resumes from the last focused element rather than the top (use `focusFromTop`);

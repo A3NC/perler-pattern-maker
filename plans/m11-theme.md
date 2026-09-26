@@ -255,7 +255,8 @@ Disabled controls keep `not-allowed`.
 **Done (2026-09-26), pending a look in a real browser.**
 - **The drawing:** `src/assets/cursors/pointer.svg` is a 13 × 16 art grid (26 × 32 CSS px). A
   shaded, 2 px-wide index finger; three 1 px-wide finger bumps stepping down to the right with
-  separator lines; the thumb out to the left; and an even 1:1 diagonal from thumb to wrist.
+  separator lines; the thumb out to the left; an even 1:1 diagonal from the thumb down, then a
+  two-row vertical wrist (widened one pixel to the left at the user's request).
   Hotspot `10 1`, the fingertip. Same palette and conversion as the arrow. _(First drawn 16 wide,
   with 2 px side fingers. It was narrowed at the user's request by thinning the side fingers
   and pulling in the thumb. At 16 wide it read as heavy beside the arrow.)_

@@ -48,25 +48,33 @@
    overlay and the empty-swatch checkerboard keep literal colours: they are
    artwork over an image, not interface palette. */
 :root {
-    --primary: #4F46E5;
-    --primary-hover: #4338CA;
+    /* D26 (M11). The accent replaces the original indigo role for role, and
+       nowhere new. It is `#6893cb`'s hue darkened until it passes AA both
+       ways -- `#6893cb` itself is 3.17:1 under white text -- and it serves
+       every accent role, title and checkboxes included, so there is one
+       blue rather than two near-identical ones. 5.05:1 against white. */
+    --primary: #3d70b2;
+    --primary-hover: #335d94;
     --on-primary: #FFFFFF;
     --bg: #F9FAFB;
     --surface: #FFFFFF;
     --surface-sunken: #F3F4F6;
-    --text: #111827;
-    --text-subtle: #374151;
-    --text-muted: #6B7280;
+    /* D26: navy body text; the two secondary steps are the same hue,
+       lightened, so they read as quieter text rather than as grey. */
+    --text: #06266d;
+    --text-subtle: #3a4e78;
+    --text-muted: #496297;
     --border: #E5E7EB;
     /* UI-5. The disabled button was white on #9CA3AF, 2.54:1. It is now
-       light and unfilled-looking with dark text, 6.10:1 -- the usual "not
+       light and unfilled-looking with dark text, 6.12:1 -- the usual "not
        yet" signal, and it no longer competes with the enabled primary.
        Disabled *icons* keep the lighter grey: they are non-text, WCAG 1.4.11
        exempts inactive controls, and at the text grey they would read as
-       barely different from enabled ones. */
+       barely different from enabled ones. D26 tints both greys toward
+       the theme's blue (slate rather than neutral) at the same contrast. */
     --disabled-bg: #E5E7EB;
-    --disabled-text: #4B5563;
-    --disabled-icon: #9CA3AF;
+    --disabled-text: #475569;
+    --disabled-icon: #94A3B8;
     /* UI-4. Focus is drawn *outside* the box, with a gap; selection (the
        active color in the inventory and the picker) is drawn *inside* it.
        They differ in shape, not only in shade, so a row that is both shows
@@ -75,9 +83,16 @@
     --focus-offset: 2px;
     --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 
+    /* D26's sky, drawn outside the card (step 2 of plans/m11-theme.md). */
+    --sky-top: #d3effe;
+    --sky-bottom: #FFFFFF;
+
+    /* D26: the error variant moves from red to pink, one of the theme's
+       three stand-out colours; the text stays a dark red, so it still
+       reads as an error. Success (green) and info (blue) already fit. */
     --status-error-text: #991B1B;
-    --status-error-bg: #FEE2E2;
-    --status-error-border: #FCA5A5;
+    --status-error-bg: #FCE7F3;
+    --status-error-border: #F9A8D4;
     --status-info-text: #1E3A8A;
     --status-info-bg: #DBEAFE;
     --status-info-border: #93C5FD;
@@ -147,6 +162,16 @@ textarea,
     font-family: inherit;
 }
 
+/* D26: the same gap for colour. The UA paints control text its own black,
+   which beside navy labels reads as a second text colour. A typed value is
+   body text, so fields and selects inherit --text. Buttons are left out on
+   purpose: each button rule sets its own label colour. */
+input,
+select,
+textarea {
+    color: inherit;
+}
+
 /* Was an inline style in index.html, out of reach of every token. It is
    re-inserted rather than re-created by canvas-view.ts's clearPattern, so a
    stylesheet rule reaches it on every return to the empty state. */
@@ -163,7 +188,7 @@ textarea,
 }
 
 /* U1: the empty box reads as the place the pattern will go, and says what
-   to do to get one. Large text, so --text-muted on --bg (4.63:1) clears
+   to do to get one. Large text, so --text-muted on --bg (5.78:1) clears
    the 3:1 it needs with room. */
 .placeholder-title {
     margin: 0;
@@ -266,12 +291,12 @@ button:hover {
 }
 
 /* UI-4: one focus indicator for every control, replacing each browser's own
-   (Chrome's is a 1px blue ring that nearly vanishes on indigo; Safari's
+   (Chrome's is a 1px blue ring that nearly vanishes on the accent; Safari's
    differs). :focus-visible, so a mouse click on a button draws nothing while
    Tab always does; text fields match it on click too, which is intended --
    a caret needs a visible home. The offset leaves a gap of background
    between control and ring, which is what keeps it visible on the filled
-   indigo buttons. Hover never touches `outline`, so the two cannot be
+   accent buttons. Hover never touches `outline`, so the two cannot be
    confused. Scroll containers holding focusable items (.bead-list,
    .picker-results) are inset by at least ring + offset so it is not
    clipped. */
@@ -395,7 +420,7 @@ button:disabled {
     font-size: var(--text-md);
     /* Secondary, outlined: Generate is the page's one filled button (D25),
        which is most of what makes U1 read as a tool rather than a form.
-       Indigo on --surface is 6.29:1. */
+       The accent on --surface is 5.05:1 (D26). */
     background-color: var(--surface);
     color: var(--primary);
     border: 2px solid var(--primary);
@@ -635,7 +660,7 @@ button:disabled {
 }
 
 /* The icon takes its color from the button, which is the whole reason
-   the pressed (white on indigo) and disabled (grey) states need no
+   the pressed (white on the accent) and disabled (grey) states need no
    second drawing. A swapped-in icon inherits the same way as long as it
    keeps stroke="currentColor" or fill="currentColor". */
 :is(.editor-controls, .zoom-controls) .icon {
@@ -736,7 +761,7 @@ button:disabled {
 
 /* UI-5. Left to the browser this is Chrome's #757575 (4.61:1 on white) and
    something else elsewhere; pinned so it is measured once and moves with
-   the tokens. 4.83:1 on --surface. */
+   the tokens. 6.04:1 on --surface. */
 .picker-query input[type="text"]::placeholder {
     color: var(--text-muted);
     opacity: 1; /* Firefox dims placeholders with opacity on top of color. */

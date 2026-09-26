@@ -106,6 +106,36 @@ Also decide whether the disabled button's greys take a navy tint. Keep each pair
 **Done when:** `ui:audit` is green at both widths. Every changed pair is recorded with its ratio,
 for UI-5's note.
 
+**Done (2026-09-26).** The starting values held. Every pair below was measured by `ui:audit` in
+all six states at both widths:
+
+| Pair | Ratio | Needs |
+|---|---|---|
+| accent `#3d70b2` title on white | 5.05 | 3 (large) |
+| white on accent (Generate, pressed tool, count badges) | 5.05 | 4.5 |
+| `--text-muted` `#496297` on `--bg` (empty-state heading) | 5.78 | 3 (large) |
+| `--text-muted` on white (file name, picker placeholder) | 6.04 | 4.5 |
+| disabled `#475569` on `#e5e7eb` | 6.12 | 4.5 |
+| success `#166534` on `#dcfce7` (unchanged) | 6.49 | 4.5 |
+| `--text-subtle` `#3a4e78` on `#e5e7eb` (picker badge) | 6.68 | 4.5 |
+| error `#991b1b` on pink `#fce7f3` | 7.07 | 4.5 |
+| `--text-subtle` on `#f3f4f6` (dimensions line) | 7.51 | 4.5 |
+| `--text` `#06266d` on `--bg` / white | 13.35 / 13.95 | 4.5 |
+
+The lowest pair is now the accent, at 5.05. Info (`#1e3a8a` on `#dbeafe`) is unchanged, and no
+audited state shows it.
+
+**Found while doing it:** the text and number inputs and both selects painted their value in the UA's
+`#000000`. Beside navy labels that reads as a second text colour, where beside `#111827` it had not
+shown. They now inherit `--text` (`input, select, textarea { color: inherit }`). Buttons are
+excluded, since each button rule sets its own label colour. Also: the pink error, and the slate
+tint on the disabled greys. Four comments naming indigo were reworded, and the three comments
+quoting ratios were updated.
+
+Also checked: the export hash is unchanged (`42ac415b…`), `npm run check` passes 211 tests, and
+the canvas reads no colour token (only `--font-body`). On screenshots, the accent is
+everywhere the indigo was, and the unpressed zoom and tool buttons are still white.
+
 ### 2. The sky (core)
 
 Two things change:

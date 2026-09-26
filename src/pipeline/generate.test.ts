@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { normalizePalette } from '../lib/pattern-utils';
-import { generatePattern } from './generate';
+import { countBeads, generatePattern } from './generate';
 import type { Palette, SourcePixels } from '../types';
 
 const palette: Palette = normalizePalette([
@@ -153,4 +153,40 @@ test('a limit at or above the palette size still collapses near-duplicates (D17)
     );
 
     assert.equal(Object.keys(tallies).length, 1, 'the two whites must read as one bead');
+});
+
+test('SET-3: countBeads excludes transparent cells rather than returning width x height', () => {
+    // Left half opaque, right half clear: a 4 x 2 grid over it is 8 cells and 4 beads.
+    const row = [BLACK, BLACK, BLACK, BLACK, [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]];
+    const source = pixels(8, 2, [...row, ...row]);
+
+    assert.equal(countBeads(source, 4, 2), 4);
+    assert.equal(countBeads(source, 4, 2), generatePattern(source, palette, { gridWidth: 4, gridHeight: 2 }).beadCount);
+});
+
+test('SET-3: countBeads agrees exactly with generatePattern at fractional scales', () => {
+    // The readout sits above the stats line, so "close" is not good enough: a
+    // cell whose mean coverage lands on the threshold must decide the same way
+    // in both. Alpha is drawn from a band around 128 so plenty of cells do, and
+    // the grid sizes are chosen so no scale divides the source evenly.
+    let seed = 0x5eed;
+    const random = (): number => {
+        seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+        return seed / 2 ** 32;
+    };
+
+    const width = 37;
+    const height = 23;
+    const quads: number[][] = [];
+    for (let i = 0; i < width * height; i += 1) {
+        const roll = random();
+        const alpha = roll < 0.2 ? 0 : roll < 0.4 ? 255 : 96 + Math.floor(random() * 64);
+        quads.push([Math.floor(random() * 256), Math.floor(random() * 256), Math.floor(random() * 256), alpha]);
+    }
+    const source = pixels(width, height, quads);
+
+    for (const [gridWidth, gridHeight] of [[5, 3], [7, 11], [13, 9], [36, 22], [37, 23], [50, 31]]) {
+        const { beadCount } = generatePattern(source, palette, { gridWidth, gridHeight });
+        assert.equal(countBeads(source, gridWidth, gridHeight), beadCount, `${gridWidth} x ${gridHeight}`);
+    }
 });

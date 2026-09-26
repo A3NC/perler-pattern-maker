@@ -644,9 +644,10 @@ by a CSS class. M1's canvas contract was untouched: no CSS change, no `Pattern` 
 ### M11 — Sky theme · S
 **Do:** Give the page the light-mode theme D26 chose: soft, pastel, pixel-fantasy, in light blue and
 white.
-- **Background:** a pixel sky drawn *outside* the main card only, as a stepped (hard-edged)
-  gradient from `#d3effe` at the top that reaches white roughly two-thirds of the way down the
-  window (approximate, by eye), with white pixel clouds on it. Clouds that fade into the white are
+- **Background:** a pixel sky drawn *outside* the main card only: three blue bands from `#d3effe`
+  at the top, then white, reached roughly two-thirds of the way down the window (approximate, by
+  eye). Each band edge is smoothed by halftone-style dithered pixels, not more colours. White pixel
+  clouds sit on it. Clouds that fade into the white are
   intended. The canvas, inputs and
   panels inside the card keep their pre-M11 backgrounds.
 - **Cursor:** a pixel arrow for the page, and a pixel hand for clickable controls. Both have a

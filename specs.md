@@ -527,9 +527,10 @@ stated as checkable facts so that it can be a [v1] box.
 - [ ] **UI-8 [v1]** In light mode, the page carries the sky theme (D26): a pixel sky drawn outside
   the main card, navy body text, one blue accent, and a pixel cursor.
   **Check:** At 1280 px and 390 px, in U1–U5:
-  - **Sky.** Outside `.container`, the page shows a stepped gradient from `#d3effe` at the top that
-    is fully white by roughly two-thirds of the window's height (approximate; judged by eye, not
-    measured), with visibly hard band edges rather than a smooth blend, and white pixel clouds on
+  - **Sky.** Outside `.container`, the page shows three blue bands from `#d3effe` at the top, then
+    white, reached by roughly two-thirds of the window's height (approximate; judged by eye, not
+    measured). Each band edge is smoothed by dithered (halftone-style) pixels, never by a smooth
+    blend: every pixel is hard-edged and one of the four sky colours. White pixel clouds sit on
     it. Clouds lower down may fade into the white; that is intended.
     It stays put while the page scrolls. Inside `.container` no sky is drawn: the pattern canvas,
     the inputs and the panels keep their pre-M11 backgrounds.
@@ -1321,8 +1322,10 @@ editor state would depend on M5. Do not fix screenshots of these states before t
     everything else. Whether the result *looks good* stays with UI-7 and U1–U5, which M11 re-runs.
   - **The direction, chosen before styling rather than while.** Soft, pastel, pixel-fantasy, in
     light blue and white:
-    - **Sky:** a stepped gradient from `#d3effe` to white with white pixel clouds, drawn only
-      outside the main card. The blue occupies roughly the top two-thirds of the window and the
+    - **Sky:** a gradient from `#d3effe` to white with white pixel clouds, drawn only outside the
+      main card. It uses three blue bands plus white, and smooths each band edge with dithered
+      pixels rather than more colours (revised the same day from eight plain bands, which read as
+      stripes). The blue occupies roughly the top two-thirds of the window and the
       rest is white; the figure is approximate. Clouds fading into the white are an aesthetic
       choice, not a contrast problem. Inner surfaces keep their pre-M11 colours.
     - **Body text:** `#06266d`. The title and button labels are exempt.
@@ -1353,7 +1356,7 @@ editor state would depend on M5. Do not fix screenshots of these states before t
     D25's banner stays deferred. The artwork is self-hosted like D25's fonts, so the look never
     depends on a third-party request. If the timebox ends before UI-8 passes, the unfinished part
     is cut from UI-8 by a note here, never left failing for M9. Cut the hand cursor first, then
-    the clouds' variety. The colours and the stepped sky are the core and are done first.
+    the clouds' variety. The colours and the banded sky are the core and are done first.
   - **Light mode only.** v1 has no dark mode, and this entry does not create one. When a dark mode
     is built it gets a theme of its own, decided separately. UI-8 names light mode so that it is
     not read as requiring an inverted sky. M11 adds no `prefers-color-scheme` handling.

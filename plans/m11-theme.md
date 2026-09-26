@@ -4,7 +4,7 @@ _Tactical plan for the milestone in flight. Strategy lives in `plan-v1.md`; the 
 their Checks live in `specs.md`. This file is the route, not the destination. When M11 closes,
 delete it and point `CLAUDE.md` at M9._
 
-**Milestone goal (`plan-v1.md` M11):** the light-mode sky theme. A stepped pixel sky with clouds
+**Milestone goal (`plan-v1.md` M11):** the light-mode sky theme. A dithered pixel sky with clouds
 outside the card, navy body text, one AA-passing blue accent, and a pixel arrow and hand cursor.
 
 **Closes:** UI-8. **Re-verifies:** UI-1, UI-4, UI-5, UI-6, UI-7 (U1–U5). **Origin:** D26.
@@ -166,10 +166,20 @@ of the window, stays fixed while scrolling a long bead list, is absent inside th
 - **The layer:** `html` paints `--sky-bottom`. `body` has no background, since a body background
   paints *above* a negative-z-index layer and would hide it. `body::before` is `position: fixed;
   inset: 0; z-index: -1; pointer-events: none`.
-- **The bands:** eight hard-edged bands, each 8.25% of the window, from `--sky-top` to
-  `--sky-bottom`, then white from 66%. Each band is `color-mix(in srgb, var(--sky-top) N%,
-  var(--sky-bottom))`, so the two tokens remain the only sky colours. No dither row: the bands
-  read as pixel art by eye without one.
+- **The bands (revised the same day, at the user's request):** first eight plain bands, which
+  read as stripes. Now there are **three blue bands plus white**: `--sky-top`, then
+  `color-mix(in srgb, var(--sky-top) 66.667% / 33.333%, var(--sky-bottom))`, so the tokens remain the
+  only sky colours. Each band is `round(22vh, 12px)` tall, so band edges land on the dither grid.
+- **The dithering:** each band edge carries a 72 px ordered-dither (Bayer 2 × 2) strip: six rows of
+  12 px tiles (2 × 2 art pixels of 6 px) in which the lower colour's density steps 25, 25, 50,
+  50, 75, 75%. Each tile is a `conic-gradient` quadrant pattern in token colours, so no colour is
+  written into an image. Above the edge, the rows paint the lower colour into the upper band.
+  Below it, they paint the upper colour into the lower band in the complementary quadrants, so the
+  checker runs through the edge unbroken. Quadrants nest (25 ⊂ 50 ⊂ 75%). That is 18 layers,
+  generated once by a script and written out in full. `background-size` and `-repeat` list every
+  layer, because a shorter list repeats cyclically.
+- **The clouds moved to `body::after`**, a fixed layer of their own above the sky, so hiding them
+  at ≤ 640 px is `display: none` instead of restating a 19-entry list.
 - **The clouds:** `src/assets/sky/cloud-large.svg` (22 × 9) and `cloud-small.svg` (14 × 6), drawn
   as ASCII grids and converted to one `<rect>` per horizontal run. Each grid is kept in the file's
   comment. They are pure white, with art pixels at 6 px, placed at five positions in the side
@@ -177,13 +187,18 @@ of the window, stays fixed while scrolling a long bead list, is absent inside th
 - **The card** keeps its shadow; it reads well against the blue, so it was not retuned.
 
 **Found:** at ≤ 640 px the gutter is 0.75 rem, and the clouds showed only as white slivers at the
-screen edge, which read as a rendering fault. Inside the existing media query they are sized to
-`0 0`, so the sky is still declared once, and the gradient stays. Whether the narrow gutter should
+screen edge, which read as a rendering fault. The existing media query hides the cloud layer
+(`body::after { display: none }`); the sky and its dithering stay. Whether the narrow gutter should
 grow is left to step 5.
 
 **Checks:** `ui:audit` is green. No measured text background is a sky colour, so nothing sits on
 the sky. The export hash is unchanged, and `npm run check` passes 211. `npm run build` inlines
-both SVGs as data URIs, once per layer that uses them (five), about 4 KB before gzip.
+both SVGs as data URIs, once per layer that uses them (five), about 4 KB before gzip. These
+checks were re-run after the dither revision, with the same results.
+
+**For M9 (Safari):** the sky depends on `round()` (Safari 15.4+) and `color-mix()` (Safari
+16.2+). If either is unsupported, the band variable is invalid and the whole sky layer drops out,
+leaving `html`'s white. That is the graceful failure, but it should be looked at on a real device.
 
 ### 3. The arrow cursor
 

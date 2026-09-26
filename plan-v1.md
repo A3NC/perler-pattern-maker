@@ -569,6 +569,28 @@ after M9 ticks the boxes, reopening them is a regression rather than a task.
 values and surfaces only, reviewed against U1–U5. UI-7 may be ticked by it but is not required for
 M9.
 
+**Done (2026-09-26).** UI-1 … UI-6, NFR-5 and UI-7 are ticked, each with its measurements in
+`specs.md`. The floor came first:
+- `styles.css` re-indented to four spaces, and 113 literals tokenized into `:root` scales;
+- icon zoom buttons, and the sort select without its "Sort by " prefix;
+- scroll lists inset so their rings are not clipped;
+- one offset `:focus-visible` ring, with selection moved inside the box;
+- the disabled button at 6.10:1.
+
+Then D25's pass:
+- Jersey 10 for the title and empty state. The body face is **Space Grotesk**, after Pixelify
+  Sans (its 0/O are one glyph and its 5/S differ by a pixel step) and DotGothic16 were tried and
+  dropped.
+- Generate is the one filled button.
+- An empty state that says what to do.
+- The pattern canvas draws codes and rulers in the body face. The export stays monospace for
+  OUT-3.
+- A styled file picker that names the loaded image. U2 failed until this: M3's input clearing
+  left "No file chosen" beside a loaded image.
+
+Verified in headless Chrome at both widths in every screen state. Two weak spots are left for UI-7's
+v2 revisit (U4, U5), since both are behaviour or layout. Real-phone and Safari checks stay with M9.
+
 **Watch for:** This is deliberately the *mechanical* half of appearance — consistency and
 breakage, not taste. The subjective half is UI-7 and is **[v2]**; if you find yourself choosing
 fonts or reworking the color story, you have crossed into the tuning loop D14 exists to prevent.
@@ -628,12 +650,14 @@ any point** — slot it in whenever you want a quick, satisfying win, the way M1
 done. M7 needs the pattern data settled by M5.
 
 **M0 through M7, and M10, are done — the critical path is closed** (M6, 2026-09-24). What remains
-is off it: **M8 (interface floor) is next**, then M9 (final verification). M6 added D22 and ticked
+is off it, and M8 (interface floor, 2026-09-26) is done too: **M9 (final verification) is next and
+last.** M8 added D25 and ticked UI-1 … UI-7 and NFR-5. M6 added D22 and ticked
 OUT-1, OUT-2, OUT-3 and GEN-5. M7 added D23 and ticked SAVE-1 and SAVE-2. It serialized `Pattern`
 unchanged and widened the save to the source image. Recorded for M9 beside NFR-5: M6's export
 canvas budget and M7's IndexedDB behavior are both unmeasured on Safari and a phone.
 
-**The open tactical plan is `plans/m8-interface.md`** (2026-09-26).
+**No tactical plan is open.** M8's was deleted at its close (2026-09-26). Write
+`plans/m9-verification.md` the day M9 starts, not before.
 
 The two large items, **M1 and M2, are the project.** If time runs short, everything after them can
 be trimmed; neither of them can be.
@@ -653,8 +677,9 @@ be trimmed; neither of them can be.
 
 Background removal and subject auto-trim, pixel-art passthrough mode, palette switching (needs the
 other palette files sourced first), legend in the export, user-facing algorithm choice, printable
-PDF, multi-project library, draw-from-scratch mode, and deliberate visual design (UI-7).
-_(Undo/redo and flood fill were on this list until D19 moved them into M5.)_
+PDF, multi-project library, and draw-from-scratch mode.
+_(Undo/redo and flood fill were on this list until D19 moved them into M5. Deliberate visual design
+(UI-7) was on it until D25 admitted one bounded styling pass into M8, which passed U1–U5.)_
 
 Reasons for each are in the `specs.md` decision log. Four worth restating:
 
@@ -674,6 +699,9 @@ background is the v1 answer for white-canvas artwork, which is the majority inpu
 
 **The printable PDF is out** because it is roughly a week of work hidden behind five words in the
 original spec, and a PNG with codes covers the on-screen case.
+
+_[2026-09-26: D25 narrowed this. One timeboxed styling pass ran inside M8 after the floor, and
+UI-7 passed. The reasoning below is kept because D25 was argued from it.]_
 
 **Deliberate visual design is out, but the floor under it is not** (D14). v1 still has to look
 finished rather than broken: UI-1 … UI-6 are **[v1]** and get built in M8 — consistent spacing,

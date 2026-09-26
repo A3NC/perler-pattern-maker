@@ -8,6 +8,28 @@
     box-sizing: border-box;
 }
 
+/* D25's faces, self-hosted as Latin-subset woff2 (OFL; licenses beside the
+   files) so the page's look never waits on a third-party request. Imported
+   through Vite, so the URLs are content-hashed in the build and a wrong path
+   fails the build rather than 404ing. `swap`: text renders at once in the
+   fallback and re-renders when the face arrives, rather than staying
+   invisible. */
+@font-face {
+    font-family: "Jersey 10";
+    src: url("./assets/fonts/jersey-10/jersey-10-latin-400.woff2") format("woff2");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Space Grotesk";
+    src: url("./assets/fonts/space-grotesk/space-grotesk-latin-variable.woff2") format("woff2");
+    font-weight: 300 700; /* One variable file covers every weight used below. */
+    font-style: normal;
+    font-display: swap;
+}
+
 /* UI-3's scales. Every padding, margin, gap, radius and font size below reads
    from here; what is left as a literal is zero, `auto`, or carries a comment
    saying why no scale value applies. The steps name what the app already did
@@ -76,14 +98,34 @@
     --radius-xl: 12px;
     --radius-pill: 999px;
 
-    --text-xs: 0.75rem;
-    --text-sm: 0.875rem;
-    --text-md: 1rem;
-    --text-lg: 1.125rem;
+    /* D25. Jersey 10 is the title alone -- and the empty-state heading --
+       so if the planned banner replaces the title, dropping it is this
+       token and one @font-face. The pixel character lives there; the body
+       is a clean face because the body is mostly numbers. Bead codes are
+       in the body face too: Space Grotesk separates every glyph pair a code
+       could confuse (5/S, 0/O, 8/B, 1/l -- D25), which is the job a
+       monospace face was doing while the body was Pixelify. */
+    --font-display: "Jersey 10", var(--font-body);
+    --font-body: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    /* Jersey 10 sits on a grid of 75/1400 em (measured from its outlines,
+       D25), so it is crisp only at multiples of 18.667px: 56px is three
+       screen pixels per font pixel, 37.333px two. Not a rem value, because
+       a rem that is not a multiple of the grid blurs every edge. */
+    --text-title: 56px;
+    --text-title-narrow: 37.333px;
+
+    /* One step up from what M8 tokenized (0.75 / 0.875 / 1 / 1.125rem).
+       Raised while the body face was Pixelify Sans, which is hard to read
+       below ~18px, and kept: it reads comfortably in Space Grotesk too, and
+       every Check was re-measured at these values (D25). */
+    --text-xs: 0.875rem;
+    --text-sm: 1rem;
+    --text-md: 1.125rem;
+    --text-lg: 1.25rem;
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: var(--font-body);
     background-color: var(--bg);
     color: var(--text);
     margin: 0;
@@ -100,7 +142,8 @@ body {
 button,
 input,
 select,
-textarea {
+textarea,
+::file-selector-button {
     font-family: inherit;
 }
 
@@ -109,10 +152,29 @@ textarea {
    stylesheet rule reaches it on every return to the empty state. */
 #placeholderText {
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
+    gap: var(--space-sm);
     height: 100%;
+    padding: var(--space-lg);
+    text-align: center;
     color: var(--text-muted);
+}
+
+/* U1: the empty box reads as the place the pattern will go, and says what
+   to do to get one. Large text, so --text-muted on --bg (4.63:1) clears
+   the 3:1 it needs with room. */
+.placeholder-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--text-title-narrow);
+    line-height: 1;
+}
+
+.placeholder-hint {
+    margin: 0;
+    font-size: var(--text-sm);
 }
 
 .container {
@@ -127,7 +189,15 @@ textarea {
 h1 {
     text-align: center;
     margin-top: 0;
+    margin-bottom: var(--space-lg);
     color: var(--primary);
+    font-family: var(--font-display);
+    font-size: var(--text-title);
+    /* The face has one weight; `bold` from the UA would be synthesized by
+       smearing the outline, which on a pixel face blurs every edge. */
+    font-weight: 400;
+    line-height: 1;
+    letter-spacing: 0.02em;
 }
 
 .controls {
@@ -162,7 +232,6 @@ label {
     font-size: var(--text-sm);
 }
 
-input[type="file"],
 input[type="number"],
 select {
     padding: var(--space-md);
@@ -263,7 +332,9 @@ button:disabled {
        390px; wrapping is what keeps it from overflowing if a label or the
        font grows (D25's styling pass changes both). */
     flex-wrap: wrap;
-    gap: var(--space-sm) var(--space-lg);
+    /* The editor bar's spacing, so the two icon bars match; the toggles pad
+       themselves apart from the buttons and each other. */
+    gap: var(--space-sm);
     margin-top: var(--space-lg);
     display: none; /* Hidden until image is generated */
 }
@@ -280,6 +351,7 @@ button:disabled {
     /* On the row, not the box: a 44px checkbox would dwarf its label.
        The label carries `for`, so the whole row is the tap target. */
     min-height: 44px;
+    padding-inline: var(--space-sm);
 }
 
 .view-toggle input[type="checkbox"] {
@@ -321,6 +393,84 @@ button:disabled {
     min-height: 44px; /* UI-6 */
     padding: var(--space-sm) var(--space-lg);
     font-size: var(--text-md);
+    /* Secondary, outlined: Generate is the page's one filled button (D25),
+       which is most of what makes U1 read as a tool rather than a form.
+       Indigo on --surface is 6.29:1. */
+    background-color: var(--surface);
+    color: var(--primary);
+    border: 2px solid var(--primary);
+}
+
+.export-controls button:hover {
+    background-color: var(--bg);
+}
+
+/* U2: the upload control, replacing the browser's own "Choose File / No file
+   chosen", which read as a raw form and -- because main.ts clears the input
+   after every pick -- said "No file chosen" beside a loaded image. The box
+   matches the other inputs; the button is secondary, since Generate is the
+   page's one filled action. The real <input> is .sr-only inside it. */
+.file-picker {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-sm) var(--space-md);
+    /* The box keeps its own padding thin so the button inside can be 44px
+       tall (UI-6) without the field growing past its neighbours. */
+    padding: var(--space-xs);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background-color: var(--surface);
+    min-width: 0;
+}
+
+.file-button {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    min-height: 44px; /* UI-6 */
+    padding: 0 var(--space-lg);
+    border: 2px solid var(--primary);
+    border-radius: var(--radius-md);
+    background-color: var(--surface);
+    color: var(--primary);
+    font-size: var(--text-md);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.file-button:hover {
+    background-color: var(--bg);
+}
+
+/* The input is what takes focus; its ring would be drawn on a clipped 1px
+   box, so it is drawn on the button the user sees instead (UI-4). */
+.file-input:focus-visible + .file-button {
+    outline: var(--focus-ring);
+    outline-offset: var(--focus-offset);
+}
+
+.file-name {
+    /* Beside the button while 8rem fits (the two-column desktop field has
+       ~154px there), on its own line below it when not -- which at 390px
+       (~123px) is always -- so a long name wraps across the field's width
+       instead of into a narrow column. */
+    flex: 1 1 8rem;
+    min-width: 0;
+    padding-inline: var(--space-xs);
+    /* Wraps rather than truncating: an ellipsis cut the placeholder at
+       390px, which is clipping by UI-1's definition. `anywhere` also breaks
+       a long unbroken name like IMG_20260926_141512.jpg. */
+    overflow-wrap: anywhere;
+    color: var(--text);
+    font-size: var(--text-md);
+}
+
+/* The "No image yet" placeholder reads as a hint; a loaded name is
+   information and takes body text. main.ts drops the class on load. */
+.file-name.is-empty {
+    color: var(--text-muted);
 }
 
 .status-message {
@@ -393,6 +543,7 @@ button:disabled {
 .count-header h3 {
     margin: 0;
     color: var(--text);
+    font-size: var(--text-lg);
 }
 
 .bead-list {
@@ -432,7 +583,7 @@ button:disabled {
 
 .color-name {
     flex-grow: 1;
-    font-weight: 500;
+    font-weight: 600;
 }
 
 .color-count {
@@ -520,7 +671,6 @@ button:disabled {
 .editor-controls .active-color {
     gap: var(--space-sm);
     padding: var(--space-sm) var(--space-md);
-    font-family: monospace;
     font-weight: 700;
 }
 
@@ -653,7 +803,6 @@ button:disabled {
 }
 
 .picker-swatch .picker-code {
-    font-family: monospace;
     font-weight: 700;
 }
 
@@ -864,6 +1013,11 @@ button:disabled {
         padding: var(--space-lg) var(--space-md);
     }
 
+    /* 56px is 369px of title against ~334px at 390px (UI-1). */
+    h1 {
+        font-size: var(--text-title-narrow);
+    }
+
     .container {
         padding: var(--space-lg);
     }
@@ -875,7 +1029,6 @@ button:disabled {
         padding: var(--space-lg);
     }
 
-    input[type="file"],
     input[type="number"],
     select,
     button {

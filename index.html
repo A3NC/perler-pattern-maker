@@ -11,9 +11,28 @@
         <h1>Pattern Generator</h1>
 
         <div class="controls">
+            <!--
+                The native file input is visually hidden, not removed: it is
+                still what Tab lands on, what Enter/Space opens, what the
+                label clicks through to, and what main.ts listens to. What it
+                could not do is say which image is loaded -- main.ts clears its
+                value after every pick (so re-picking a rejected file still
+                fires `change`, M3), which left it reading "No file chosen"
+                beside a loaded image (U2). #fileName says it instead, and is
+                written only when an image is actually loaded, so a rejected
+                pick leaves it naming the image that is still there (D21).
+
+                The button is a second <label> for the same input, aria-hidden
+                so the input's accessible name stays "Upload Image"; the file
+                name reaches assistive tech through aria-describedby.
+            -->
             <div class="control-group">
                 <label for="imageUpload">Upload Image</label>
-                <input type="file" id="imageUpload" accept="image/png,image/jpeg,image/gif,image/webp,image/bmp,.png,.jpg,.jpeg,.gif,.webp,.bmp,.heic,.heif">
+                <div class="file-picker">
+                    <input type="file" id="imageUpload" class="file-input sr-only" aria-describedby="fileName" accept="image/png,image/jpeg,image/gif,image/webp,image/bmp,.png,.jpg,.jpeg,.gif,.webp,.bmp,.heic,.heif">
+                    <label for="imageUpload" class="file-button" aria-hidden="true">Choose image</label>
+                    <span id="fileName" class="file-name is-empty">No image yet</span>
+                </div>
             </div>
 
             <div class="control-group">
@@ -23,9 +42,15 @@
 
             <div class="control-group">
                 <label for="beadSize">Bead Size</label>
+                <!--
+                    The inch figure (~0.197 / ~0.102) was dropped from the
+                    labels in M8: at 390px it truncated the select (UI-1), and
+                    it restated the millimetres in the least readable form.
+                    The inch pitch is still the value the code reads.
+                -->
                 <select id="beadSize">
-                    <option value="0.197">Standard (5mm / ~0.197 inches)</option>
-                    <option value="0.102">Mini (2.6mm / ~0.102 inches)</option>
+                    <option value="0.197">Standard (5 mm)</option>
+                    <option value="0.102">Mini (2.6 mm)</option>
                 </select>
             </div>
 
@@ -190,7 +215,8 @@
 
         <div class="output-container" id="outputContainer">
             <div id="placeholderText">
-                Pattern will appear here
+                <p class="placeholder-title">Your pattern appears here</p>
+                <p class="placeholder-hint">Upload an image, choose a size, then press Generate.</p>
             </div>
         </div>
 

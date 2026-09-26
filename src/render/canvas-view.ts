@@ -42,7 +42,7 @@ const zoomControls = requireElement('zoomControls');
 /**
  * The empty state's message, captured once at startup so clearing can put the
  * real element back rather than re-creating markup that lives in index.html.
- * It carries inline styles M8 owns; duplicating them here would make that two
+ * Its styling is in styles.css (M8); duplicating it here would make that two
  * places to fix.
  */
 const placeholderText = requireElement('placeholderText');
@@ -58,6 +58,20 @@ const CODE_MAX_WIDTH_RATIO = 0.86;
 // Ruler chrome is fixed-size: it labels the view, not the beads, so unlike code
 // text it does not scale with zoom. rulerLabelStep is what stops it colliding.
 const RULER_FONT_PX = 10;
+
+let viewFontFamily: string | null = null;
+
+/**
+ * The page's body face (D25), read from the stylesheet's `--font-body` so the
+ * family is named in one place. Read on first draw rather than at module load,
+ * so it never depends on whether the stylesheet was applied before this module
+ * ran. The PNG export deliberately does not use this: OUT-3 needs it
+ * byte-identical, and a web font that may not have loaded yet would break that.
+ */
+function viewFont(): string {
+    viewFontFamily ??= getComputedStyle(document.documentElement).getPropertyValue('--font-body').trim() || 'sans-serif';
+    return viewFontFamily;
+}
 const RULER_BAND_PX = 15;
 const RULER_PADDING_PX = 3;
 const RULER_BACKGROUND = 'rgba(255, 255, 255, 0.86)';
@@ -276,13 +290,13 @@ function widestCodeIn(pattern: Pattern): string {
  */
 function setCodeFont(ctx: CanvasRenderingContext2D, cellSize: number, widestCode: string): void {
     const fontSize = cellSize * CODE_FONT_RATIO;
-    ctx.font = `bold ${fontSize}px monospace`;
+    ctx.font = `bold ${fontSize}px ${viewFont()}`;
 
     const maxWidth = cellSize * CODE_MAX_WIDTH_RATIO;
     const width = ctx.measureText(widestCode).width;
     // Text width scales linearly with font size, so one correction is exact.
     if (width > maxWidth) {
-        ctx.font = `bold ${fontSize * (maxWidth / width)}px monospace`;
+        ctx.font = `bold ${fontSize * (maxWidth / width)}px ${viewFont()}`;
     }
 }
 
@@ -340,7 +354,7 @@ function drawRulers(
     if (!showColumns && !showRows) return;
 
     const step = rulerLabelStep(cellSize);
-    ctx.font = `bold ${RULER_FONT_PX}px monospace`;
+    ctx.font = `bold ${RULER_FONT_PX}px ${viewFont()}`;
 
     // Sized to the widest number this pattern can print, so a three-digit row
     // index near NFR-3's 300-per-side limit is never clipped.
@@ -594,4 +608,10 @@ export function initPatternViewControls(): void {
 
     // VIEW-6 and VIEW-7, same reasoning.
     toggleGridBtn.addEventListener('change', () => draw());
+
+    // A canvas does not repaint when a web font arrives, so a pattern drawn
+    // before the body face loaded -- a restore from autosave can be -- would
+    // keep the fallback face until the next scroll. draw() is a no-op with no
+    // pattern.
+    document.fonts.addEventListener('loadingdone', () => draw());
 }

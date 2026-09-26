@@ -217,6 +217,32 @@ on `html`. The hotspot must be the arrow's tip pixel.
 **Done when:** the arrow shows over chrome in Chrome, the inputs show the I-beam, and the canvas
 still shows crosshair, grab and the crop cursors.
 
+**Done (2026-09-26), pending a look in a real browser.**
+- **The drawing:** `src/assets/cursors/arrow.svg` is a 12 × 16 art grid at 2 px per art pixel
+  (24 × 32 CSS px): `#052048` outline, white fill, `#edf3f8` shading down the inner right edge
+  and the tail. It was drawn and converted like the clouds, with the grid in the file's comment
+  and the rects grouped by colour. Hotspot `1 1`, the tip.
+- **The token:** `--cursor-default: url(...) 1 1, default` in `:root`, and `html { cursor:
+  var(--cursor-default) }`. **Vite does rewrite a `url()` inside a custom property**, in dev and
+  in the build (inlined as a data URI), so the token approach holds and step 4 can reuse it.
+
+**Found:** Chrome's UA stylesheet sets `cursor: default` on `label` and `select`, which beats
+inheritance, so they showed the native arrow beside the pixel one. Fixed with a type-selector
+rule early in the file, so the class rules that give a label the pointer still win. It was
+found by a scan of every rendered element's computed `cursor` in U1, U2, U3 and a tool
+state. After the fix:
+- pixel arrow: 30 elements;
+- `text`: the two number inputs and the picker filter;
+- `pointer`: every clickable control (step 4);
+- `not-allowed`: disabled buttons;
+- `crosshair`: the crop frame and the painting canvas;
+- `grab`: the pan canvas;
+- `default`: only the `sr-only` file input, which nobody can hover.
+
+**Not verifiable headless:** `Page.captureScreenshot` does not draw the mouse cursor, so the
+arrow on screen needs one look by hand in the running app. `ui:audit` is green, the export hash
+is unchanged, and `npm run check` passes 211.
+
 ### 4. The hand cursor (cut first if time runs out)
 
 `src/assets/cursors/hand.svg` in the same style, hotspot on the fingertip. Add

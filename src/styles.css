@@ -139,15 +139,76 @@
     --text-lg: 1.25rem;
 }
 
+/* D26's sky ends in white, so white is also what shows if the sky layer
+   below is ever missing. */
+html {
+    background-color: var(--sky-bottom);
+}
+
+/* No background of its own: a body background paints above the sky layer
+   (it sits in a negative z-index), so it would hide it. --bg still paints
+   the panels inside the card, which keep their pre-M11 colour. */
 body {
     font-family: var(--font-body);
-    background-color: var(--bg);
     color: var(--text);
     margin: 0;
     padding: var(--space-2xl);
     display: flex;
     flex-direction: column;
     align-items: center;
+}
+
+/* D26's pixel sky, outside the card. A fixed layer rather than
+   `background-attachment: fixed`, which iOS Safari ignores: the sky stays
+   put and the card scrolls over it. Percentages are of the window.
+
+   The gradient is stepped, not smooth: eight hard-edged bands from
+   --sky-top down to --sky-bottom across roughly the top two-thirds of the
+   window (8 × 8.25% = 66%), then white. Each band is a mix of the two
+   tokens, so the sky follows them. Clouds are white and may fade into the
+   lower bands; that is intended.
+
+   Cloud art pixels are 6px: the SVGs are one unit per art pixel, so
+   background-size is the grid times 6. Nothing here may gain a transform,
+   filter or contain on body or .container -- either would make this layer
+   scroll with it. */
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image:
+        url("./assets/sky/cloud-large.svg"),
+        url("./assets/sky/cloud-small.svg"),
+        url("./assets/sky/cloud-large.svg"),
+        url("./assets/sky/cloud-small.svg"),
+        url("./assets/sky/cloud-small.svg"),
+        linear-gradient(to bottom,
+            var(--sky-top) 0% 8.25%,
+            color-mix(in srgb, var(--sky-top) 87.5%, var(--sky-bottom)) 8.25% 16.5%,
+            color-mix(in srgb, var(--sky-top) 75%, var(--sky-bottom)) 16.5% 24.75%,
+            color-mix(in srgb, var(--sky-top) 62.5%, var(--sky-bottom)) 24.75% 33%,
+            color-mix(in srgb, var(--sky-top) 50%, var(--sky-bottom)) 33% 41.25%,
+            color-mix(in srgb, var(--sky-top) 37.5%, var(--sky-bottom)) 41.25% 49.5%,
+            color-mix(in srgb, var(--sky-top) 25%, var(--sky-bottom)) 49.5% 57.75%,
+            color-mix(in srgb, var(--sky-top) 12.5%, var(--sky-bottom)) 57.75% 66%,
+            var(--sky-bottom) 66%);
+    background-size:
+        132px 54px,
+        84px 36px,
+        132px 54px,
+        84px 36px,
+        84px 36px,
+        auto;
+    background-position:
+        left 4% top 7%,
+        right 6% top 17%,
+        right 3% top 36%,
+        left 7% top 46%,
+        left 2% top 62%,
+        0 0;
+    background-repeat: no-repeat;
 }
 
 /* Form controls do not inherit the page font by default -- the UA gives them
@@ -1036,6 +1097,14 @@ button:disabled {
 @media (max-width: 640px) {
     body {
         padding: var(--space-lg) var(--space-md);
+    }
+
+    /* D26: with a 0.75rem gutter there is no room for a cloud; one would
+       show only as a white sliver at the screen edge, which reads as a
+       rendering fault. The stepped gradient stays. Sized to nothing rather
+       than a second background-image list, so the sky is declared once. */
+    body::before {
+        background-size: 0 0, 0 0, 0 0, 0 0, 0 0, auto;
     }
 
     /* 56px is 369px of title against ~334px at 390px (UI-1). */

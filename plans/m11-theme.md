@@ -162,6 +162,29 @@ Two things change:
 **Done when:** the sky is visible outside the card at 1280 px, reaches white at roughly two-thirds
 of the window, stays fixed while scrolling a long bead list, is absent inside the card, and the audit is still green.
 
+**Done (2026-09-26).**
+- **The layer:** `html` paints `--sky-bottom`. `body` has no background, since a body background
+  paints *above* a negative-z-index layer and would hide it. `body::before` is `position: fixed;
+  inset: 0; z-index: -1; pointer-events: none`.
+- **The bands:** eight hard-edged bands, each 8.25% of the window, from `--sky-top` to
+  `--sky-bottom`, then white from 66%. Each band is `color-mix(in srgb, var(--sky-top) N%,
+  var(--sky-bottom))`, so the two tokens remain the only sky colours. No dither row: the bands
+  read as pixel art by eye without one.
+- **The clouds:** `src/assets/sky/cloud-large.svg` (22 × 9) and `cloud-small.svg` (14 × 6), drawn
+  as ASCII grids and converted to one `<rect>` per horizontal run. Each grid is kept in the file's
+  comment. They are pure white, with art pixels at 6 px, placed at five positions in the side
+  gutters, and the lowest fades into the white as intended.
+- **The card** keeps its shadow; it reads well against the blue, so it was not retuned.
+
+**Found:** at ≤ 640 px the gutter is 0.75 rem, and the clouds showed only as white slivers at the
+screen edge, which read as a rendering fault. Inside the existing media query they are sized to
+`0 0`, so the sky is still declared once, and the gradient stays. Whether the narrow gutter should
+grow is left to step 5.
+
+**Checks:** `ui:audit` is green. No measured text background is a sky colour, so nothing sits on
+the sky. The export hash is unchanged, and `npm run check` passes 211. `npm run build` inlines
+both SVGs as data URIs, once per layer that uses them (five), about 4 KB before gzip.
+
 ### 3. The arrow cursor
 
 `src/assets/cursors/arrow.svg`, 32 × 32 CSS px at most. That is a 16 × 16 art grid at 2 px per

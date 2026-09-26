@@ -508,6 +508,13 @@ stated as checkable facts so that it can be a [v1] box.
   are 6.29, the status variants 6.49 / 6.80 / 8.49, body text 16.98–17.74. The input placeholder
   is pinned to `--text-muted` (4.83) rather than left to each browser. Disabled tool *icons* stay
   `#9CA3AF`: they are non-text, and WCAG 1.4.11 exempts inactive controls.)_
+  _(Re-measured at M11 (2026-09-26), same method, after D26's theme. All pairs pass. The lowest is
+  now the accent, `#3d70b2`: on white as the title (large text, 5.05 against 3), and as white
+  label text on it (Generate, the pressed tool, count badges; 5.05). Others: `--text-muted`
+  `#496297` at 5.78 on `--bg` and 6.04 on white; disabled `#475569` on `#e5e7eb` at 6.12;
+  `--text-subtle` `#3a4e78` at 6.68 and 7.51; the pink error `#991b1b` on `#fce7f3` at 7.07;
+  body text `#06266d` at 13.35–13.95. No text sits on the sky: every measured background is a
+  panel or card colour. Disabled icons are now `#94A3B8`, still exempt as inactive non-text.)_
 - [x] **UI-6 [v1]** Interactive controls are at least 44 × 44 px at 390 px wide.
   **Check:** Measure each control's rendered box at 390 px.
   _(Measured at M8 (2026-09-26) in headless Chrome over CDP, at 1280 × 800 and 390 × 844 (dpr 2, mobile), in U1–U5 plus an editor state (brush active, picker open): no visible control under 44 × 44. Checkbox rows are measured as the row, since the
@@ -522,9 +529,10 @@ stated as checkable facts so that it can be a [v1] box.
   loaded file fixed it. Weak spots left for a v2 revisit, both outside a styling pass: over the
   size limit, Generate stays enabled beside the error (U4); and `.output-container`'s fixed
   500 px height leaves a large empty area under a short pattern, most visible at 390 px (U5).)_
-  _(D26's theme (M11) changes the page this was judged on, so M11 re-runs U1–U5. The box stays
-  ticked unless that review fails.)_
-- [ ] **UI-8 [v1]** In light mode, the page carries the sky theme (D26): a pixel sky drawn outside
+  _(Re-reviewed at M11 (2026-09-26) on D26's theme, U1–U5 at 1280 px and U5 at 390 px: all
+  pass. The cross-state conditions hold: one accent for primary actions, consistent rhythm. The
+  two weak spots above are unchanged and still v2.)_
+- [x] **UI-8 [v1]** In light mode, the page carries the sky theme (D26): a pixel sky drawn outside
   the main card, navy body text, one blue accent, and a pixel cursor.
   **Check:** At 1280 px and 390 px, in U1–U5:
   - **Sky.** Outside `.container`, the page shows three blue bands from `#d3effe` at the top, then
@@ -550,6 +558,31 @@ stated as checkable facts so that it can be a [v1] box.
     of one pattern are byte-identical to an export made before M11 (OUT-3).
   Dark mode is out of this requirement's scope. v1 has none, and a future dark mode gets a theme of
   its own rather than an inverted copy of this one.
+  _(Done at M11 (2026-09-26), measured in headless Chrome over CDP at 1280 × 800 and 390 × 844
+  (dpr 2, mobile).
+  - **Sky:** three bands plus white, `round(22vh, 12px)` each, with a 72 px Bayer 2 × 2 dither
+    strip at each edge. It is drawn by a fixed `body::before`, and the clouds by `body::after`.
+    Scrolling to the bottom of a generated pattern leaves it in place. The clouds are hidden at
+    ≤ 640 px, where only a sliver would show; the dithered sky stays.
+  - **Drawn:** the clouds and the four cursors are SVG `<rect>` runs in `src/assets/sky/` and
+    `src/assets/cursors/`, each file keeping its pixel grid in a comment. The dither is
+    `conic-gradient` tiles in token colours. The built CSS and HTML reference no outside host and
+    no bitmap.
+  - **Text:** body, label, stats and field text compute to `#06266d`.
+  - **Accent:** `#3d70b2` computes on the title, Generate's fill, the pressed tool, the outlined
+    button's border and the checkbox `accent-color`. The unpressed zoom button stays white. The
+    old indigo appears nowhere.
+  - **Cursor:** every rendered element's computed `cursor` was scanned in U1, U2, U3 and a tool
+    state. The pixel arrow covers 30 elements, and the pointing hand every control that had the
+    native `pointer`. A synthetic drag on the pan canvas gives the open hand, the fist while held,
+    then the open hand again. What stays native is only what D26 keeps: text, `not-allowed`, the
+    crosshair, and the hidden file input. The three hands share their thumb, palm and wrist
+    exactly. The on-screen look was confirmed by the user in a real browser, since headless
+    screenshots do not draw the cursor.
+  - **Floor:** `ui:audit` is green (122 Tab stops), and `ui:focus`, `ui:file-picker` and
+    `ui:fonts` pass. The export hash `42ac415b…93d85` (88,021 bytes) is identical to the pre-M11
+    baseline from `npm run ui:export-hash`.
+  - **Not yet measured:** Safari and a physical phone. They are recorded for M9 beside NFR-5.)_
 
 ### Non-functional — NFR
 
@@ -598,7 +631,11 @@ stated as checkable facts so that it can be a [v1] box.
   screen and the editor open. At both widths every v1 control is reachable, and the pattern view
   pans, zooms and paints. **Measured in Chrome's device emulation, not on a physical phone or in
   Safari.** Those stay with M9, beside M6's canvas budget and M7's IndexedDB behaviour, which were
-  recorded against this requirement.)_
+  recorded against this requirement.)_ _(M11 adds two items for M9. **(1)** The SVG cursors in
+  Safari; the keyword fallback means the worst case is the native cursor. **(2)** The sky's
+  `round()` (Safari 15.4+) and `color-mix()` (16.2+). If either is unsupported, the whole sky
+  layer drops out and leaves `html`'s white, which fails gracefully but should be seen on a
+  device.)_
 
 ## Won't build
 

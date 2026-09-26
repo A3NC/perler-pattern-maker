@@ -641,7 +641,7 @@ by a CSS class. M1's canvas contract was untouched: no CSS change, no `Pattern` 
   14 px minimum gridline pitch and a 34 px minimum label pitch. Both are one constant each in
   `guides.ts` and both are covered by tests that assert the behavior, not the number.
 
-### M11 — Sky theme · S
+### M11 — Sky theme · S — ✅ **Done** (2026-09-26)
 **Do:** Give the page the light-mode theme D26 chose: soft, pastel, pixel-fantasy, in light blue and
 white.
 - **Background:** a pixel sky drawn *outside* the main card only: three blue bands from `#d3effe`
@@ -694,6 +694,34 @@ rather than left failing, so M9 never inherits a box it cannot tick.
   either of the first two they stop the sky staying fixed; on `#grid-wrapper` they break M1's
   sticky canvas.
 
+**Done (2026-09-26).** UI-8 is ticked, and UI-1, UI-4, UI-5, UI-6 and UI-7 re-pass on the themed
+page, each with its measurements in `specs.md`. What landed:
+- **Colours:** the accent `#3d70b2` replaces the indigo role for role; body text `#06266d` with
+  navy-tinted secondary steps; a pink error variant. Form fields and selects now inherit the text
+  colour instead of the browser's black.
+- **The sky:** three bands plus white, their edges smoothed by Bayer 2 × 2 dithering drawn as
+  `conic-gradient` tiles, with white pixel clouds in the side gutters. The first cut was eight
+  plain bands, which read as stripes.
+- **Four cursors:** a pixel arrow, a pointing hand, and an open hand and fist for panning. The pan
+  cursors joined the scope mid-milestone (D26, revised). Drawn as ASCII grids, converted to SVG
+  runs, and revised several times by eye.
+- **Layout:** no change was forced. The 390 px sky is a thin dithered frame, deliberately.
+
+**Four things worth carrying forward:**
+- **The sky is two fixed pseudo-elements on `body`**, the sky on `::before` and the clouds on
+  `::after`, both at `z-index: -1`. That is why `body` has no background: one would paint over
+  them. It is also why `body` and `.container` must never take a `transform`, `filter` or
+  `contain`.
+- **A multi-layer `background-*` list must be written out in full.** A shorter list repeats
+  cyclically across the layers, silently.
+- **The UA stylesheet sets `cursor: default` on `label` and `select`**, which beats an inherited
+  custom cursor. A type-selector rule gives them the arrow.
+- **Vite rewrites a `url()` inside a custom property**, inlining files under 4 KB and hashing the
+  rest. The built site was checked serving the hashed hand SVGs.
+
+`npm run ui:export-hash` was added as OUT-3's regression guard for M9. Safari and a real phone are
+recorded for M9 beside NFR-5.
+
 ---
 
 ## Critical path
@@ -703,13 +731,15 @@ any point** — slot it in whenever you want a quick, satisfying win, the way M1
 done. M7 needs the pattern data settled by M5.
 
 **M0 through M7, and M10, are done — the critical path is closed** (M6, 2026-09-24). What remains
-is off it, and M8 (interface floor, 2026-09-26) is done too. **M11 (sky theme, D26) is in flight,
-and M9 (final verification) follows it, last**, so M9 verifies the themed page. M8 added D25 and ticked UI-1 … UI-7 and NFR-5. M6 added D22 and ticked
+is off it, and M8 (interface floor, 2026-09-26) and M11 (sky theme, 2026-09-26) are done too:
+**M9 (final verification) is next and last**, and it verifies the themed page. M11 added D26 and
+ticked UI-8. M8 added D25 and ticked UI-1 … UI-7 and NFR-5. M6 added D22 and ticked
 OUT-1, OUT-2, OUT-3 and GEN-5. M7 added D23 and ticked SAVE-1 and SAVE-2. It serialized `Pattern`
 unchanged and widened the save to the source image. Recorded for M9 beside NFR-5: M6's export
-canvas budget and M7's IndexedDB behavior are both unmeasured on Safari and a phone.
+canvas budget and M7's IndexedDB behavior are both unmeasured on Safari and a phone, as are M11's
+SVG cursors and the sky's `round()` and `color-mix()`.
 
-**Open tactical plan: `plans/m11-theme.md`** (2026-09-26). M8's was deleted at its close. Write
+**No tactical plan is open.** M11's was deleted at its close (2026-09-26). Write
 `plans/m9-verification.md` the day M9 starts, not before.
 
 The two large items, **M1 and M2, are the project.** If time runs short, everything after them can

@@ -450,18 +450,28 @@ Covers the application shell — controls, status, layout, and chrome. The patte
 VIEW. Appearance is split deliberately: UI-1 … UI-6 are mechanical and checkable, UI-7 is the
 subjective half and is held to v2. See Decision log D14.
 
-- [ ] **UI-1 [v1]** No content is clipped, and the page never scrolls horizontally, at 390 px or
+- [x] **UI-1 [v1]** No content is clipped, and the page never scrolls horizontally, at 390 px or
   1280 px wide.
   **Check:** At both widths, in each screen state U1–U5, no element is cut off and
   `document.documentElement.scrollWidth` does not exceed the viewport width. _(Measured 2026-09-13
   on the empty state at 390 px: `scrollWidth` equals the viewport and no element overflows. The
   clipping originally recorded here did not reproduce — `src/styles.css` has had a narrow-width
   media query since M0. Unticked because the Check covers all of U1–U5, which M8 verifies.)_
-- [ ] **UI-2 [v1]** Controls reflow to a single full-width column when two columns no longer fit,
+  _(Measured at M8 (2026-09-26) in headless Chrome over CDP, at 1280 × 800 and 390 × 844 (dpr 2, mobile), in U1–U5 plus an editor state (brush active, picker open): `scrollWidth` equals the viewport everywhere and no box escapes its parent, the crop
+  handles excepted by design. Three failures were found and fixed. The zoom row overflowed at
+  390 px, fixed with icon zoom buttons in the editor bar's idiom plus wrapping. The sort select
+  truncated "Sort by Largest Count", fixed by dropping the prefix and adding a hidden label. The
+  inventory and picker scroll lists clipped their selected item's ring, fixed with an inset and
+  `scroll-padding`. D25's larger type later truncated the bead-size select, fixed by dropping the
+  inch figure from its options. Text truncation is checked on screenshots, since `text-overflow`
+  hides it from a box audit.)_
+- [x] **UI-2 [v1]** Controls reflow to a single full-width column when two columns no longer fit,
   and status messages span the control panel rather than occupying an arbitrary grid cell.
   **Check:** At 390 px every control is full-width and in document order; at 1280 px the
   two-column layout is preserved; the status message spans the panel width at both.
-- [ ] **UI-3 [v1]** Spacing, corner radii, and font sizes come from defined scales rather than
+  _(Measured at M8 (2026-09-26) in headless Chrome over CDP, at 1280 × 800 and 390 × 844 (dpr 2, mobile), in U1–U5 plus an editor state (brush active, picker open). Passed at baseline and after every M8 change; `#statusMessage` and `#dimensions`
+  both span the panel.)_
+- [x] **UI-3 [v1]** Spacing, corner radii, and font sizes come from defined scales rather than
   per-rule literals.
   **Check:** `src/styles.css` defines spacing, radius, and type scales as custom properties in
   `:root`, and no `border-radius`, `font-size`, `padding`, `margin`, or `gap` literal appears
@@ -471,21 +481,46 @@ subjective half and is held to v2. See Decision log D14.
   spacing steps, three radii, three type sizes — not what a future design system might want.
   Structure is what survives a v2 change of direction; speculative structure built for a direction
   nobody has chosen yet is the one part of this work that can genuinely be wasted.
-- [ ] **UI-4 [v1]** Every interactive control has a visible keyboard focus indicator, distinct
+  _(Done at M8. 113 literals replaced; `:root` holds spacing `xs`–`2xl` (six steps, because 0.75rem
+  is the input padding behind UI-6), radius `sm`–`xl` plus `pill` (four roles: swatch, control,
+  panel, card), and type `xs`–`lg`, raised one step by D25, plus a px title size for Jersey 10's
+  grid. Colour tokens exist only for colours that were already literals. A grep for the five
+  properties outside `:root` returns two commented exceptions: the colour input's 2 px inset and
+  the `sr-only` −1px.)_
+- [x] **UI-4 [v1]** Every interactive control has a visible keyboard focus indicator, distinct
   from its hover state.
   **Check:** Tab through upload, target width, bead size, Generate, the zoom controls, the code
   toggle, and the inventory sort; each shows a clearly visible focus ring.
-- [ ] **UI-5 [v1]** App text meets WCAG AA contrast — 4.5:1 for normal text, 3:1 for large text.
+  _(Measured at M8 (2026-09-26) in headless Chrome over CDP, at 1280 × 800 and 390 × 844 (dpr 2, mobile), in U1–U5 plus an editor state (brush active, picker open). One `:focus-visible` rule: a 2 px `--primary` outline with a 2 px offset. It is
+  visible on the filled indigo buttons because of the gap. Hover never sets `outline`. Selection
+  moved *inside* the box (an inset edge), so a selected and focused row shows both, distinct in
+  shape. All 96 Tab stops across the states compute the app ring, and each was screenshotted
+  focused. The hidden file input draws its ring on the visible "Choose image" button.)_
+- [x] **UI-5 [v1]** App text meets WCAG AA contrast — 4.5:1 for normal text, 3:1 for large text.
   **Check:** Measure each text-on-background pair — body, labels, buttons in both enabled and
   disabled states, and all three status variants — with a contrast checker. Note that
   `src/contrast.ts` does **not** answer this: it uses a perceptual-brightness approximation to pick
   black-or-white text on bead cells (VIEW-4), not WCAG relative luminance.
-- [ ] **UI-6 [v1]** Interactive controls are at least 44 × 44 px at 390 px wide.
+  _(Measured at M8 (2026-09-26) in headless Chrome over CDP, at 1280 × 800 and 390 × 844 (dpr 2, mobile), in U1–U5 plus an editor state (brush active, picker open), by WCAG relative luminance from computed colours. The one failure was the disabled
+  button, white on `#9CA3AF` at 2.54, now `#4B5563` on `#E5E7EB` at 6.10. The lowest pair is
+  `--text-muted` on `--bg` at 4.63; re-measure it after any change to `--bg`. Primary buttons
+  are 6.29, the status variants 6.49 / 6.80 / 8.49, body text 16.98–17.74. The input placeholder
+  is pinned to `--text-muted` (4.83) rather than left to each browser. Disabled tool *icons* stay
+  `#9CA3AF`: they are non-text, and WCAG 1.4.11 exempts inactive controls.)_
+- [x] **UI-6 [v1]** Interactive controls are at least 44 × 44 px at 390 px wide.
   **Check:** Measure each control's rendered box at 390 px.
-- [ ] **UI-7 [v2]** The interface reads as intentionally designed rather than as an unstyled form.
+  _(Measured at M8 (2026-09-26) in headless Chrome over CDP, at 1280 × 800 and 390 × 844 (dpr 2, mobile), in U1–U5 plus an editor state (brush active, picker open): no visible control under 44 × 44. Checkbox rows are measured as the row, since the
+  label carries `for`. The "Choose image" button is 157 × 44.)_
+- [x] **UI-7 [v2]** The interface reads as intentionally designed rather than as an unstyled form.
   Verified by human review against the fixed screen states in "Done looks like," not by automated
   test.
   **Check:** See the interface review procedure in "Done looks like."
+  _(Ticked early, at M8, by D25's styling pass. U1–U5 were reviewed by eye on screenshots at
+  1280 px, and U5 at 390 px, and all pass. U2 failed first: the file field said "No file chosen"
+  beside a loaded image, because M3 clears the input after every pick. A styled picker naming the
+  loaded file fixed it. Weak spots left for a v2 revisit, both outside a styling pass: over the
+  size limit, Generate stays enabled beside the error (U4); and `.output-container`'s fixed
+  500 px height leaves a large empty area under a short pattern, most visible at 390 px (U5).)_
 
 ### Non-functional — NFR
 
@@ -524,13 +559,17 @@ subjective half and is held to v2. See Decision log D14.
   one: M5, M6 and M7 each add deterministic logic, and the convention that keeps this true is in
   CLAUDE.md — anything touching the DOM, canvas or FileReader stays out of `src/lib/` and
   `src/pipeline/`.)_
-- [ ] **NFR-5 [v1]** Usable in a current desktop browser at 1280 px wide and in a phone browser at
+- [x] **NFR-5 [v1]** Usable in a current desktop browser at 1280 px wide and in a phone browser at
   390 px wide.
   **Check:** At both widths, all v1 controls are reachable and the pattern view is usable. UI-1 and
   UI-2 carry the concrete failure conditions for this. _(The 390 px clipping this was written
   against is gone — `src/styles.css` has had a narrow-width media query since M0, and the page
   measures zero horizontal overflow at 390 px. Left unticked because M8 verifies it properly,
-  including with a pattern on screen.)_
+  including with a pattern on screen.)_ _(Verified at M8 through UI-1 and UI-2, with a pattern on
+  screen and the editor open. At both widths every v1 control is reachable, and the pattern view
+  pans, zooms and paints. **Measured in Chrome's device emulation, not on a physical phone or in
+  Safari.** Those stay with M9, beside M6's canvas budget and M7's IndexedDB behaviour, which were
+  recorded against this requirement.)_
 
 ## Won't build
 
@@ -774,6 +813,8 @@ editor state would depend on M5. Do not fix screenshots of these states before t
     "focus must be visible" obsolete. UI-5's threshold is permanent even though the colors it
     measures are not. The floor is also what makes the UI-7 review answerable at all — "is spacing
     consistent" cannot be judged against values that were never systematic.
+  - _[2026-09-26: D25 admits one timeboxed styling pass into M8, after the floor. UI-7 stays
+    optional for v1.]_
 - **D15 (2026-09-10) — Size limits split into a design target and a hard limit, and both lowered.**
   NFR-3's original numbers (500 per side, 100,000 cells) were not derived from physical beads. 500
   beads at Standard 5 mm pitch is a 2.5 m piece; the 316 × 316 largest square is 1.58 m. A cap no
@@ -1166,3 +1207,70 @@ editor state would depend on M5. Do not fix screenshots of these states before t
     failed generate, and a width changed and changed back without special cases. **Maximum colours
     does not bring it back**, since it changes neither the size nor the count. SET-5's error is
     always shown, because settings over the limit cannot match a pattern that exists.
+- **D25 (2026-09-26) — A bounded styling pass joins M8, after UI-1 … UI-6; UI-7 stays optional.**
+  A demo is close, and a styled interface buys a large share of its impression for little work.
+  D14 held all taste to v2 so it could not become an open-ended loop inside v1; this narrows that
+  for one timeboxed pass, and does not reverse it.
+  - **After the floor, not before or instead.** D14's own argument sets the order: tokenizing
+    changes structure, styling changes values. Styled before UI-3, the look would be built from
+    scattered literals and then tokenized; styled after, a direction is mostly edits in `:root`.
+  - **Inside M8, not a v1.1 after M9.** M9 is what ticks UI-1 … UI-6. Restyling after it re-opens
+    UI-5 (every color it measured) and re-checks UI-1 and UI-6 — the plan already calls reopening
+    those after M9 "a regression rather than a task." Styled before M9, everything is verified
+    once, on the version that is demoed.
+  - **Bounds.** About half a day of work. Values and surfaces only: no element moves, no new
+    components, no motion beyond existing transitions, no icon redraw, no dark mode. The canvas
+    (`guide-style.ts`, `contrast.ts`) and the PNG export are untouched, so OUT-3's byte-identical
+    export cannot drift because a page token moved. The U1–U5 review and its stopping rule decide
+    when the pass is done. M8's floor is committed first, and if the demo is too close the pass is
+    skipped outright.
+  - **UI-7 is not promoted to a v1 obligation.** M9 does not require it. If U1–U5 pass inside the
+    timebox, UI-7 is ticked; if the timebox ends first, the pass stops where it is and UI-7 stays
+    [v2] with whatever landed as its starting point.
+  - **The direction, chosen before styling rather than while.** Title in **Jersey 10**, all other
+    text in **Pixelify Sans**; the indigo accent and the existing flat-surface treatment are kept.
+    Press Start 2P was considered for the title and rejected on width: its glyphs are a full em,
+    so "Pattern Generator" at title size needs about 540 px against the ~326 px a 390 px viewport
+    leaves (UI-1). Both fonts are **self-hosted** in `src/assets/fonts/` as Latin-subset `woff2`
+    with their OFL licenses, not linked from Google Fonts, so the page's look never depends on a
+    third-party request (NFR-1's spirit, and an offline demo). Pixelify Sans is the variable file
+    (weights 400–700), so one file serves every weight the stylesheet uses; Jersey 10 has one
+    weight and the title must set `font-weight: 400` rather than get a synthesized bold. **Only
+    Jersey 10 snaps to a pixel grid**, measured from its outlines: one font pixel is 75 of its 1400
+    units (cap height exactly 10 of them), so it is crisp at multiples of 18.67 px — 37.33 px is two
+    screen pixels per font pixel, the natural title size. Pixelify Sans is pixel-*styled*, not
+    grid-bound: its rows sit on a ~90.4-unit step with a −12 offset, so no font size aligns it to
+    whole pixels, and its sizes are chosen for legibility. UI-3's type scale therefore stays in rem
+    (it respects the user's font-size setting), and only the title gets a px value, in Step 6.
+    **Bead codes stay monospace**, since `P17` against `P11` is data that has to be unambiguous.
+  - **[Revised the same day] The body face is Space Grotesk, not Pixelify Sans.** Wired in, Pixelify
+    misread in the places that matter most: "5mm" as "Smm", "51 × 34" as "S1 × 34", "Bead" as
+    "Gead". Measured from its outlines, this is the design, not the size. Its **0 and O are the
+    same glyph** (all 16 outline points shared), and 5/S and 8/B differ by one pixel step. At 20 px
+    on a 2× screen they still read alike, so raising the type scale could not fix it. In an app
+    whose content is mostly numbers (width, bead pitch, dimensions, counts, colour limit), that
+    disqualifies it. Two replacements were tested in the real page at both widths, by the same
+    outline check and by eye. **DotGothic16** kept a pixel mood and separated 5/S and 8/B, but
+    repeated Pixelify's identical 0/O. It also has a single weight, so every bold label was
+    synthesized and barely heavier than the values beside it. **Space Grotesk** separates every
+    pair checked (5/S, 0/O, 8/B, B/G, 1/l, l/I share no outline points), has real weights 300–700,
+    and keeps labels, values and headings distinct. It was chosen after DotGothic16 was also looked
+    at by hand. **Bead codes moved to it as well**, reversing "bead codes stay monospace" above:
+    that rule guarded `P17` against `P11` while the body face could not be trusted to separate
+    glyphs, and Space Grotesk can. A second face on the codes was left doing nothing but looking
+    different from the text around it. The pattern canvas and the PNG export still draw codes in
+    `monospace`, since they are out of this pass's bounds and set their own font on the canvas
+    context. The pixel character now lives in Jersey 10 alone: the title and the empty-state
+    heading. That is the usual pairing in game-styled interfaces, a display face for character and
+    a plain face for anything read closely. The rest of the entry stands: self-hosted Latin-subset
+    variable `woff2` with its OFL license, Jersey 10 the only px-sized face. Two consequences
+    carried over from the Pixelify attempt, both re-measured: the type scale sits one step above
+    what UI-3 tokenized (0.875 / 1 / 1.125 / 1.25 rem), which reads comfortably in Space Grotesk
+    too; and the bead-size options lost their inch figure ("Standard (5 mm)"), since at 18 px
+    "Standard (5mm / ~0.197 inches)" truncated at 390 px, and the inches restated the millimetres
+    less readably.
+  - **A banner is planned but is not part of this pass.** It may replace the title visually, which
+    is a layout change, so it is its own step after the U1–U5 review with its own UI-1/UI-6
+    re-check. The `<h1>` stays in the markup as the page's heading, visually hidden with `.sr-only`
+    if the banner replaces it. Jersey 10 is applied to the title alone for the same reason: if the
+    banner makes it unused, removing it is one `@font-face` and one token.

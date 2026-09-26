@@ -6,6 +6,9 @@
 node_modules/
 dist/
 
+# UI-check screenshots and results (scripts/ui-check)
+scripts/ui-check/out/
+
 # macOS
 .DS_Store
 

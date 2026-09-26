@@ -36,6 +36,7 @@ declare global {
 }
 
 const imageUpload = requireElement<HTMLInputElement>('imageUpload');
+const fileName = requireElement('fileName');
 const generateBtn = requireElement<HTMLButtonElement>('generateBtn');
 const targetWidthInput = requireElement<HTMLInputElement>('targetWidth');
 const beadSizeSelect = requireElement<HTMLSelectElement>('beadSize');
@@ -274,6 +275,18 @@ paletteSettled.then(() => restoreSavedSession());
 // result is dropped.
 let uploadToken = 0;
 
+/**
+ * Which image is loaded, beside the upload button (U2). Called only where an
+ * image actually becomes the loaded one -- a successful upload and a restore --
+ * never on a pick, so a rejected file leaves it naming the image still loaded,
+ * as D21 requires of everything but the status line. The input cannot say this
+ * itself: its value is cleared after every pick, below.
+ */
+function showLoadedFileName(name: string): void {
+    fileName.textContent = name;
+    fileName.classList.remove('is-empty');
+}
+
 imageUpload.addEventListener('change', async (event) => {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
@@ -293,6 +306,7 @@ imageUpload.addEventListener('change', async (event) => {
         if (token !== uploadToken) return;
         uploadedImage = image;
         uploadedFile = file;
+        showLoadedFileName(file.name);
         // A new image brings the crop preview back -- it is the one thing that
         // does, since the crop is one-shot per image (D21) -- and it takes the
         // old pattern with it. Leaving that pattern up would leave a conversion
@@ -461,6 +475,7 @@ async function restoreSavedSession(): Promise<void> {
         if (image && session.image) {
             uploadedImage = image;
             uploadedFile = session.image.file;
+            showLoadedFileName(session.image.file.name);
             restoreCropPreview(image, session.image.crop);
             // The crop was settled for this image when the pattern was generated (D21).
             hideCropPreview();

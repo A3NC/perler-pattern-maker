@@ -1,768 +1,1046 @@
-        /* width:100% plus padding overflowed the viewport -- .container was 40px
-           wider than its parent, which is what pushed content off-screen at narrow
-           widths (NFR-5 / UI-1). The original file patched this per-rule on
-           #beadCountsContainer only; this makes it the default everywhere. */
-        *,
-        *::before,
-        *::after {
-            box-sizing: border-box;
-        }
-
-        :root {
-            --primary: #4F46E5;
-            --primary-hover: #4338CA;
-            --bg: #F9FAFB;
-            --surface: #FFFFFF;
-            --text: #111827;
-            --border: #E5E7EB;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
-            margin: 0;
-            padding: 2rem;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .container {
-            max-width: 800px;
-            width: 100%;
-            background-color: var(--surface);
-            padding: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-
-        h1 {
-            text-align: center;
-            margin-top: 0;
-            color: var(--primary);
-        }
-
-        .controls {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-            padding: 1.5rem;
-            background-color: var(--bg);
-            border-radius: 8px;
-            border: 1px solid var(--border);
-        }
-
-        .control-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            /* Grid/flex items default to min-width:auto and refuse to shrink below
-               their min-content width -- a file input's is wide enough to push the
-               whole panel past the viewport. */
-            min-width: 0;
-        }
-
-        /* Full-panel width regardless of the current column count. Was an inline
-           `grid-column: span 2` in index.html, which no media query could override. */
-        .span-full {
-            grid-column: 1 / -1;
-        }
-
-        label {
-            font-weight: 600;
-            font-size: 0.9rem;
-        }
-
-        input[type="file"],
-        input[type="number"],
-        select {
-            padding: 0.75rem;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            font-size: 1rem;
-        }
-
-        button {
-            /* 1 / -1 spans whatever column count the grid currently has. `span 2`
-               would conjure an implicit second column once .controls collapses. */
-            grid-column: 1 / -1;
-            /* A phone reserves a double tap for page zoom, so two fast taps on
-               "+ Zoom" zoomed the page instead of the pattern. `manipulation`
-               drops the double-tap gesture on buttons only -- pinch and
-               scrolling elsewhere are untouched, which is why this is not on
-               the viewport meta tag. */
-            touch-action: manipulation;
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            padding: 1rem;
-            border-radius: 6px;
-            font-size: 1.1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-
-        button:hover {
-            background-color: var(--primary-hover);
-        }
-
-        button:disabled {
-            background-color: #9CA3AF;
-            cursor: not-allowed;
-        }
-
-        .output-container {
-            margin-top: 2rem;
-            width: 100%;
-            height: 500px; /* 1. Locks the window to a fixed height */
-            overflow: auto; /* 2. Enables proper scrollbars */
-            border: 2px dashed var(--border);
-            border-radius: 8px;
-            background-color: var(--bg);
-            position: relative;
-            /* We removed the flexbox centering here, as it breaks scrollbars on large items */
-        }
-
-        /* An empty spacer, sized in JS to the pattern at the current zoom. It
-           holds no beads -- its whole job is to give .output-container a
-           scrollable area of the right size. `overflow: hidden` used to live
-           here and cannot: it would make this a scroll container of its own,
-           which is the one thing that stops the sticky canvas below from
-           tracking the scroll. */
-        #grid-wrapper {
-            margin: 0 auto; /* Centers the pattern while it is smaller than the window */
-        }
-
-        #pattern-canvas {
-            /* Sticky, so the viewport-sized canvas stays pinned over the
-               visible corner of the spacer as it scrolls -- the compositor
-               keeps it in place and JS only repaints what moved under it.
-               Block because an inline box cannot be sticky. */
-            position: sticky;
-            top: 0;
-            left: 0;
-            display: block;
-            cursor: grab;
-        }
-
-        .output-container.panning #pattern-canvas {
-            cursor: grabbing;
-        }
-
-        .zoom-controls {
-            display: flex;
-            justify-content: center;
-            gap: 1rem;
-            margin-top: 1rem;
-            display: none; /* Hidden until image is generated */
-        }
-        
-        .zoom-controls button {
-            grid-column: auto;
-            padding: 0.5rem 1rem;
-            width: auto;
-        }
-
-        /* The "Show Codes" and "Grid" toggles. Styled here rather than inline in
-           index.html because an inline `width: auto` on the checkbox -- which is
-           what these carried -- outranks any stylesheet rule that tries to size
-           it. A UA checkbox is ~13px, which read as much smaller than its own
-           label on a phone and missed UI-6's 44px target.
-
-           UI-3 tokenizes these literals along with the rest of the file in M8. */
-        .view-toggle {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            /* On the row, not the box: a 44px checkbox would dwarf its label.
-               The label carries `for`, so the whole row is the tap target. */
-            min-height: 44px;
-            margin-left: 1rem;
-        }
-
-        .view-toggle input[type="checkbox"] {
-            width: 1.25rem;
-            height: 1.25rem;
-            margin: 0;
-            accent-color: var(--primary);
-            cursor: pointer;
-        }
-
-        .view-toggle label {
-            margin: 0;
-            cursor: pointer;
-        }
-
-        #stats {
-            margin-top: 1rem;
-            text-align: center;
-            font-weight: 500;
-        }
-
-        /* M6's export button. Hidden until a pattern exists, the same lifecycle
-           as the zoom row and the editor bar. */
-        .export-controls {
-            display: none;
-            justify-content: center;
-            margin-top: 0.75rem;
-        }
-
-        .export-controls.is-active {
-            display: flex;
-        }
-
-        /* Beats `button`'s grid-column and the 640px query's `width: 100%` on
-           specificity, the way .editor-controls .tool-button does. */
-        .export-controls button {
-            grid-column: auto;
-            width: auto;
-            min-height: 44px; /* UI-6 */
-            padding: 0.5rem 1.25rem;
-            font-size: 1rem;
-        }
-
-        .status-message {
-            /* Span the panel instead of inheriting one grid cell, which left it
-               orphaned at half width next to the full-width button (UI-2). */
-            grid-column: 1 / -1;
-            margin: 1rem 0 0;
-            padding: 0.75rem 1rem;
-            border-radius: 6px;
-            font-weight: 500;
-            text-align: center;
-        }
-
-        .status-message.error {
-            color: #991B1B;
-            background-color: #FEE2E2;
-            border: 1px solid #FCA5A5;
-        }
-
-        .status-message.info {
-            color: #1E3A8A;
-            background-color: #DBEAFE;
-            border: 1px solid #93C5FD;
-        }
-
-        .status-message.success {
-            color: #166534;
-            background-color: #DCFCE7;
-            border: 1px solid #86EFAC;
-        }
-
-        .sr-only {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            white-space: nowrap;
-            border: 0;
-        }
-
-        /* Bead Counter Styles */
-        #beadCountsContainer {
-            margin-top: 2rem;
-            width: 100%;
-            background-color: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 1.5rem;
-            box-sizing: border-box;
-            display: none; /* Hidden until generated */
-        }
-        
-        .count-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-            border-bottom: 2px solid var(--border);
-            padding-bottom: 0.75rem;
-        }
-
-        .count-header h3 {
-            margin: 0;
-            color: var(--text);
-        }
-
-        .bead-list {
-            max-height: 250px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            padding-right: 0.5rem; /* Room for scrollbar */
-        }
-
-        .bead-item {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            padding: 0.5rem 1rem;
-            background-color: var(--bg);
-            border-radius: 6px;
-            border: 1px solid var(--border);
-        }
-
-        .color-swatch {
-            width: 24px;
-            height: 24px;
-            border-radius: 4px;
-            border: 1px solid rgba(0,0,0,0.2);
-            flex-shrink: 0;
-        }
-
-        .color-name {
-            flex-grow: 1;
-            font-weight: 500;
-        }
-
-        .color-count {
-            font-weight: 700;
-            background-color: var(--primary);
-            color: white;
-            padding: 0.25rem 0.75rem;
-            border-radius: 999px;
-            font-size: 0.9rem;
-        }
-
-        /* M5's editor bar. Spacing and radius literals here are deliberate and
-           temporary -- UI-3 replaces every literal in this file with a scale in
-           M8, and hand-tokenizing one new block ahead of that would just make
-           the file inconsistent in a second way. */
-        .editor-controls {
-            display: none; /* Shown by the editor once a pattern exists */
-            justify-content: center;
-            align-items: center;
-            /* .zoom-controls deliberately does not wrap and stays one row. This
-               one has to: six 44px targets plus a swatch is ~300px of control
-               against roughly 340px of usable width at 390px (UI-6). */
-            flex-wrap: wrap;
-            gap: 0.5rem;
-            margin-top: 0.75rem;
-        }
-
-        .editor-controls.is-active {
-            display: flex;
-        }
-
-        /* Beats the 640px media query's `button { width: 100% }` on specificity
-           -- a media query adds none -- which is what keeps the bar a bar on a
-           phone instead of a column of full-width blocks. */
-        .editor-controls .tool-button {
-            grid-column: auto;
-            /* inline-flex so an icon centres in the box; the box is sized by the
-               44px minimums (UI-6), not by the icon. */
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: auto;
-            min-width: 44px;
-            min-height: 44px;
-            padding: 0.5rem;
-            font-size: 0.95rem;
-            background-color: var(--surface);
-            color: var(--text);
-            border: 1px solid var(--border);
-        }
-
-        /* The icon takes its color from the button, which is the whole reason
-           the pressed (white on indigo) and disabled (grey) states need no
-           second drawing. A swapped-in icon inherits the same way as long as it
-           keeps stroke="currentColor" or fill="currentColor". */
-        .editor-controls .icon {
-            display: block;
-            width: 20px;
-            height: 20px;
-            flex-shrink: 0;
-        }
-
-        .editor-controls .tool-button:hover:not(:disabled) {
-            background-color: var(--bg);
-            border-color: var(--primary);
-        }
-
-        /* The pressed tool, which is the only indication of what a drag will do. */
-        .editor-controls .tool-button[aria-pressed="true"] {
-            background-color: var(--primary);
-            border-color: var(--primary);
-            color: white;
-        }
-
-        .editor-controls .tool-button:disabled {
-            background-color: var(--surface);
-            color: #9CA3AF;
-            border-color: var(--border);
-            cursor: not-allowed;
-        }
-
-        /* EDIT-3's "visibly indicated": the active color is on screen whenever
-           the editor is, not only while the picker is open. */
-        /* The only control in the bar that is still text: the bead code is
-           information, not a label, so there is no icon that could replace it. */
-        .editor-controls .active-color {
-            gap: 0.5rem;
-            padding: 0.5rem 0.75rem;
-            font-family: monospace;
-            font-weight: 700;
-        }
-
-        .active-color-swatch {
-            width: 22px;
-            height: 22px;
-            border-radius: 4px;
-            border: 1px solid rgba(0, 0, 0, 0.35);
-            flex-shrink: 0;
-            /* A checker, so "empty" reads as empty rather than as a white bead --
-               the eraser and fill-with-empty both need that distinction. */
-            background-color: transparent;
-            background-image:
-                linear-gradient(45deg, #D1D5DB 25%, transparent 25%, transparent 75%, #D1D5DB 75%),
-                linear-gradient(45deg, #D1D5DB 25%, transparent 25%, transparent 75%, #D1D5DB 75%);
-            background-size: 10px 10px;
-            background-position: 0 0, 5px 5px;
-        }
-
-        .color-picker {
-            display: none;
-            margin-top: 0.75rem;
-            padding: 1rem;
-            background-color: var(--bg);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-        }
-
-        .color-picker.is-open {
-            display: block;
-        }
-
-        .picker-query {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .picker-query label {
-            white-space: nowrap;
-        }
-
-        .picker-query input[type="color"] {
-            width: 44px;
-            height: 44px;
-            padding: 2px;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            background-color: var(--surface);
-            cursor: pointer;
-        }
-
-        .picker-query input[type="text"] {
-            flex: 1 1 12rem;
-            min-width: 0;
-            min-height: 44px;
-            padding: 0.6rem 0.75rem;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            font-size: 1rem;
-        }
-
-        .picker-hint {
-            margin: 0.75rem 0 0.5rem;
-            font-size: 0.85rem;
-            color: #6B7280;
-        }
-
-        .picker-results {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-            max-height: 220px;
-            overflow-y: auto;
-        }
-
-        .picker-empty {
-            font-size: 0.9rem;
-            color: #6B7280;
-        }
-
-        /* Ranked strictly by OkLab distance. In-pattern candidates are badged,
-           never re-sorted to the top: "nearest" has to keep meaning nearest or
-           the list stops being worth reading. */
-        .picker-results .picker-swatch {
-            grid-column: auto;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            width: auto;
-            min-height: 44px;
-            padding: 0.4rem 0.7rem;
-            background-color: var(--surface);
-            color: var(--text);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
-
-        .picker-results .picker-swatch:hover {
-            background-color: var(--surface);
-            border-color: var(--primary);
-        }
-
-        .picker-results .picker-swatch.selected {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.3);
-        }
-
-        .picker-swatch .color-swatch {
-            width: 20px;
-            height: 20px;
-        }
-
-        .picker-swatch .picker-code {
-            font-family: monospace;
-            font-weight: 700;
-        }
-
-        /* "P17 . 340 in pattern" beside "P19 . new". Without this a user picking
-           a blue silently adds a color to the shopping list that SET-4 and GEN-3
-           exist to keep off it. */
-        .picker-swatch .picker-badge {
-            font-size: 0.75rem;
-            padding: 0.1rem 0.45rem;
-            border-radius: 999px;
-            background-color: var(--border);
-            color: #374151;
-        }
-
-        .picker-swatch .picker-badge.in-pattern {
-            background-color: #DCFCE7;
-            color: #166534;
-        }
-
-        /* The inventory rows are tier 1 of the picker, so they are real buttons
-           now. These override only what the global `button` rule sets and
-           .bead-item does not; the layout above is untouched. */
-        .bead-list .bead-item {
-            grid-column: auto;
-            width: 100%;
-            /* A tap target now that it is tier 1 of the picker (UI-6). */
-            min-height: 44px;
-            color: var(--text);
-            font-family: inherit;
-            font-size: 1rem;
-            font-weight: 400;
-            text-align: left;
-            cursor: pointer;
-        }
-
-        .bead-list .bead-item:hover {
-            background-color: var(--surface);
-            border-color: var(--primary);
-        }
-
-        .bead-list .bead-item.selected {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.3);
-        }
-
-        /* A paint tool is active: the cursor says so, and beginPan is gated off
-           in canvas-view.ts. touch-action is the half that cannot be done in JS
-           -- the canvas lives in a native scroll container, so without this a
-           touch-drag scrolls the container instead of painting. It is scoped to
-           this class precisely so pan mode gets native touch scrolling back. */
-        #pattern-canvas.painting {
-            cursor: crosshair;
-            touch-action: none;
-        }
-
-        /* SET-3's live readout: the pattern that *would* be generated, from the
-           current crop and settings. Sits above Generate because that is the
-           reading order -- see the size, then press the button. The error state
-           is SET-5's message, surfaced here so the limit is named before the
-           button is pressed rather than after. */
-        .dimensions {
-            margin-top: 0.5rem;
-            padding: 0.6rem 0.75rem;
-            border-radius: 6px;
-            background-color: #F3F4F6;
-            border: 1px solid var(--border);
-            font-size: 0.95rem;
-            font-weight: 500;
-            text-align: center;
-            color: #374151;
-        }
-
-        .dimensions:empty {
-            display: none;
-        }
-
-        .dimensions.is-error {
-            color: #991B1B;
-            background-color: #FEE2E2;
-            border-color: #FCA5A5;
-        }
-
-        /* M4's crop preview (IN-5). Hidden until an upload succeeds, and hidden
-           again on a successful generate (D21). Same show/hide idiom as
-           .editor-controls: display in the base rule, a class to reveal. */
-        .preview-area {
-            display: none;
-            margin-bottom: 2rem;
-            text-align: center;
-        }
-
-        .preview-area.is-visible {
-            display: block;
-        }
-
-        /* Shrink-wraps the image, so its own box *is* the image's box and every
-           overlay below can be positioned against it with inset: 0. line-height
-           kills the inline descender gap under the image. */
-        .preview-frame {
-            position: relative;
-            display: inline-block;
-            max-width: 100%;
-            line-height: 0;
-            /* The crop is a drag, so the browser must not claim the gesture for
-               scrolling first. M5 learned this on the pattern canvas; it fails
-               only on a touch screen, which is half of M4's Done-when. */
-            touch-action: none;
-            /* A drag across an image otherwise selects it, which flashes a blue
-               wash over the preview mid-crop. */
-            user-select: none;
-            -webkit-user-select: none;
-            /* Replaced per-pointermove by crop-view.ts with a move/resize cursor
-               when the pointer is over the rectangle or a handle. */
-            cursor: crosshair;
-        }
-
-        .preview-frame img {
-            display: block;
-            max-width: 100%;
-            max-height: 420px;
-            width: auto;
-            height: auto;
-            border-radius: 8px;
-        }
-
-        /* Clips the shade's oversized shadow to the image. Without this layer
-           that shadow covers the entire page. */
-        .crop-clip {
-            position: absolute;
-            inset: 0;
-            overflow: hidden;
-            border-radius: 8px;
-            pointer-events: none;
-        }
-
-        /* Dims everything outside the crop with one property. The box itself is
-           transparent -- what is visible is 9999px of spread shadow filling the
-           clip layer around it, so the cropped region keeps its true colors and
-           only the part being discarded is tinted. */
-        .crop-shade {
-            position: absolute;
-            box-shadow: 0 0 0 9999px rgba(17, 24, 39, 0.55);
-        }
-
-        /* Deliberately outside .crop-clip: the handles are centred on the
-           corners and hang half outside the rectangle, and at a full-image crop
-           those corners sit exactly on the image edge. */
-        .crop-rect {
-            position: absolute;
-            box-sizing: border-box;
-            border: 1px solid rgba(255, 255, 255, 0.95);
-            outline: 1px solid rgba(17, 24, 39, 0.6);
-            pointer-events: none;
-        }
-
-        /* No pointer-events anywhere in the overlay: every gesture lands on
-           .preview-frame and hitTestCrop decides what was grabbed, so the DOM
-           never disagrees with the geometry about which handle is under the
-           finger. */
-        .crop-handle {
-            position: absolute;
-            width: 14px;
-            height: 14px;
-            box-sizing: border-box;
-            background-color: #FFFFFF;
-            border: 2px solid #1F2937;
-            border-radius: 3px;
-            pointer-events: none;
-        }
-
-        .crop-handle-nw {
-            top: 0;
-            left: 0;
-            transform: translate(-50%, -50%);
-        }
-
-        .crop-handle-ne {
-            top: 0;
-            right: 0;
-            transform: translate(50%, -50%);
-        }
-
-        .crop-handle-sw {
-            bottom: 0;
-            left: 0;
-            transform: translate(-50%, 50%);
-        }
-
-        .crop-handle-se {
-            bottom: 0;
-            right: 0;
-            transform: translate(50%, 50%);
-        }
-
-        .preview-hint {
-            margin: 0.75rem 0 0;
-            font-size: 0.85rem;
-            line-height: 1.5;
-            color: #6B7280;
-        }
-
-        /* NFR-5 / UI-1, UI-2. Below this width the two-column control grid and the
-           doubled 2rem body+container padding push content off-screen: at 390 px the
-           heading, Generate button, and target-width control were all clipped.
-           Note this is only the responsive fix -- the spacing, radius, and type
-           scales that UI-3 calls for are M8's job, not this rule's. */
-        @media (max-width: 640px) {
-            body {
-                padding: 1rem 0.75rem;
-            }
-
-            .container {
-                padding: 1.25rem;
-            }
-
-            .controls {
-                /* minmax(0, 1fr), not 1fr: plain 1fr floors at min-content. */
-                grid-template-columns: minmax(0, 1fr);
-                gap: 1rem;
-                padding: 1rem;
-            }
-
-            input[type="file"],
-            input[type="number"],
-            select,
-            button {
-                width: 100%;
-                box-sizing: border-box;
-            }
-
-            /* The editor bar wraps to as many rows as it needs and its targets
-               stay 44px; the rule above would otherwise make each one a
-               full-width block and the bar seven rows tall. */
-            .editor-controls .tool-button {
-                width: auto;
-                flex: 0 0 auto;
-            }
-        }
+/* width:100% plus padding overflowed the viewport -- .container was 40px
+   wider than its parent, which is what pushed content off-screen at narrow
+   widths (NFR-5 / UI-1). The original file patched this per-rule on
+   #beadCountsContainer only; this makes it the default everywhere. */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+/* D25's faces, self-hosted as Latin-subset woff2 (OFL; licenses beside the
+   files) so the page's look never waits on a third-party request. Imported
+   through Vite, so the URLs are content-hashed in the build and a wrong path
+   fails the build rather than 404ing. `swap`: text renders at once in the
+   fallback and re-renders when the face arrives, rather than staying
+   invisible. */
+@font-face {
+    font-family: "Jersey 10";
+    src: url("./assets/fonts/jersey-10/jersey-10-latin-400.woff2") format("woff2");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Space Grotesk";
+    src: url("./assets/fonts/space-grotesk/space-grotesk-latin-variable.woff2") format("woff2");
+    font-weight: 300 700; /* One variable file covers every weight used below. */
+    font-style: normal;
+    font-display: swap;
+}
+
+/* UI-3's scales. Every padding, margin, gap, radius and font size below reads
+   from here; what is left as a literal is zero, `auto`, or carries a comment
+   saying why no scale value applies. The steps name what the app already did
+   when M8 tokenized it -- the nearest existing value won, and nothing was
+   added for a direction nobody has chosen. D25's styling pass changes the
+   values here, not the rules that read them.
+
+   Spacing has six steps rather than UI-3's rough four because 0.75rem is load-
+   bearing: it is the input padding that puts inputs at 44px (UI-6). Radius has
+   four because the app uses four in four distinct roles -- swatch, control,
+   panel, card. Type has four; `--text-xs` exists only for the picker badges,
+   which sit inside a swatch label and must read smaller than it. Headings keep
+   the UA sizes until D25 gives the title a face of its own.
+
+   Colour tokens exist only for colours that were already literals. The crop
+   overlay and the empty-swatch checkerboard keep literal colours: they are
+   artwork over an image, not interface palette. */
+:root {
+    --primary: #4F46E5;
+    --primary-hover: #4338CA;
+    --on-primary: #FFFFFF;
+    --bg: #F9FAFB;
+    --surface: #FFFFFF;
+    --surface-sunken: #F3F4F6;
+    --text: #111827;
+    --text-subtle: #374151;
+    --text-muted: #6B7280;
+    --border: #E5E7EB;
+    /* UI-5. The disabled button was white on #9CA3AF, 2.54:1. It is now
+       light and unfilled-looking with dark text, 6.10:1 -- the usual "not
+       yet" signal, and it no longer competes with the enabled primary.
+       Disabled *icons* keep the lighter grey: they are non-text, WCAG 1.4.11
+       exempts inactive controls, and at the text grey they would read as
+       barely different from enabled ones. */
+    --disabled-bg: #E5E7EB;
+    --disabled-text: #4B5563;
+    --disabled-icon: #9CA3AF;
+    /* UI-4. Focus is drawn *outside* the box, with a gap; selection (the
+       active color in the inventory and the picker) is drawn *inside* it.
+       They differ in shape, not only in shade, so a row that is both shows
+       both, and Tab moving focus off the active color is visible. */
+    --focus-ring: 2px solid var(--primary);
+    --focus-offset: 2px;
+    --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+
+    --status-error-text: #991B1B;
+    --status-error-bg: #FEE2E2;
+    --status-error-border: #FCA5A5;
+    --status-info-text: #1E3A8A;
+    --status-info-bg: #DBEAFE;
+    --status-info-border: #93C5FD;
+    --status-success-text: #166534;
+    --status-success-bg: #DCFCE7;
+    --status-success-border: #86EFAC;
+
+    --space-xs: 0.25rem;
+    --space-sm: 0.5rem;
+    --space-md: 0.75rem;
+    --space-lg: 1rem;
+    --space-xl: 1.5rem;
+    --space-2xl: 2rem;
+
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 8px;
+    --radius-xl: 12px;
+    --radius-pill: 999px;
+
+    /* D25. Jersey 10 is the title alone -- and the empty-state heading --
+       so if the planned banner replaces the title, dropping it is this
+       token and one @font-face. The pixel character lives there; the body
+       is a clean face because the body is mostly numbers. Bead codes are
+       in the body face too: Space Grotesk separates every glyph pair a code
+       could confuse (5/S, 0/O, 8/B, 1/l -- D25), which is the job a
+       monospace face was doing while the body was Pixelify. */
+    --font-display: "Jersey 10", var(--font-body);
+    --font-body: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    /* Jersey 10 sits on a grid of 75/1400 em (measured from its outlines,
+       D25), so it is crisp only at multiples of 18.667px: 56px is three
+       screen pixels per font pixel, 37.333px two. Not a rem value, because
+       a rem that is not a multiple of the grid blurs every edge. */
+    --text-title: 56px;
+    --text-title-narrow: 37.333px;
+
+    /* One step up from what M8 tokenized (0.75 / 0.875 / 1 / 1.125rem).
+       Raised while the body face was Pixelify Sans, which is hard to read
+       below ~18px, and kept: it reads comfortably in Space Grotesk too, and
+       every Check was re-measured at these values (D25). */
+    --text-xs: 0.875rem;
+    --text-sm: 1rem;
+    --text-md: 1.125rem;
+    --text-lg: 1.25rem;
+}
+
+body {
+    font-family: var(--font-body);
+    background-color: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: var(--space-2xl);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Form controls do not inherit the page font by default -- the UA gives them
+   its own (Arial on most systems), so without this a change to the body's
+   font-family reaches every label and none of the controls beside them.
+   Family only: each control's size is set by its own rule below. */
+button,
+input,
+select,
+textarea,
+::file-selector-button {
+    font-family: inherit;
+}
+
+/* Was an inline style in index.html, out of reach of every token. It is
+   re-inserted rather than re-created by canvas-view.ts's clearPattern, so a
+   stylesheet rule reaches it on every return to the empty state. */
+#placeholderText {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: var(--space-sm);
+    height: 100%;
+    padding: var(--space-lg);
+    text-align: center;
+    color: var(--text-muted);
+}
+
+/* U1: the empty box reads as the place the pattern will go, and says what
+   to do to get one. Large text, so --text-muted on --bg (4.63:1) clears
+   the 3:1 it needs with room. */
+.placeholder-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--text-title-narrow);
+    line-height: 1;
+}
+
+.placeholder-hint {
+    margin: 0;
+    font-size: var(--text-sm);
+}
+
+.container {
+    max-width: 800px;
+    width: 100%;
+    background-color: var(--surface);
+    padding: var(--space-2xl);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-card);
+}
+
+h1 {
+    text-align: center;
+    margin-top: 0;
+    margin-bottom: var(--space-lg);
+    color: var(--primary);
+    font-family: var(--font-display);
+    font-size: var(--text-title);
+    /* The face has one weight; `bold` from the UA would be synthesized by
+       smearing the outline, which on a pixel face blurs every edge. */
+    font-weight: 400;
+    line-height: 1;
+    letter-spacing: 0.02em;
+}
+
+.controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-xl);
+    margin-bottom: var(--space-2xl);
+    padding: var(--space-xl);
+    background-color: var(--bg);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+}
+
+.control-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    /* Grid/flex items default to min-width:auto and refuse to shrink below
+       their min-content width -- a file input's is wide enough to push the
+       whole panel past the viewport. */
+    min-width: 0;
+}
+
+/* Full-panel width regardless of the current column count. Was an inline
+   `grid-column: span 2` in index.html, which no media query could override. */
+.span-full {
+    grid-column: 1 / -1;
+}
+
+label {
+    font-weight: 600;
+    font-size: var(--text-sm);
+}
+
+input[type="number"],
+select {
+    padding: var(--space-md);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    font-size: var(--text-md);
+}
+
+button {
+    /* 1 / -1 spans whatever column count the grid currently has. `span 2`
+       would conjure an implicit second column once .controls collapses. */
+    grid-column: 1 / -1;
+    /* A phone reserves a double tap for page zoom, so two fast taps on
+       "+ Zoom" zoomed the page instead of the pattern. `manipulation`
+       drops the double-tap gesture on buttons only -- pinch and
+       scrolling elsewhere are untouched, which is why this is not on
+       the viewport meta tag. */
+    touch-action: manipulation;
+    background-color: var(--primary);
+    color: var(--on-primary);
+    border: none;
+    padding: var(--space-lg);
+    border-radius: var(--radius-md);
+    font-size: var(--text-lg);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+button:hover {
+    background-color: var(--primary-hover);
+}
+
+/* UI-4: one focus indicator for every control, replacing each browser's own
+   (Chrome's is a 1px blue ring that nearly vanishes on indigo; Safari's
+   differs). :focus-visible, so a mouse click on a button draws nothing while
+   Tab always does; text fields match it on click too, which is intended --
+   a caret needs a visible home. The offset leaves a gap of background
+   between control and ring, which is what keeps it visible on the filled
+   indigo buttons. Hover never touches `outline`, so the two cannot be
+   confused. Scroll containers holding focusable items (.bead-list,
+   .picker-results) are inset by at least ring + offset so it is not
+   clipped. */
+:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: var(--focus-offset);
+}
+
+button:disabled {
+    background-color: var(--disabled-bg);
+    color: var(--disabled-text);
+    cursor: not-allowed;
+}
+
+.output-container {
+    margin-top: var(--space-2xl);
+    width: 100%;
+    height: 500px; /* 1. Locks the window to a fixed height */
+    overflow: auto; /* 2. Enables proper scrollbars */
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-lg);
+    background-color: var(--bg);
+    position: relative;
+    /* We removed the flexbox centering here, as it breaks scrollbars on large items */
+}
+
+/* An empty spacer, sized in JS to the pattern at the current zoom. It
+   holds no beads -- its whole job is to give .output-container a
+   scrollable area of the right size. `overflow: hidden` used to live
+   here and cannot: it would make this a scroll container of its own,
+   which is the one thing that stops the sticky canvas below from
+   tracking the scroll. */
+#grid-wrapper {
+    margin: 0 auto; /* Centers the pattern while it is smaller than the window */
+}
+
+#pattern-canvas {
+    /* Sticky, so the viewport-sized canvas stays pinned over the
+       visible corner of the spacer as it scrolls -- the compositor
+       keeps it in place and JS only repaints what moved under it.
+       Block because an inline box cannot be sticky. */
+    position: sticky;
+    top: 0;
+    left: 0;
+    display: block;
+    cursor: grab;
+}
+
+.output-container.panning #pattern-canvas {
+    cursor: grabbing;
+}
+
+.zoom-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    /* Wraps as a backstop. Icon zoom buttons are what make the row fit at
+       390px; wrapping is what keeps it from overflowing if a label or the
+       font grows (D25's styling pass changes both). */
+    flex-wrap: wrap;
+    /* The editor bar's spacing, so the two icon bars match; the toggles pad
+       themselves apart from the buttons and each other. */
+    gap: var(--space-sm);
+    margin-top: var(--space-lg);
+    display: none; /* Hidden until image is generated */
+}
+
+/* The "Show Codes" and "Grid" toggles. Styled here rather than inline in
+   index.html because an inline `width: auto` on the checkbox -- which is
+   what these carried -- outranks any stylesheet rule that tries to size
+   it. A UA checkbox is ~13px, which read as much smaller than its own
+   label on a phone and missed UI-6's 44px target. */
+.view-toggle {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    /* On the row, not the box: a 44px checkbox would dwarf its label.
+       The label carries `for`, so the whole row is the tap target. */
+    min-height: 44px;
+    padding-inline: var(--space-sm);
+}
+
+.view-toggle input[type="checkbox"] {
+    width: 1.25rem;
+    height: 1.25rem;
+    margin: 0;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
+.view-toggle label {
+    margin: 0;
+    cursor: pointer;
+}
+
+#stats {
+    margin-top: var(--space-lg);
+    text-align: center;
+    font-weight: 500;
+}
+
+/* M6's export button. Hidden until a pattern exists, the same lifecycle
+   as the zoom row and the editor bar. */
+.export-controls {
+    display: none;
+    justify-content: center;
+    margin-top: var(--space-md);
+}
+
+.export-controls.is-active {
+    display: flex;
+}
+
+/* Beats `button`'s grid-column and the 640px query's `width: 100%` on
+   specificity, the way .editor-controls .tool-button does. */
+.export-controls button {
+    grid-column: auto;
+    width: auto;
+    min-height: 44px; /* UI-6 */
+    padding: var(--space-sm) var(--space-lg);
+    font-size: var(--text-md);
+    /* Secondary, outlined: Generate is the page's one filled button (D25),
+       which is most of what makes U1 read as a tool rather than a form.
+       Indigo on --surface is 6.29:1. */
+    background-color: var(--surface);
+    color: var(--primary);
+    border: 2px solid var(--primary);
+}
+
+.export-controls button:hover {
+    background-color: var(--bg);
+}
+
+/* U2: the upload control, replacing the browser's own "Choose File / No file
+   chosen", which read as a raw form and -- because main.ts clears the input
+   after every pick -- said "No file chosen" beside a loaded image. The box
+   matches the other inputs; the button is secondary, since Generate is the
+   page's one filled action. The real <input> is .sr-only inside it. */
+.file-picker {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-sm) var(--space-md);
+    /* The box keeps its own padding thin so the button inside can be 44px
+       tall (UI-6) without the field growing past its neighbours. */
+    padding: var(--space-xs);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background-color: var(--surface);
+    min-width: 0;
+}
+
+.file-button {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    min-height: 44px; /* UI-6 */
+    padding: 0 var(--space-lg);
+    border: 2px solid var(--primary);
+    border-radius: var(--radius-md);
+    background-color: var(--surface);
+    color: var(--primary);
+    font-size: var(--text-md);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.file-button:hover {
+    background-color: var(--bg);
+}
+
+/* The input is what takes focus; its ring would be drawn on a clipped 1px
+   box, so it is drawn on the button the user sees instead (UI-4). */
+.file-input:focus-visible + .file-button {
+    outline: var(--focus-ring);
+    outline-offset: var(--focus-offset);
+}
+
+.file-name {
+    /* Beside the button while 8rem fits (the two-column desktop field has
+       ~154px there), on its own line below it when not -- which at 390px
+       (~123px) is always -- so a long name wraps across the field's width
+       instead of into a narrow column. */
+    flex: 1 1 8rem;
+    min-width: 0;
+    padding-inline: var(--space-xs);
+    /* Wraps rather than truncating: an ellipsis cut the placeholder at
+       390px, which is clipping by UI-1's definition. `anywhere` also breaks
+       a long unbroken name like IMG_20260926_141512.jpg. */
+    overflow-wrap: anywhere;
+    color: var(--text);
+    font-size: var(--text-md);
+}
+
+/* The "No image yet" placeholder reads as a hint; a loaded name is
+   information and takes body text. main.ts drops the class on load. */
+.file-name.is-empty {
+    color: var(--text-muted);
+}
+
+.status-message {
+    /* Span the panel instead of inheriting one grid cell, which left it
+       orphaned at half width next to the full-width button (UI-2). */
+    grid-column: 1 / -1;
+    margin: var(--space-lg) 0 0;
+    padding: var(--space-md) var(--space-lg);
+    border-radius: var(--radius-md);
+    font-weight: 500;
+    text-align: center;
+}
+
+.status-message.error {
+    color: var(--status-error-text);
+    background-color: var(--status-error-bg);
+    border: 1px solid var(--status-error-border);
+}
+
+.status-message.info {
+    color: var(--status-info-text);
+    background-color: var(--status-info-bg);
+    border: 1px solid var(--status-info-border);
+}
+
+.status-message.success {
+    color: var(--status-success-text);
+    background-color: var(--status-success-bg);
+    border: 1px solid var(--status-success-border);
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px; /* The standard visually-hidden pattern, not spacing. */
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Bead Counter Styles */
+#beadCountsContainer {
+    margin-top: var(--space-2xl);
+    width: 100%;
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-xl);
+    box-sizing: border-box;
+    display: none; /* Hidden until generated */
+}
+
+.count-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    /* A backstop: with the "Sort by " prefix gone the select fits beside the
+       heading at 390px, and wrapping keeps it from being squeezed below its
+       own option text again if either grows. */
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-lg);
+    border-bottom: 2px solid var(--border);
+    padding-bottom: var(--space-md);
+}
+
+.count-header h3 {
+    margin: 0;
+    color: var(--text);
+    font-size: var(--text-lg);
+}
+
+.bead-list {
+    max-height: 250px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    /* A scroll container clips everything outside its padding box, which
+       cut the selected row's ring off along the list's edges (UI-1). The
+       inset is room for UI-4's focus outline (ring + offset); the extra
+       on the right is room for the scrollbar. */
+    padding: var(--space-xs) var(--space-sm) var(--space-xs) var(--space-xs);
+    /* Padding alone is not enough once the list scrolls: focusing a row
+       scrolls it flush with the list's edge, outline ignored, and the ring
+       was clipped on the last row. This makes focus scrolling stop short. */
+    scroll-padding: var(--space-xs);
+}
+
+.bead-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-lg);
+    padding: var(--space-sm) var(--space-lg);
+    background-color: var(--bg);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+}
+
+.color-swatch {
+    width: 24px;
+    height: 24px;
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(0,0,0,0.2);
+    flex-shrink: 0;
+}
+
+.color-name {
+    flex-grow: 1;
+    font-weight: 600;
+}
+
+.color-count {
+    font-weight: 700;
+    background-color: var(--primary);
+    color: var(--on-primary);
+    padding: var(--space-xs) var(--space-md);
+    border-radius: var(--radius-pill);
+    font-size: var(--text-sm);
+}
+
+/* M5's editor bar. */
+.editor-controls {
+    display: none; /* Shown by the editor once a pattern exists */
+    justify-content: center;
+    align-items: center;
+    /* Six 44px targets plus a swatch is ~300px of control against roughly
+       340px of usable width at 390px (UI-6), so it wraps rather than
+       shrinking a target below 44px. */
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    margin-top: var(--space-md);
+}
+
+.editor-controls.is-active {
+    display: flex;
+}
+
+/* The icon buttons of both bars: the editor's tools and, since M8, the two
+   zoom buttons. `:is()` takes its most specific argument, so these keep the
+   two-class weight that beats the 640px media query's `button { width: 100% }`
+   -- a media query adds none -- which is what keeps each bar a bar on a phone
+   instead of a column of full-width blocks. */
+:is(.editor-controls, .zoom-controls) .tool-button {
+    grid-column: auto;
+    /* inline-flex so an icon centres in the box; the box is sized by the
+       44px minimums (UI-6), not by the icon. */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    min-width: 44px;
+    min-height: 44px;
+    padding: var(--space-sm);
+    font-size: var(--text-md);
+    background-color: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+}
+
+/* The icon takes its color from the button, which is the whole reason
+   the pressed (white on indigo) and disabled (grey) states need no
+   second drawing. A swapped-in icon inherits the same way as long as it
+   keeps stroke="currentColor" or fill="currentColor". */
+:is(.editor-controls, .zoom-controls) .icon {
+    display: block;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+
+:is(.editor-controls, .zoom-controls) .tool-button:hover:not(:disabled) {
+    background-color: var(--bg);
+    border-color: var(--primary);
+}
+
+/* The pressed tool, which is the only indication of what a drag will do. */
+:is(.editor-controls, .zoom-controls) .tool-button[aria-pressed="true"] {
+    background-color: var(--primary);
+    border-color: var(--primary);
+    color: var(--on-primary);
+}
+
+:is(.editor-controls, .zoom-controls) .tool-button:disabled {
+    background-color: var(--surface);
+    color: var(--disabled-icon);
+    border-color: var(--border);
+    cursor: not-allowed;
+}
+
+/* EDIT-3's "visibly indicated": the active color is on screen whenever
+   the editor is, not only while the picker is open. */
+/* The only control in the bar that is still text: the bead code is
+   information, not a label, so there is no icon that could replace it. */
+.editor-controls .active-color {
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
+    font-weight: 700;
+}
+
+.active-color-swatch {
+    width: 22px;
+    height: 22px;
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(0, 0, 0, 0.35);
+    flex-shrink: 0;
+    /* A checker, so "empty" reads as empty rather than as a white bead --
+       the eraser and fill-with-empty both need that distinction. */
+    background-color: transparent;
+    background-image:
+        linear-gradient(45deg, #D1D5DB 25%, transparent 25%, transparent 75%, #D1D5DB 75%),
+        linear-gradient(45deg, #D1D5DB 25%, transparent 25%, transparent 75%, #D1D5DB 75%);
+    background-size: 10px 10px;
+    background-position: 0 0, 5px 5px;
+}
+
+.color-picker {
+    display: none;
+    margin-top: var(--space-md);
+    padding: var(--space-lg);
+    background-color: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+}
+
+.color-picker.is-open {
+    display: block;
+}
+
+.picker-query {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.picker-query label {
+    white-space: nowrap;
+}
+
+.picker-query input[type="color"] {
+    width: 44px;
+    height: 44px;
+    padding: 2px; /* Inset of the native swatch inside its 44px box, not layout spacing. */
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background-color: var(--surface);
+    cursor: pointer;
+}
+
+.picker-query input[type="text"] {
+    flex: 1 1 12rem;
+    min-width: 0;
+    min-height: 44px;
+    padding: var(--space-sm) var(--space-md);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    font-size: var(--text-md);
+}
+
+/* UI-5. Left to the browser this is Chrome's #757575 (4.61:1 on white) and
+   something else elsewhere; pinned so it is measured once and moves with
+   the tokens. 4.83:1 on --surface. */
+.picker-query input[type="text"]::placeholder {
+    color: var(--text-muted);
+    opacity: 1; /* Firefox dims placeholders with opacity on top of color. */
+}
+
+.picker-hint {
+    margin: var(--space-md) 0 var(--space-sm);
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+}
+
+.picker-results {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    max-height: 220px;
+    overflow-y: auto;
+    /* Room for the focus outline (ring + offset), which the scroll
+       container would otherwise clip -- padding and scroll-padding both, as
+       .bead-list. */
+    padding: var(--space-xs);
+    scroll-padding: var(--space-xs);
+}
+
+.picker-empty {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+}
+
+/* Ranked strictly by OkLab distance. In-pattern candidates are badged,
+   never re-sorted to the top: "nearest" has to keep meaning nearest or
+   the list stops being worth reading. */
+.picker-results .picker-swatch {
+    grid-column: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-sm);
+    width: auto;
+    min-height: 44px;
+    padding: var(--space-sm) var(--space-md);
+    background-color: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    font-weight: 500;
+}
+
+.picker-results .picker-swatch:hover {
+    background-color: var(--surface);
+    border-color: var(--primary);
+}
+
+.picker-results .picker-swatch.selected {
+    border-color: var(--primary);
+    /* Inside the border, so it cannot be mistaken for the focus ring,
+       which sits outside with a gap (UI-4). */
+    box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+.picker-swatch .color-swatch {
+    width: 20px;
+    height: 20px;
+}
+
+.picker-swatch .picker-code {
+    font-weight: 700;
+}
+
+/* "P17 . 340 in pattern" beside "P19 . new". Without this a user picking
+   a blue silently adds a color to the shopping list that SET-4 and GEN-3
+   exist to keep off it. */
+.picker-swatch .picker-badge {
+    font-size: var(--text-xs);
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: var(--radius-pill);
+    background-color: var(--border);
+    color: var(--text-subtle);
+}
+
+.picker-swatch .picker-badge.in-pattern {
+    background-color: var(--status-success-bg);
+    color: var(--status-success-text);
+}
+
+/* The inventory rows are tier 1 of the picker, so they are real buttons
+   now. These override only what the global `button` rule sets and
+   .bead-item does not; the layout above is untouched. */
+.bead-list .bead-item {
+    grid-column: auto;
+    width: 100%;
+    /* A tap target now that it is tier 1 of the picker (UI-6). */
+    min-height: 44px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: var(--text-md);
+    font-weight: 400;
+    text-align: left;
+    cursor: pointer;
+}
+
+.bead-list .bead-item:hover {
+    background-color: var(--surface);
+    border-color: var(--primary);
+}
+
+.bead-list .bead-item.selected {
+    border-color: var(--primary);
+    /* Inside, as .picker-swatch.selected -- see --focus-ring. */
+    box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+/* A paint tool is active: the cursor says so, and beginPan is gated off
+   in canvas-view.ts. touch-action is the half that cannot be done in JS
+   -- the canvas lives in a native scroll container, so without this a
+   touch-drag scrolls the container instead of painting. It is scoped to
+   this class precisely so pan mode gets native touch scrolling back. */
+#pattern-canvas.painting {
+    cursor: crosshair;
+    touch-action: none;
+}
+
+/* SET-3's live readout: the pattern that *would* be generated, from the
+   current crop and settings. Sits above Generate because that is the
+   reading order -- see the size, then press the button. The error state
+   is SET-5's message, surfaced here so the limit is named before the
+   button is pressed rather than after. */
+.dimensions {
+    margin-top: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
+    border-radius: var(--radius-md);
+    background-color: var(--surface-sunken);
+    border: 1px solid var(--border);
+    font-size: var(--text-md);
+    font-weight: 500;
+    text-align: center;
+    color: var(--text-subtle);
+}
+
+.dimensions:empty {
+    display: none;
+}
+
+.dimensions.is-error {
+    color: var(--status-error-text);
+    background-color: var(--status-error-bg);
+    border-color: var(--status-error-border);
+}
+
+/* M4's crop preview (IN-5). Hidden until an upload succeeds, and hidden
+   again on a successful generate (D21). Same show/hide idiom as
+   .editor-controls: display in the base rule, a class to reveal. */
+.preview-area {
+    display: none;
+    margin-bottom: var(--space-2xl);
+    text-align: center;
+}
+
+.preview-area.is-visible {
+    display: block;
+}
+
+/* Shrink-wraps the image, so its own box *is* the image's box and every
+   overlay below can be positioned against it with inset: 0. line-height
+   kills the inline descender gap under the image. */
+.preview-frame {
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+    line-height: 0;
+    /* The crop is a drag, so the browser must not claim the gesture for
+       scrolling first. M5 learned this on the pattern canvas; it fails
+       only on a touch screen, which is half of M4's Done-when. */
+    touch-action: none;
+    /* A drag across an image otherwise selects it, which flashes a blue
+       wash over the preview mid-crop. */
+    user-select: none;
+    -webkit-user-select: none;
+    /* Replaced per-pointermove by crop-view.ts with a move/resize cursor
+       when the pointer is over the rectangle or a handle. */
+    cursor: crosshair;
+}
+
+.preview-frame img {
+    display: block;
+    max-width: 100%;
+    max-height: 420px;
+    width: auto;
+    height: auto;
+    border-radius: var(--radius-lg);
+}
+
+/* Clips the shade's oversized shadow to the image. Without this layer
+   that shadow covers the entire page. */
+.crop-clip {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    border-radius: var(--radius-lg);
+    pointer-events: none;
+}
+
+/* Dims everything outside the crop with one property. The box itself is
+   transparent -- what is visible is 9999px of spread shadow filling the
+   clip layer around it, so the cropped region keeps its true colors and
+   only the part being discarded is tinted. */
+.crop-shade {
+    position: absolute;
+    box-shadow: 0 0 0 9999px rgba(17, 24, 39, 0.55);
+}
+
+/* Deliberately outside .crop-clip: the handles are centred on the
+   corners and hang half outside the rectangle, and at a full-image crop
+   those corners sit exactly on the image edge. */
+.crop-rect {
+    position: absolute;
+    box-sizing: border-box;
+    border: 1px solid rgba(255, 255, 255, 0.95);
+    outline: 1px solid rgba(17, 24, 39, 0.6);
+    pointer-events: none;
+}
+
+/* No pointer-events anywhere in the overlay: every gesture lands on
+   .preview-frame and hitTestCrop decides what was grabbed, so the DOM
+   never disagrees with the geometry about which handle is under the
+   finger. */
+.crop-handle {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    box-sizing: border-box;
+    background-color: #FFFFFF;
+    border: 2px solid #1F2937;
+    border-radius: var(--radius-sm);
+    pointer-events: none;
+}
+
+.crop-handle-nw {
+    top: 0;
+    left: 0;
+    transform: translate(-50%, -50%);
+}
+
+.crop-handle-ne {
+    top: 0;
+    right: 0;
+    transform: translate(50%, -50%);
+}
+
+.crop-handle-sw {
+    bottom: 0;
+    left: 0;
+    transform: translate(-50%, 50%);
+}
+
+.crop-handle-se {
+    bottom: 0;
+    right: 0;
+    transform: translate(50%, 50%);
+}
+
+.preview-hint {
+    margin: var(--space-md) 0 0;
+    font-size: var(--text-sm);
+    line-height: 1.5;
+    color: var(--text-muted);
+}
+
+/* NFR-5 / UI-1, UI-2. Below this width the two-column control grid and the
+   doubled 2rem body+container padding push content off-screen: at 390 px the
+   heading, Generate button, and target-width control were all clipped. */
+@media (max-width: 640px) {
+    body {
+        padding: var(--space-lg) var(--space-md);
+    }
+
+    /* 56px is 369px of title against ~334px at 390px (UI-1). */
+    h1 {
+        font-size: var(--text-title-narrow);
+    }
+
+    .container {
+        padding: var(--space-lg);
+    }
+
+    .controls {
+        /* minmax(0, 1fr), not 1fr: plain 1fr floors at min-content. */
+        grid-template-columns: minmax(0, 1fr);
+        gap: var(--space-lg);
+        padding: var(--space-lg);
+    }
+
+    input[type="number"],
+    select,
+    button {
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    /* The icon bars wrap to as many rows as they need and their targets
+       stay 44px; the rule above would otherwise make each one a
+       full-width block and the bar seven rows tall. */
+    :is(.editor-controls, .zoom-controls) .tool-button {
+        width: auto;
+        flex: 0 0 auto;
+    }
+}

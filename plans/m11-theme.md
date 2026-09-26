@@ -253,10 +253,13 @@ Disabled controls keep `not-allowed`.
 **Done when:** every clickable control shows the hand, and disabled ones show `not-allowed`.
 
 **Done (2026-09-26), pending a look in a real browser.**
-- **The drawing:** `src/assets/cursors/pointer.svg` is a 13 × 16 art grid (26 × 32 CSS px). A
-  shaded, 2 px-wide index finger; three 1 px-wide finger bumps stepping down to the right with
-  separator lines; the thumb out to the left; an even 1:1 diagonal from the thumb down, then a
-  two-row vertical wrist (widened one pixel to the left at the user's request).
+- **The drawing:** `src/assets/cursors/pointer.svg` is a 15 × 16 art grid (30 × 32 CSS px). A
+  shaded, 2 px-wide index finger; three folded fingers stepping down to the right, 2, 2 and 1 px
+  wide (the open hand's finger columns); the thumb out to the left; an even 1:1 diagonal from the
+  thumb down, then a two-row vertical wrist. Its rows 8–15 are shared exactly with the pan hands
+  (step 4b). _(Revisions, all at the user's request: first 16 wide with 2 px side fingers, then
+  narrowed to 13 with 1 px side fingers, then the wrist widened one pixel left. Finally the palm
+  was widened to 15 to match the four-finger pan hands, which made the side fingers 2, 2, 1.)_
   Hotspot `10 1`, the fingertip. Same palette and conversion as the arrow. _(First drawn 16 wide,
   with 2 px side fingers. It was narrowed at the user's request by thinning the side fingers
   and pulling in the thumb. At 16 wide it read as heavy beside the arrow.)_
@@ -264,8 +267,8 @@ Disabled controls keep `not-allowed`.
   `cursor: pointer` declarations. A re-scan of every rendered element finds no native `pointer`
   left: every control that had it now has the hand, and the picker rows are `<button>`s, so the
   `button` rule covers them.
-- **Build:** at 4,639 bytes (4,991 when 16 wide), the SVG is over Vite's 4 KB inline limit, so
-  unlike the arrow and the clouds it is emitted as a hashed file (`assets/pointer-*.svg`). Served from `dist/` by `vite
+- **Build:** the SVG is over Vite's 4 KB inline limit, so unlike the arrow and the clouds it is
+  emitted as a hashed file (`assets/pointer-*.svg`). Served from `dist/` by `vite
   preview`, the computed cursor resolves to it and it loads as `200 image/svg+xml`, so the
   relative `url()` inside the custom property holds for a file too.
 
@@ -291,17 +294,17 @@ crosshair and the crop cursors are still native.
 
 **Done (2026-09-26), pending a look in a real browser.**
 - **The drawings:** `grab.svg` (an open hand) and `grabbing.svg` (a fist), 13 × 16 like the
-  pointing hand. Rows 8–15 (thumb, palm, wrist) are identical across all three. **Three fingers
-  plus the thumb, each 2 px wide and shaded**, the same width as the pointing hand's index. The
-  pointing hand's wider index is perspective, but an open hand or fist should have equal fingers.
-  Three 2 px fingers fill exactly the palm's 10 columns, so the hand is no wider. The open hand's
-  middle finger is tallest; the fist folds the three to knuckle bumps. _(First drawn with the
+  pointing hand. Rows 8–15 (thumb, palm, wrist) are identical across all three, and asserted so
+  when they are generated. **Three 2 px shaded fingers and a 1 px pinky, plus the thumb.** The
+  pointing hand's wider index is perspective, but an open hand or fist should have near-equal
+  fingers. The open hand's middle finger is tallest and the pinky lowest; the fist folds all four
+  to knuckle bumps. Hotspot `16 20`, the palm centre. _(First drawn with the
   pointing hand's mixed widths, a 2 px index and three 1 px fingers. The user noted the fingers
   should be equal. A true 1.5 px finger would need a half-size grid for these two cursors,
   mismatching the others' pixel size. Four equal 1 px fingers were rendered and rejected as
-  outline-heavy. The user chose three 2 px fingers.)_ Since the
-  palm does not move, pressing reads as the hand closing, not jumping. Both use the palm-centre
-  hotspot `14 20`.
+  outline-heavy. The user chose three 2 px fingers, then asked for a 1 px pinky and a wrist one
+  pixel wider on the right, and for the pointing hand's palm to match, so all three are 15 wide.)_ Since the
+  palm does not move, pressing reads as the hand closing, not jumping.
 - **The wiring:** `--cursor-grab` and `--cursor-grabbing`, with `grab` and `grabbing` as
   fallbacks, swapped into `#pattern-canvas` and `.output-container.panning #pattern-canvas`.
 - **Verified by a synthetic drag** on the canvas scrolled into view: open hand, then the fist

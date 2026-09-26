@@ -102,8 +102,8 @@
        moves the whole view -- so they are drawn (D26, revised). Both share
        the palm-centre hotspot, so the cursor does not jump when a drag
        starts. */
-    --cursor-grab: url("./assets/cursors/grab.svg") 14 20, grab;
-    --cursor-grabbing: url("./assets/cursors/grabbing.svg") 14 20, grabbing;
+    --cursor-grab: url("./assets/cursors/grab.svg") 16 20, grab;
+    --cursor-grabbing: url("./assets/cursors/grabbing.svg") 16 20, grabbing;
 
     /* D26: the error variant moves from red to pink, one of the theme's
        three stand-out colours; the text stays a dark red, so it still

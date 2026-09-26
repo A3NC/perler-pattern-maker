@@ -1,167 +1,105 @@
 # Perler Pattern Generator
 
-**Demo link:** https://perler-pattern-maker-three.vercel.app/
+**Demo:** https://perler-pattern-maker-three.vercel.app/
 
-A browser app that turns an uploaded image into a Perler bead pattern: a grid of bead-sized cells,
-each assigned a real Perler bead color, with the color code on each cell and a bead-count list for
-shopping and sorting.
+A browser app that turns an image into a Perler bead pattern: a grid of real Perler colors, with
+the bead code on each cell and a shopping list of how many beads of each color you need.
 
-Everything runs client-side. There is no backend, no account, and no upload — the image never
-leaves the browser.
+Everything runs in your browser. There is no backend and no account, and your image is never
+uploaded anywhere.
 
-## What it does today
+## What it does
 
-1. **Upload an image** — PNG, JPEG, GIF, WebP or BMP. Files the app cannot use are turned away
-   before anything is decoded, each with a message that says what was actually wrong: a PDF, a text
-   file renamed to `.png`, a download that was cut off partway, an iPhone HEIC photo in a browser
-   that cannot read one, an image too large to work with. The file's own bytes decide this, not its
-   name or its extension — both of which are just the operating system guessing.
-2. **Crop to what you actually want.** The image appears with a rectangle over it: drag a box
-   across the part you want, drag it around, or pull a corner. Everything outside it is dimmed,
-   because everything outside it is thrown away. This is the most effective quality control in the
-   app — on a photo it multiplies the detail available per bead, and on a drawing sitting on a
-   blank canvas it is how you avoid a pattern that is mostly white beads nobody wants to buy.
-   It works with a mouse or a finger.
-3. **Choose the finished size** — a physical width in inches and a bead size, Standard (5 mm) or
-   Mini (2.6 mm) — and a limit on how many distinct colors the pattern may use. The resulting bead
-   grid is shown as you go — `51 × 38 beads · 1,938 beads total` — and updates as you drag the
-   crop or change a setting, so the size is something you choose rather than something you
-   discover afterwards. A setting too large to build says which limit it hit, before you press
-   anything.
-4. **Generate.** The app derives the bead grid from the width, the bead pitch, and the cropped
-   region's aspect ratio, then averages the source pixels falling inside each bead cell and matches the
-   result to the nearest Perler color *perceptually* — using a color space built to match how
-   human eyes judge difference, rather than raw RGB distance, which does not. If the pattern
-   uses more colors than the limit allows, the extras are merged away one at a time, always
-   choosing the merge that costs the least visible change. Pixels that are mostly transparent
-   become empty cells rather than beads.
-5. **Read the pattern.** It renders on a canvas: zoom, drag to pan, toggle the bead code on each
-   cell, and toggle gridlines with edge rulers numbering every tenth row and column. Generating
-   settles the framing: the crop preview closes and stays closed, because re-cropping an image you
-   can no longer see is a good way to make a mess. The size and color settings stay live, so a
-   different width or bead size is one change and one more Generate away. Uploading a new image is
-   what reopens cropping.
-6. **Fix what the conversion got wrong.** A brush paints a continuous run as you drag, an eraser
-   clears cells back to empty, and a flood fill covers a whole contiguous region of one color — or
-   fills it with empty, which is how you strip a plain background. Every stroke can be undone and
-   redone. A separate pan mode never paints by accident, and alt-clicking any cell adopts its color.
-7. **Read the bead inventory** — every color used, with its count, sortable by count or by name.
-   Those rows double as the color picker, so choosing a color already in the pattern costs the
-   shopping list nothing. For colors not yet in the pattern, a search panel ranks the palette by
-   perceptual closeness and marks which candidates are already in use.
+1. **Upload an image**: PNG, JPEG, GIF, WebP or BMP. A file the app can't use is turned away with
+   a specific reason, such as a text file renamed to `.png`, a download that was cut off, or an
+   image that's too large.
+2. **Crop** to the part you want. This matters more than it sounds: cropping gives each bead more
+   of the picture, and it trims the blank canvas around a drawing.
+3. **Choose a size**: a width in inches, a bead size (Standard 5 mm or Mini 2.6 mm), and a maximum
+   number of colors. The bead grid and total bead count update as you change them, before you
+   generate.
+4. **Generate.** Each bead cell is matched to the nearest Perler color *as your eye sees it*,
+   rather than by raw RGB, and extra colors are merged away until the pattern fits your limit.
+5. **View** the pattern: zoom, pan, and turn bead codes and gridlines (with numbered rulers) on and
+   off.
+6. **Fix it by hand** with a brush, eraser and flood fill, with undo and redo. Alt-click any bead
+   to pick up its color.
+7. **Shop from the bead list**: every color used and its count, sortable by count or name.
+8. **Download a PNG** with gridlines, codes, and row and column numbers. It's meant for reading on
+   a screen, not for printing.
+9. **Refresh without losing work.** The pattern, its settings and the source image are saved in
+   your browser automatically.
 
-Guard rails: source images up to 8000 pixels per side, and patterns up to 300 beads per side and
-50,000 cells total. Exceeding any of them is reported with a message that names the limit actually
-hit.
+Limits: images up to 8000 px per side, and patterns up to 300 beads per side and 50,000 beads in
+total.
 
-## Quick start
+The interface uses a light, pixel-art sky theme. There is no dark mode yet.
 
-Requires Node >= 22.
+## Running it
+
+Requires Node 22 or newer.
 
 ```bash
 npm install
-npm run dev     # Vite dev server; open the URL it prints
+npm run dev     # then open the URL it prints
 ```
 
 | Command | What it does |
 |---|---|
-| `npm run dev` | Dev server with reload-on-save |
-| `npm run build` | Static production build into `dist/` |
-| `npm run preview` | Serve the built output |
-| `npm test` | Vitest, browser-free (`npm run test:watch` to iterate) |
-| `npm run typecheck` | `tsc --noEmit` — Vite strips types without checking them, so this is the only thing enforcing them |
-| `npm run check` | typecheck + tests, the full gate |
+| `npm run dev` | Dev server that reloads on save |
+| `npm run build` | Production build into `dist/` |
+| `npm run preview` | Serve the production build |
+| `npm run check` | Type check plus the full test suite |
+| `npm run ui:audit` | Automated interface checks (layout, contrast, focus, touch targets) in headless Chrome, against a running dev server |
 
+Use `npm run dev`. Opening `index.html` directly, or serving the project folder with a plain file
+server, won't work, because the source is TypeScript. To use your own server, run `npm run build`
+and serve `dist/`.
 
-## Layout
+## How the code is organized
 
 ```
-index.html              markup + the inline boot guard; loads src/main.ts as a module
-public/colors_221.json  the default 221-color palette (name, hex, rgb), fetched at startup
 src/
-  main.ts               startup wiring: DOM refs, palette load, upload/generate listeners
-  types.ts              PaletteColor, Palette, Pattern, PatternDimensions, ColorTally, SourcePixels
-  lib/                  deterministic logic: no DOM, no canvas, every module covered by tests
-    pattern-utils.ts    palette normalization/validation, dimension math, RGB matching, tallying
-    oklab.ts            OkLab conversion and distance; the sRGB → linear table every pixel uses
-    image-file.ts       what a picked file really is: format, dimensions, whether it is complete
-    viewport.ts         zoom limits, scroll offset on zoom, visible range, screen point → cell
-    guides.ts           gridline interval, ruler label step, which boundaries are visible
-    pattern-edit.ts     the edit primitive — one applyEdits serves paint, undo and redo alike
-    edit-history.ts     the undo/redo stack, bounded by total recorded cells, not stroke count
-    cell-path.ts        Bresenham between two cells, so a fast drag paints no gaps
-    flood-fill.ts       the contiguous same-color region, found iteratively
-    palette-query.ts    the picker's ranking: text filter plus nearest by perceptual distance
-  pipeline/             image → Pattern behind one boundary, so algorithms stay swappable
-    generate.ts         pixels in, Pattern out — no DOM
-    downscale.ts        per-cell area averaging in linear light, plus the lineart classifier
-    color-match.ts      perceptual matching, with the palette's OkLab values computed once
-    reduce.ts           merges colors down to the limit, cheapest visible change first
-  state/
-    pattern-state.ts    single owner of the live pattern and its tallies; everything subscribes
-  render/
-    canvas-view.ts      the canvas pattern view: zoom, pan, codes, gridlines, rulers
-    editor.ts           the editor's pointer wiring, tool state, and picker DOM
-    inventory.ts        the bead-count list, which doubles as tier 1 of the color picker
-  rasterize.ts          hidden canvas: image → SourcePixels
-  palette.ts  upload.ts  status.ts  dom.ts  contrast.ts
-  styles.css            all styling, including the narrow-viewport media query
-helper.py               adds RGB tuples to a hex-only palette JSON
-colors.json             291-record hex-only palette; input to helper.py, not loaded by the app
-specs.md                the requirements, each with a verification Check, plus the decision log
-plan-v1.md              v1 broken into milestones M0–M10, in dependency order
+  lib/        pure logic (palette, dimensions, crop, editing, undo, export layout, saving), all tested
+  pipeline/   image in, pattern out: downscaling, color matching, color reduction
+  state/      the live pattern, and autosave to IndexedDB
+  render/     everything on screen: the canvas view, editor, crop, bead list, PNG export
+  assets/     self-hosted fonts, and the hand-drawn SVG clouds and cursors
+  styles.css  all styling; colors, spacing and type are variables at the top
+scripts/ui-check/   the headless-Chrome interface checks
+public/colors_221.json   the 221-color Perler palette
 ```
 
-Two conventions hold this together. **Anything deterministic lives in `lib/` or `pipeline/` and has
-a test**; anything touching the DOM, canvas or `FileReader` stays out of them, which is what keeps
-the suite runnable without a browser. And **`Pattern`** — width, height, and a row-major array of
-cells that are either a palette color or `null` — is the durable contract between the pipeline and
-everything downstream that renders, edits, exports, or serializes it. The editor mutates it in
-place; it has not changed shape since it was defined.
+The rule that keeps this testable: anything deterministic lives in `lib/` or `pipeline/` and has a
+test, and anything that touches the page stays out of those folders.
 
+`specs.md` lists every requirement with how to check it, plus the reasoning behind each decision.
+`plan-v1.md` lays out the milestones. `CLAUDE.md` holds detailed working notes for contributors.
 
 ## Status
 
-v1 is in progress. Six of eleven milestones are done:
+**v1 is nearly done: 11 of 12 milestones are complete.** Only final verification (M9) remains.
 
-| | Milestone | What landed |
-|---|---|---|
-| **M0** | Project setup | Vite + TypeScript; Mini bead pitch corrected to 2.6 mm |
-| **M1** | Canvas pattern view | Replaced the element-per-bead grid; zoom and pan by redraw |
-| **M2** | Quality core | Perceptual color matching, per-cell averaging, the color limit |
-| **M3** | Input handling and errors | Every rejected file gets a specific reason, decided from its bytes |
-| **M5** | Correction editor | Brush, eraser, flood fill, undo/redo, two-tier color picker |
-| **M10** | Pattern orientation | Gridlines and edge rulers |
+| Milestone | What it added |
+|---|---|
+| M0 | Project setup (Vite + TypeScript) |
+| M1 | Canvas pattern view with zoom and pan |
+| M2 | Perceptual color matching and the color limit |
+| M3 | Clear error messages for unusable files |
+| M4 | Crop, and a live bead count before generating |
+| M5 | Editor: brush, eraser, fill, undo/redo, color picker |
+| M6 | PNG export |
+| M7 | Autosave |
+| M8 | Accessibility and layout pass, plus fonts and styling |
+| M10 | Gridlines and edge rulers |
+| M11 | Pixel sky theme and custom cursors |
+| **M9** | **Final verification: next** |
 
-**M2 is the one with a caveat worth stating.** It is closed, and it is what makes the output look
-like the picture rather than like a palette — but its own quality gate is deliberately left open
-rather than ticked to make the milestone look finished. Two things remain: dark and shaded regions
-still band more than they should, and on drawn characters, facial features distort. The second is
-not fixable anywhere in the conversion, because the bead grid is fixed before any of it runs and
-where a cell boundary falls relative to an eye decides what that eye becomes. That is the honest
-reason the editor exists — M5 is not only cleanup, it covers a class of defect the pipeline could
-never reach.
+Known gaps, all recorded for M9 or later:
 
-**M3 turned out to rest on one fact:** a browser tells you an image failed to load without ever
-telling you why. So the reason has to be worked out beforehand, from the file itself — which is
-why a truncated download and an unreadable format produce different sentences rather than the
-same shrug. A useful side effect: an image too large to handle is refused in milliseconds,
-because its size is read from the file's header and nothing is ever decoded.
-
-**M5 widened mid-project.** Undo and flood fill were both out of v1 on the reasoning that a
-one-cell brush makes mistakes self-correcting; that reasoning did not survive contact with the fact
-that what an edit overwrites was *generated*, not drawn by the user, so "just paint it again"
-assumes knowledge they do not have. Both moved in before the milestone started rather than during
-it.
-
-**M4 gave the app its second real quality lever.** Cropping is filed under convenience and is not:
-for a photo it decides how much detail each bead gets, and for a drawing on a blank canvas it is
-the whole answer to a background the app cannot yet remove by itself. Measured on one test drawing,
-cropping tight took the white beads from 68% of the pattern to 37%. It also turned out to settle a
-question nothing had asked: what a *second* Generate means once a pattern has been hand-edited. It
-means losing every edit, silently. The first answer — lock everything after the first Generate —
-was too broad and lasted about a day: it made the ordinary case, "try that again a bit smaller,"
-needlessly awkward in order to be tidy about the awkward one. What shipped locks only the framing.
-
-**M6 — PNG export — is next**, and it is the last item on the critical path. Still ahead after
-it: autosave (M7), the interface floor (M8), and final verification (M9).
+- **Conversion quality** isn't fully signed off. Dark, shaded areas band more than they should, and
+  small facial features on drawn characters can distort. The editor is the fix for now.
+- **Speed:** generating the largest allowed pattern takes about 315 ms, against a ~150 ms target.
+- **Devices:** everything has been tested in Chrome, including its phone emulation. Safari and a
+  real phone haven't been checked yet.
+- **Regenerating** a pattern you've edited by hand replaces your edits without warning.

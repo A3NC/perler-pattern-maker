@@ -603,7 +603,7 @@ and at 390 px wide. Re-run the R1–R6 reference review. Walk the full **[v1]** 
 UI-1 … UI-6 included — and tick every Check.
 
 **Done when:** Every **[v1]** requirement in `specs.md` passes. *(OUT-4, NFR-5, UI-1 … UI-6,
-"Done looks like")*
+UI-8, "Done looks like")*
 
 ---
 
@@ -641,6 +641,53 @@ by a CSS class. M1's canvas contract was untouched: no CSS change, no `Pattern` 
   14 px minimum gridline pitch and a 34 px minimum label pitch. Both are one constant each in
   `guides.ts` and both are covered by tests that assert the behavior, not the number.
 
+### M11 — Sky theme · S
+**Do:** Give the page the light-mode theme D26 chose: soft, pastel, pixel-fantasy, in light blue and
+white.
+- **Background:** a pixel sky drawn *outside* the main card only, as a stepped (hard-edged)
+  gradient from `#d3effe` at the top to white, with white pixel clouds on it. The canvas, inputs and
+  panels inside the card keep their pre-M11 backgrounds.
+- **Cursor:** a pixel arrow for the page, and a pixel hand for clickable controls. Both have a
+  white fill, `#edf3f8` shading and a `#052048` outline. The canvas tool cursors stay native.
+- **Text:** body text `#06266d`. The title and button labels are exempt.
+- **Accent:** one accent for Generate's fill, the title, checkboxes, outlined buttons and the
+  focus ring. It is a darker shade of `#6893cb`'s hue, chosen to pass AA.
+- **Everything else:** colours that stay readable and fit the scheme, with pink, light green or
+  white where something has to stand out (the status variants are the obvious place).
+- **Layout:** changes only where the background forces them.
+
+Background and cursors are drawn in the repo as CSS and SVG, not supplied as images.
+
+**Why here:** The demo is close, and a theme buys a lot of impression for half a day. It comes
+*before* M9 because M9's Checks should measure the version that is demoed: styling after M9 reopens
+UI-5 and re-checks UI-1 and UI-6, which this plan calls a regression rather than a task (D25's
+argument, applied again). It is not a reopening of M8, which is closed. D25 also bounded that pass
+to token values, and drawn artwork and a cursor are not token values. The number is only an
+identifier: M11 runs before M9, the way M10 ran before M2.
+
+**Done when:** UI-8 passes its Check at 1280 px and 390 px. `npm run ui:audit` is green. U1–U5 pass
+again by eye. *(UI-8. Re-verifies UI-1, UI-4, UI-5, UI-6, UI-7.)*
+
+**Bounds (D26):** Half a day. Page chrome only. Left unchanged:
+- the pattern canvas's drawing and colours;
+- the PNG export, so OUT-3 cannot drift;
+- the tool cursors: crosshair, grab, crop resize, the text I-beam, not-allowed;
+- motion (none is added), and the banner, which stays deferred per D25.
+
+**Light mode only.** v1 has no dark mode, and a future dark mode gets a theme of its own rather
+than an inverted sky. If the timebox runs out, the pass stops. Cuts are recorded in D26 and UI-8
+rather than left failing, so M9 never inherits a box it cannot tick.
+
+**Watch for:**
+- **`#6893cb` itself fails AA.** White on it is 3.17:1, and `#06266d` on it is 4.40:1, both
+  under 4.5. That is why the accent is a darker shade, starting at `#3d70b2` (5.05:1 on white).
+- **`--bg` paints the page *and* the inner panels today.** The sky needs its own token, or every
+  panel turns blue.
+- **White clouds vanish into the white bottom of the gradient.**
+- **Keep `transform`, `filter` and `contain` off `body`, `.container` and `#grid-wrapper`.** On
+  either of the first two they stop the sky staying fixed; on `#grid-wrapper` they break M1's
+  sticky canvas.
+
 ---
 
 ## Critical path
@@ -650,13 +697,13 @@ any point** — slot it in whenever you want a quick, satisfying win, the way M1
 done. M7 needs the pattern data settled by M5.
 
 **M0 through M7, and M10, are done — the critical path is closed** (M6, 2026-09-24). What remains
-is off it, and M8 (interface floor, 2026-09-26) is done too: **M9 (final verification) is next and
-last.** M8 added D25 and ticked UI-1 … UI-7 and NFR-5. M6 added D22 and ticked
+is off it, and M8 (interface floor, 2026-09-26) is done too. **M11 (sky theme, D26) is in flight,
+and M9 (final verification) follows it, last**, so M9 verifies the themed page. M8 added D25 and ticked UI-1 … UI-7 and NFR-5. M6 added D22 and ticked
 OUT-1, OUT-2, OUT-3 and GEN-5. M7 added D23 and ticked SAVE-1 and SAVE-2. It serialized `Pattern`
 unchanged and widened the save to the source image. Recorded for M9 beside NFR-5: M6's export
 canvas budget and M7's IndexedDB behavior are both unmeasured on Safari and a phone.
 
-**No tactical plan is open.** M8's was deleted at its close (2026-09-26). Write
+**Open tactical plan: `plans/m11-theme.md`** (2026-09-26). M8's was deleted at its close. Write
 `plans/m9-verification.md` the day M9 starts, not before.
 
 The two large items, **M1 and M2, are the project.** If time runs short, everything after them can
@@ -679,7 +726,8 @@ Background removal and subject auto-trim, pixel-art passthrough mode, palette sw
 other palette files sourced first), legend in the export, user-facing algorithm choice, printable
 PDF, multi-project library, and draw-from-scratch mode.
 _(Undo/redo and flood fill were on this list until D19 moved them into M5. Deliberate visual design
-(UI-7) was on it until D25 admitted one bounded styling pass into M8, which passed U1–U5.)_
+(UI-7) was on it until D25 admitted one bounded styling pass into M8, which passed U1–U5. D26 then
+added M11's light-mode sky theme as UI-8. **A dark mode is not in v1**; it will get its own theme.)_
 
 Reasons for each are in the `specs.md` decision log. Four worth restating:
 

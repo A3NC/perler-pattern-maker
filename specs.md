@@ -448,7 +448,8 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
 
 Covers the application shell — controls, status, layout, and chrome. The pattern view itself is
 VIEW. Appearance is split deliberately: UI-1 … UI-6 are mechanical and checkable, UI-7 is the
-subjective half and is held to v2. See Decision log D14.
+subjective half and is held to v2. See Decision log D14. UI-8 is the light-mode theme D26 chose,
+stated as checkable facts so that it can be a [v1] box.
 
 - [x] **UI-1 [v1]** No content is clipped, and the page never scrolls horizontally, at 390 px or
   1280 px wide.
@@ -521,6 +522,29 @@ subjective half and is held to v2. See Decision log D14.
   loaded file fixed it. Weak spots left for a v2 revisit, both outside a styling pass: over the
   size limit, Generate stays enabled beside the error (U4); and `.output-container`'s fixed
   500 px height leaves a large empty area under a short pattern, most visible at 390 px (U5).)_
+  _(D26's theme (M11) changes the page this was judged on, so M11 re-runs U1–U5. The box stays
+  ticked unless that review fails.)_
+- [ ] **UI-8 [v1]** In light mode, the page carries the sky theme (D26): a pixel sky drawn outside
+  the main card, navy body text, one blue accent, and a pixel cursor.
+  **Check:** At 1280 px and 390 px, in U1–U5:
+  - **Sky.** Outside `.container`, the page shows a stepped gradient from `#d3effe` at the top to
+    white, with visibly hard band edges rather than a smooth blend, and white pixel clouds on it.
+    It stays put while the page scrolls. Inside `.container` no sky is drawn: the pattern canvas,
+    the inputs and the panels keep their pre-M11 backgrounds.
+  - **Drawn, not supplied.** The sky, the clouds and the cursors are defined in the repo as CSS or
+    SVG. No bitmap image supplies them, and nothing is fetched from another host.
+  - **Text.** Body text computes to `#06266d`. The title and button labels are exempt.
+  - **Accent.** Generate's fill, the title, checkboxes, outlined buttons and the focus ring read
+    one token. That token is a darker shade of `#6893cb`'s hue, at which white text on it, and it
+    on white, both reach 4.5:1.
+  - **Cursor.** Over page chrome, the default pointer is a pixel arrow and clickable controls show
+    a pixel hand. Both have a white fill, `#edf3f8` shading and a `#052048` outline, with the
+    hotspot on the tip. The canvas's paint, pan and crop cursors, the text I-beam and
+    `not-allowed` are unchanged.
+  - **Floor intact.** UI-1, UI-4, UI-5 and UI-6 still pass (`npm run ui:audit`), and two exports
+    of one pattern are byte-identical to an export made before M11 (OUT-3).
+  Dark mode is out of this requirement's scope. v1 has none, and a future dark mode gets a theme of
+  its own rather than an inverted copy of this one.
 
 ### Non-functional — NFR
 
@@ -714,6 +738,8 @@ editor state would depend on M5. Do not fix screenshots of these states before t
   the bare system stack. Whether the v2 redesign keeps that and merely tightens it, or adopts an
   identity of its own, is undecided — and it is the choice most likely to turn UI-7 into the tuning
   loop D14 is trying to avoid.
+  _(**Answered for light mode, 2026-09-26.** D25 chose the type and D26 the colours and the sky.
+  A dark-mode identity is still open, and D26 says it will be a theme of its own.)_
 - **Q10 — Are D15's revised size numbers right?** They are reasoned from bead pitch and plausible
   finished dimensions, not from real projects. Mini is where the hard limit is most likely to bind:
   a 78 cm mural at 2.6 mm pitch is 300 beads per side and 90,000 cells, which D15 refuses on the
@@ -815,6 +841,8 @@ editor state would depend on M5. Do not fix screenshots of these states before t
     consistent" cannot be judged against values that were never systematic.
   - _[2026-09-26: D25 admits one timeboxed styling pass into M8, after the floor. UI-7 stays
     optional for v1.]_
+  - _[2026-09-26: D26 adds a light-mode theme to v1 as M11, stated as the checkable UI-8, so taste
+    stays in UI-7 and only its measurable outcome becomes a v1 box.]_
 - **D15 (2026-09-10) — Size limits split into a design target and a hard limit, and both lowered.**
   NFR-3's original numbers (500 per side, 100,000 cells) were not derived from physical beads. 500
   beads at Standard 5 mm pitch is a 2.5 m piece; the 316 × 316 largest square is 1.58 m. A cap no
@@ -1274,3 +1302,49 @@ editor state would depend on M5. Do not fix screenshots of these states before t
     re-check. The `<h1>` stays in the markup as the page's heading, visually hidden with `.sr-only`
     if the banner replaces it. Jersey 10 is applied to the title alone for the same reason: if the
     banner makes it unused, removing it is one `@font-face` and one token.
+  - _[2026-09-26: D26 runs a second, separate pass as M11, a drawn sky and a pixel cursor, which
+    this entry's "values and surfaces only" bound excluded. The banner stays deferred.]_
+- **D26 (2026-09-26) — A light-mode sky theme joins v1 as M11, before M9.** The demo is close, and
+  a theme buys a lot of impression for half a day's work. It is decided here rather than folded
+  into M8 for two reasons. M8 is closed. And the work is a kind D25 excluded: D25 limited its pass
+  to "values and surfaces only". A drawn background and a custom cursor are new artwork, not token
+  values, and U1–U5 had already passed, which was D25's stopping point.
+  - **Its own milestone, before M9.** It follows D25's reasoning for doing the styling before M9
+    rather than after. M9 is what ticks UI-1 … UI-6, and restyling after it reopens UI-5 and
+    re-checks UI-1 and UI-6. Styled first, everything is verified once, on the version that is
+    demoed. It is numbered M11 because milestone numbers are identifiers (M10 ran before M2).
+  - **A requirement, not only a decision.** The theme is written as UI-8 [v1], a list of checkable
+    facts: hex values, where the sky is drawn, which cursors change. That lets M9 tick it with
+    everything else. Whether the result *looks good* stays with UI-7 and U1–U5, which M11 re-runs.
+  - **The direction, chosen before styling rather than while.** Soft, pastel, pixel-fantasy, in
+    light blue and white:
+    - **Sky:** a stepped gradient from `#d3effe` to white with white pixel clouds, drawn only
+      outside the main card. Inner surfaces keep their pre-M11 colours.
+    - **Body text:** `#06266d`. The title and button labels are exempt.
+    - **Cursor:** white fill, `#edf3f8` shading, `#052048` outline.
+    - **Other components:** colours that stay readable and fit the scheme, with pink, light green or
+      white where something has to stand out.
+  - **The accent is a darker shade of `#6893cb`, not `#6893cb` itself, applied everywhere.**
+    `#6893cb` fails UI-5 as a button fill: white text on it is 3.17:1, and even `#06266d` on it is
+    4.40:1, both under 4.5. The darker shade keeps the hue (~214°) and is used for *every* accent
+    role, the title and checkboxes included, even though those two would pass at `#6893cb` under
+    the large-text and non-text 3:1 rules. One accent, not two near-identical blues. The starting
+    value is `#3d70b2`: 5.05:1 against white text, 4.59:1 on `--surface-sunken`. The final value is
+    whatever M11 measures.
+  - **The cursor covers the default arrow and the clickable hand. Tool cursors stay native.**
+    Crosshair, grab and the crop-resize arrows each point at an exact cell or edge. A hand-drawn
+    replacement with a misplaced hotspot would paint the wrong bead. The text I-beam and
+    `not-allowed` stay native too. Custom cursors do nothing on touch, so phones are unaffected
+    either way.
+  - **The sky is fixed to the window**, and the card scrolls over it. It is drawn by a fixed
+    layer, not `background-attachment: fixed`, which iOS Safari ignores.
+  - **Bounds.** About half a day. Page chrome only. The pattern canvas (`canvas-view.ts`,
+    `guide-style.ts`, `contrast.ts`) and the PNG export are untouched, so OUT-3 cannot drift.
+    Layout changes are made only where the background forces them. No motion, no icon redraw.
+    D25's banner stays deferred. The artwork is self-hosted like D25's fonts, so the look never
+    depends on a third-party request. If the timebox ends before UI-8 passes, the unfinished part
+    is cut from UI-8 by a note here, never left failing for M9. Cut the hand cursor first, then
+    the clouds' variety. The colours and the stepped sky are the core and are done first.
+  - **Light mode only.** v1 has no dark mode, and this entry does not create one. When a dark mode
+    is built it gets a theme of its own, decided separately. UI-8 names light mode so that it is
+    not read as requiring an inverted sky. M11 adds no `prefers-color-scheme` handling.

@@ -24,13 +24,14 @@ Five things are worth knowing:
 - **Chrome's full-page screenshot does not paint a nested scroll container outside the viewport**, so the bead list can come out blank. Capture it scrolled into view.
 - Everything was measured in headless Chrome's device emulation. Real-phone and Safari checks stay with M9. Two UI-7 weak spots are recorded for v2, both behaviour or layout: Generate stays enabled beside the size-limit error, and the fixed 500 px pattern box under a short pattern.
 
-**M9 is next, and last**.
+**M11 — the light-mode sky theme (D26, UI-8) — is in flight**, and runs before M9, which stays last so it verifies the themed page. Dark mode is out of scope; it will get its own theme.
 
 Appearance is tracked as the **UI** requirement group, split by D14: UI-1 … UI-6 are **[v1]**
 mechanical Checks, while UI-7 — deliberate visual design — is **[v2]** and gated by the U1–U5
 interface review. All seven are ticked as of M8: D25 ran one timeboxed styling pass after the
-floor, and U1–U5 passed. Anything further in appearance is v2 work, under the same review and
-its stopping rule.
+floor, and U1–U5 passed. D26 then added one exception, M11's light-mode theme, stated as the
+checkable **UI-8 [v1]**. Anything further in appearance is v2 work, under the same review and its
+stopping rule.
 
 ### Planning docs — three layers
 
@@ -42,7 +43,7 @@ Each answers one question, and they are kept deliberately separate so the strate
 | `plan-v1.md` | In what order, and why? | Whole project |
 | `plans/<milestone>.md` | How do I get through *this* milestone? | While it is in flight |
 
-**No tactical plan is open.** M2's was deleted at its close (2026-09-21), M5's and M4's at theirs (2026-09-22), M6's and M7's at theirs (2026-09-24), and M8's at its close (2026-09-26). Write `plans/m9-verification.md` the day M9 starts, and move this pointer to it.
+**Open tactical plan: `plans/m11-theme.md`** (2026-09-26). M2's was deleted at its close (2026-09-21), M5's and M4's at theirs (2026-09-22), M6's and M7's at theirs (2026-09-24), and M8's at its close (2026-09-26). At M11's close, delete it; write `plans/m9-verification.md` the day M9 starts, and move this pointer to it.
 
 Only one tactical plan exists at a time. It is written the day the milestone starts (writing it earlier means guessing at work that later milestones will reshape), and at milestone close it is deleted and this pointer moves to the next one. Don't expand step-level detail into `plan-v1.md` — one screen per milestone is what keeps that file re-readable.
 

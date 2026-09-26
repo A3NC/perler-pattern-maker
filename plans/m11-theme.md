@@ -1,0 +1,180 @@
+# M11 — Sky theme
+
+_Tactical plan for the milestone in flight. Strategy lives in `plan-v1.md`; the requirements and
+their Checks live in `specs.md`. This file is the route, not the destination. When M11 closes,
+delete it and point `CLAUDE.md` at M9._
+
+**Milestone goal (`plan-v1.md` M11):** the light-mode sky theme. A stepped pixel sky with clouds
+outside the card, navy body text, one AA-passing blue accent, and a pixel arrow and hand cursor.
+
+**Closes:** UI-8. **Re-verifies:** UI-1, UI-4, UI-5, UI-6, UI-7 (U1–U5). **Origin:** D26.
+**Timebox:** half a day. Steps are ordered so that stopping early leaves the core done.
+
+---
+
+## Ground rules
+
+- **Page chrome only.** Do not touch `canvas-view.ts`, `guide-style.ts`, `contrast.ts` or
+  `export-png.ts`. The canvas's colours and the PNG export are outside D26's bounds, and OUT-3
+  needs the export byte-identical.
+- **A change of look is an edit to `:root`** (UI-3). New colours are tokens. Rules read tokens,
+  including the cursor declarations. Match the file's four-space indent and comment style.
+- **Drawn, not supplied.** Clouds and cursors are hand-written SVG (`<rect>`s on a pixel grid,
+  `shape-rendering="crispEdges"`) in `src/assets/`, imported through `url()` like D25's fonts. Vite
+  inlines small files as data URIs and hashes the rest, so a bad path fails the build. No bitmaps
+  and no third-party URLs.
+- **Light mode only.** Add no `prefers-color-scheme` block. v1 has one mode, and a future dark
+  mode gets its own theme (D26).
+- **No layout change unless the background forces one**, and each one is re-audited.
+
+## Constraints this milestone must not break
+
+- **`--bg` has two jobs today.** It is the body's background *and* the background of the inner
+  panels, the dashed empty state, and several sunken rows. User requirement: inner surfaces keep
+  their pre-M11 colours. So the sky gets **new tokens**, and `--bg` keeps its value.
+- **No `transform`, `filter` or `contain` on `body`, `.container` or `#grid-wrapper`.** Any of them
+  on an ancestor makes a `position: fixed` sky scroll with that ancestor. On `#grid-wrapper` they
+  also break M1's sticky canvas and M10's free rulers.
+- **Every piece of text sits inside `.container`** (checked in `index.html`: the body holds only
+  the card and two scripts). So no text is measured against the sky. If a step puts text on the
+  sky, it needs 4.5:1 against `#d3effe` as well as white.
+- **The canvas's own cursors live in two places.** `.painting` sets `crosshair` and the canvas sets
+  `grab`/`grabbing` in `styles.css`, and `crop-view.ts` writes an inline `style.cursor`. All
+  three stay native (D26).
+
+---
+
+## Steps
+
+### 0. Baseline
+
+`npm run dev`, then `npm run ui:audit` and `ui:focus`, so any later failure is known to be M11's.
+Screenshot U1–U5 at both widths as "before".
+
+**Export a pattern from a fixed image and settings, and keep its SHA-256.** Step 5 compares
+against it, and that comparison is UI-8's OUT-3 check.
+
+### 1. Colour tokens (core)
+
+All in `:root`:
+
+| Token | Now | M11 starting value | Measured against |
+|---|---|---|---|
+| `--primary` | `#4F46E5` | `#3d70b2` (hue of `#6893cb`, darker) | white 5.05, `--surface-sunken` 4.59, `--bg` 4.83 |
+| `--primary-hover` | `#4338CA` | `#335d94` | white 6.70 |
+| `--text` | `#111827` | `#06266d` | white 13.95, `--border` 11.26 |
+| `--text-subtle` | `#374151` | `#3a4e78` (navy-tinted) | `--border` 6.68, used by the picker badges |
+| `--text-muted` | `#6B7280` | `#496297` (navy-tinted) | `--bg` 5.78, `--border` 4.88 |
+| `--sky-top` / `--sky-bottom` | (new) | `#d3effe` / `#FFFFFF` | not text |
+
+The starting values were computed for this plan and still need measuring in the page.
+`--bg`, `--surface`, `--surface-sunken` and `--border` stay as they are, per the requirement.
+
+The title, checkboxes (`accent-color`), outlined buttons and focus ring already read `--primary`,
+so they follow automatically. Button labels set their own colour, which keeps them out of
+`--text` as the requirement says.
+
+**The remaining colours, by the "readable and fits" rule.** The status variants are where pink,
+light green and white earn a place:
+- error: pink background, dark red text;
+- success: light green, already green;
+- info: light blue, already blue.
+
+Also decide whether the disabled button's greys take a navy tint. Keep each pair ≥ 4.5:1.
+
+**Done when:** `ui:audit` is green at both widths. Every changed pair is recorded with its ratio,
+for UI-5's note.
+
+### 2. The sky (core)
+
+Two things change:
+- `html { background: var(--sky-bottom); }` as the fallback;
+- `body::before { content: ""; position: fixed; inset: 0; z-index: -1; … }` carries the gradient
+  and the clouds. `background-attachment: fixed` is not used, because iOS Safari ignores it (D26).
+  `body` stops painting `--bg`.
+
+- **Stepped gradient:** a `linear-gradient` with hard stops, so each band starts where the last
+  ends. Use about 6–10 bands from `--sky-top` to `--sky-bottom`, with intermediate colours
+  interpolated by hand and written as tokens or inline stops. Band heights are whole multiples of
+  the art pixel size. Optionally, a one-art-pixel checker row at each band edge makes it read as
+  dithered pixel art rather than stripes. Judge it by eye.
+- **Clouds:** two or three SVGs in `src/assets/sky/`, layered as extra `background-image`s with
+  their own positions. One art pixel is 4–8 CSS px, and set `image-rendering: pixelated`.
+  **White clouds disappear on the white lower bands.** Keep them in the upper, bluer part, or give
+  them an `#edf3f8` underside, the cursor's shading colour, which ties the two together.
+- **The card:** keep its white surface. Its shadow was tuned for a grey page and may need
+  retuning against blue, and that is a token change.
+
+**Done when:** the sky is visible outside the card at 1280 px, stays fixed while scrolling a long
+bead list, is absent inside the card, and the audit is still green.
+
+### 3. The arrow cursor
+
+`src/assets/cursors/arrow.svg`, 32 × 32 CSS px at most. That is a 16 × 16 art grid at 2 px per
+art pixel: white fill, `#edf3f8` shading, `#052048` outline.
+
+Add `--cursor-default: url(...) 1 1, default;` in `:root`, and put `cursor: var(--cursor-default)`
+on `html`. The hotspot must be the arrow's tip pixel.
+
+- **Check that inheritance does not flatten the I-beam.** `cursor` inherits. If the text and
+  number inputs show the arrow, give them `cursor: text` explicitly.
+- **Check that Vite rewrites a `url()` inside a custom property.** Confirm with `npm run build`
+  and look in `dist/`. If it does not, write the `url()` in the rules directly and keep the
+  keyword fallback.
+
+**Done when:** the arrow shows over chrome in Chrome, the inputs show the I-beam, and the canvas
+still shows crosshair, grab and the crop cursors.
+
+### 4. The hand cursor (cut first if time runs out)
+
+`src/assets/cursors/hand.svg` in the same style, hotspot on the fingertip. Add
+`--cursor-pointer: url(...) x y, pointer;`, and replace the six `cursor: pointer` declarations:
+`button`, `.view-toggle` checkbox and label, `.file-button`, the colour input, `.bead-item`.
+Disabled controls keep `not-allowed`.
+
+**Done when:** every clickable control shows the hand, and disabled ones show `not-allowed`.
+
+If this step is cut, add a note to D26 and edit UI-8's Cursor bullet to say "arrow only".
+
+### 5. Layout the background forces, then verify
+
+Look at U1–U5 at both widths. Likely candidates:
+- at 390 px the body's side padding is 0.75 rem, so the sky is a sliver. Decide whether that is
+  enough, or whether the gutter grows within UI-1;
+- the card's top margin, so a cloud shows above it at 1280 px.
+
+Anything else is out of scope. The two known UI-7 weak spots are behaviour and layout the
+background does not cause, and they stay in v2.
+
+Then:
+- `npm run ui:audit` and `ui:focus` at both widths. The focus ring is now `#3d70b2`, so re-shoot
+  it;
+- `npm run check`, which should be untouched;
+- `npm run build`, which confirms the asset URLs and that the cursors are in `dist/`;
+- the export from step 0 again, which must hash byte-identical (OUT-3);
+- U1–U5 by eye on fresh screenshots, plus each bullet of UI-8's Check.
+
+**Done when:** all of the above pass.
+
+---
+
+## Milestone exit
+
+- Tick UI-8 in `specs.md` with its measurements (in headless Chrome, as M8 recorded).
+- Update UI-5's note with the new lowest pair.
+- Add a line to UI-7's note saying U1–U5 re-passed on the theme.
+- Mark M11 done in `plan-v1.md`.
+- Delete this file, and point `CLAUDE.md` at `plans/m9-verification.md`.
+- Record for M9, beside NFR-5, that SVG cursor rendering in Safari and on a real phone is
+  unmeasured. The keyword fallback means the worst case is the native cursor.
+
+## Deferred out of M11 — do not build here
+
+| Thing | Where it belongs |
+|---|---|
+| Dark-mode theme | A future decision of its own (D26). Not an inverted sky |
+| Banner replacing the title | Deferred by D25; still deferred |
+| Pixel crosshair, grab and resize cursors | Excluded by D26: a hotspot error paints the wrong bead |
+| Moving or animated clouds | No motion (D26) |
+| Recolouring the canvas, gridlines or export | Out of bounds; OUT-3 |
+| Generate enabled beside the size-limit error; the 500 px box under a short pattern | UI-7's v2 revisit (U4, U5) |

@@ -603,7 +603,7 @@ and at 390 px wide. Re-run the R1–R6 reference review. Walk the full **[v1]** 
 UI-1 … UI-6 included — and tick every Check.
 
 **Done when:** Every **[v1]** requirement in `specs.md` passes. *(OUT-4, NFR-5, UI-1 … UI-6,
-"Done looks like")*
+UI-8, "Done looks like")*
 
 ---
 
@@ -641,6 +641,87 @@ by a CSS class. M1's canvas contract was untouched: no CSS change, no `Pattern` 
   14 px minimum gridline pitch and a 34 px minimum label pitch. Both are one constant each in
   `guides.ts` and both are covered by tests that assert the behavior, not the number.
 
+### M11 — Sky theme · S — ✅ **Done** (2026-09-26)
+**Do:** Give the page the light-mode theme D26 chose: soft, pastel, pixel-fantasy, in light blue and
+white.
+- **Background:** a pixel sky drawn *outside* the main card only: three blue bands from `#d3effe`
+  at the top, then white, reached roughly two-thirds of the way down the window (approximate, by
+  eye). Each band edge is smoothed by halftone-style dithered pixels, not more colours. White pixel
+  clouds sit on it. Clouds that fade into the white are
+  intended. The canvas, inputs and
+  panels inside the card keep their pre-M11 backgrounds.
+- **Cursor:** a pixel arrow for the page, a pixel pointing hand for clickable controls, and a
+  pixel open hand and fist for panning the canvas. All have a white fill, `#edf3f8` shading and a
+  `#052048` outline. The precise tool cursors (paint crosshair, crop) stay native.
+- **Text:** body text `#06266d`. The title and button labels are exempt.
+- **Accent:** one accent that replaces the original indigo wherever indigo was used, and nowhere
+  else: Generate's fill, the title, checkboxes, the outlined buttons' border and text, pressed
+  tools, the focus ring. Anything that was not indigo keeps its colour, so the unpressed zoom and
+  tool buttons stay white. It is a darker shade of `#6893cb`'s hue, chosen to pass AA.
+- **Everything else:** colours that stay readable and fit the scheme, with pink, light green or
+  white where something has to stand out (the status variants are the obvious place).
+- **Layout:** changes only where the background forces them.
+
+Background and cursors are drawn in the repo as CSS and SVG, not supplied as images.
+
+**Why here:** The demo is close, and a theme buys a lot of impression for half a day. It comes
+*before* M9 because M9's Checks should measure the version that is demoed: styling after M9 reopens
+UI-5 and re-checks UI-1 and UI-6, which this plan calls a regression rather than a task (D25's
+argument, applied again). It is not a reopening of M8, which is closed. D25 also bounded that pass
+to token values, and drawn artwork and a cursor are not token values. The number is only an
+identifier: M11 runs before M9, the way M10 ran before M2.
+
+**Done when:** UI-8 passes its Check at 1280 px and 390 px. `npm run ui:audit` is green. U1–U5 pass
+again by eye. *(UI-8. Re-verifies UI-1, UI-4, UI-5, UI-6, UI-7.)*
+
+**Bounds (D26):** Half a day. Page chrome only. Left unchanged:
+- the pattern canvas's drawing and colours;
+- the PNG export, so OUT-3 cannot drift;
+- the precise tool cursors: the paint crosshair, the crop cursors, the text I-beam, not-allowed.
+  Pan's grab and grabbing are drawn, since a pan targets no cell (D26, revised);
+- motion (none is added), and the banner, which stays deferred per D25.
+
+**Light mode only.** v1 has no dark mode, and a future dark mode gets a theme of its own rather
+than an inverted sky. If the timebox runs out, the pass stops. Cuts are recorded in D26 and UI-8
+rather than left failing, so M9 never inherits a box it cannot tick.
+
+**Watch for:**
+- **`#6893cb` itself fails AA.** White on it is 3.17:1, and `#06266d` on it is 4.40:1, both
+  under 4.5. That is why the accent is a darker shade, starting at `#3d70b2` (5.05:1 on white).
+- **`--bg` paints the page *and* the inner panels today.** The sky needs its own token, or every
+  panel turns blue.
+- **Keep `transform`, `filter` and `contain` off `body`, `.container` and `#grid-wrapper`.** On
+  either of the first two they stop the sky staying fixed; on `#grid-wrapper` they break M1's
+  sticky canvas.
+
+**Done (2026-09-26).** UI-8 is ticked, and UI-1, UI-4, UI-5, UI-6 and UI-7 re-pass on the themed
+page, each with its measurements in `specs.md`. What landed:
+- **Colours:** the accent `#3d70b2` replaces the indigo role for role; body text `#06266d` with
+  navy-tinted secondary steps; a pink error variant. Form fields and selects now inherit the text
+  colour instead of the browser's black.
+- **The sky:** three bands plus white, their edges smoothed by Bayer 2 × 2 dithering drawn as
+  `conic-gradient` tiles, with white pixel clouds in the side gutters. The first cut was eight
+  plain bands, which read as stripes.
+- **Four cursors:** a pixel arrow, a pointing hand, and an open hand and fist for panning. The pan
+  cursors joined the scope mid-milestone (D26, revised). Drawn as ASCII grids, converted to SVG
+  runs, and revised several times by eye.
+- **Layout:** no change was forced. The 390 px sky is a thin dithered frame, deliberately.
+
+**Four things worth carrying forward:**
+- **The sky is two fixed pseudo-elements on `body`**, the sky on `::before` and the clouds on
+  `::after`, both at `z-index: -1`. That is why `body` has no background: one would paint over
+  them. It is also why `body` and `.container` must never take a `transform`, `filter` or
+  `contain`.
+- **A multi-layer `background-*` list must be written out in full.** A shorter list repeats
+  cyclically across the layers, silently.
+- **The UA stylesheet sets `cursor: default` on `label` and `select`**, which beats an inherited
+  custom cursor. A type-selector rule gives them the arrow.
+- **Vite rewrites a `url()` inside a custom property**, inlining files under 4 KB and hashing the
+  rest. The built site was checked serving the hashed hand SVGs.
+
+`npm run ui:export-hash` was added as OUT-3's regression guard for M9. Safari and a real phone are
+recorded for M9 beside NFR-5.
+
 ---
 
 ## Critical path
@@ -650,13 +731,15 @@ any point** — slot it in whenever you want a quick, satisfying win, the way M1
 done. M7 needs the pattern data settled by M5.
 
 **M0 through M7, and M10, are done — the critical path is closed** (M6, 2026-09-24). What remains
-is off it, and M8 (interface floor, 2026-09-26) is done too: **M9 (final verification) is next and
-last.** M8 added D25 and ticked UI-1 … UI-7 and NFR-5. M6 added D22 and ticked
+is off it, and M8 (interface floor, 2026-09-26) and M11 (sky theme, 2026-09-26) are done too:
+**M9 (final verification) is next and last**, and it verifies the themed page. M11 added D26 and
+ticked UI-8. M8 added D25 and ticked UI-1 … UI-7 and NFR-5. M6 added D22 and ticked
 OUT-1, OUT-2, OUT-3 and GEN-5. M7 added D23 and ticked SAVE-1 and SAVE-2. It serialized `Pattern`
 unchanged and widened the save to the source image. Recorded for M9 beside NFR-5: M6's export
-canvas budget and M7's IndexedDB behavior are both unmeasured on Safari and a phone.
+canvas budget and M7's IndexedDB behavior are both unmeasured on Safari and a phone, as are M11's
+SVG cursors and the sky's `round()` and `color-mix()`.
 
-**No tactical plan is open.** M8's was deleted at its close (2026-09-26). Write
+**No tactical plan is open.** M11's was deleted at its close (2026-09-26). Write
 `plans/m9-verification.md` the day M9 starts, not before.
 
 The two large items, **M1 and M2, are the project.** If time runs short, everything after them can
@@ -679,7 +762,8 @@ Background removal and subject auto-trim, pixel-art passthrough mode, palette sw
 other palette files sourced first), legend in the export, user-facing algorithm choice, printable
 PDF, multi-project library, and draw-from-scratch mode.
 _(Undo/redo and flood fill were on this list until D19 moved them into M5. Deliberate visual design
-(UI-7) was on it until D25 admitted one bounded styling pass into M8, which passed U1–U5.)_
+(UI-7) was on it until D25 admitted one bounded styling pass into M8, which passed U1–U5. D26 then
+added M11's light-mode sky theme as UI-8. **A dark mode is not in v1**; it will get its own theme.)_
 
 Reasons for each are in the `specs.md` decision log. Four worth restating:
 

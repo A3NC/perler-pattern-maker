@@ -24,13 +24,27 @@ Five things are worth knowing:
 - **Chrome's full-page screenshot does not paint a nested scroll container outside the viewport**, so the bead list can come out blank. Capture it scrolled into view.
 - Everything was measured in headless Chrome's device emulation. Real-phone and Safari checks stay with M9. Two UI-7 weak spots are recorded for v2, both behaviour or layout: Generate stays enabled beside the size-limit error, and the fixed 500 px pattern box under a short pattern.
 
+**M11 — the light-mode sky theme — is complete** (2026-09-26), under **D26**, ticking **UI-8**. It ran before M9 so M9 verifies the themed page. What landed:
+- the accent `#3d70b2`, which replaces the old indigo role for role (a button that was white stays white);
+- navy body text `#06266d`, which form fields now inherit too;
+- a pink error state;
+- a dithered pixel sky with clouds, drawn outside the card;
+- four pixel cursors: arrow, pointing hand, and an open hand and fist for panning.
+
+Four things worth knowing:
+- **The sky is two fixed pseudo-elements on `body`**: `::before` is the sky, `::after` the clouds, both `z-index: -1`. That is why `body` paints no background, and why `body` and `.container` must never take `transform`, `filter` or `contain`.
+- **The precise tool cursors stay native on purpose** (D26): the paint crosshair, the crop cursors, the I-beam and `not-allowed`. A drawn crosshair with a misplaced hotspot paints the wrong bead. Pan is drawn because it targets no cell.
+- **The three hands share rows 8–15 exactly** (thumb, palm, wrist), so switching between them never moves the palm. Keep that if one is redrawn.
+- **Dark mode is out of scope**, and gets a theme of its own, not an inverted sky. Safari and a real phone are unmeasured for the cursors and the sky's `round()`/`color-mix()`, recorded for M9 beside NFR-5.
+
 **M9 is next, and last**.
 
 Appearance is tracked as the **UI** requirement group, split by D14: UI-1 … UI-6 are **[v1]**
 mechanical Checks, while UI-7 — deliberate visual design — is **[v2]** and gated by the U1–U5
 interface review. All seven are ticked as of M8: D25 ran one timeboxed styling pass after the
-floor, and U1–U5 passed. Anything further in appearance is v2 work, under the same review and
-its stopping rule.
+floor, and U1–U5 passed. D26 then added one exception, M11's light-mode theme, stated as the
+checkable **UI-8 [v1]** and ticked at M11, where U1–U5 re-passed. Anything further in appearance is v2 work, under the same review and its
+stopping rule.
 
 ### Planning docs — three layers
 
@@ -42,7 +56,7 @@ Each answers one question, and they are kept deliberately separate so the strate
 | `plan-v1.md` | In what order, and why? | Whole project |
 | `plans/<milestone>.md` | How do I get through *this* milestone? | While it is in flight |
 
-**No tactical plan is open.** M2's was deleted at its close (2026-09-21), M5's and M4's at theirs (2026-09-22), M6's and M7's at theirs (2026-09-24), and M8's at its close (2026-09-26). Write `plans/m9-verification.md` the day M9 starts, and move this pointer to it.
+**No tactical plan is open.** M2's was deleted at its close (2026-09-21), M5's and M4's at theirs (2026-09-22), M6's and M7's at theirs (2026-09-24), and M8's and M11's at theirs (2026-09-26). Write `plans/m9-verification.md` the day M9 starts, and move this pointer to it.
 
 Only one tactical plan exists at a time. It is written the day the milestone starts (writing it earlier means guessing at work that later milestones will reshape), and at milestone close it is deleted and this pointer moves to the next one. Don't expand step-level detail into `plan-v1.md` — one screen per milestone is what keeps that file re-readable.
 
@@ -56,7 +70,7 @@ Requires Node >= 22. `npm install` first.
 - `npm test` — Vitest, browser-free (`npm run test:watch` to iterate)
 - `npm run typecheck` — `tsc --noEmit`; Vite strips types without checking them, so this is the only thing that enforces them
 - `npm run check` — typecheck + tests, the full gate
-- `npm run ui:audit` — the mechanical UI Checks (UI-1, UI-4, UI-5, UI-6) in every screen state at 1280 and 390 px, against a **running** app (`npm run dev` first; `APP=` to point elsewhere). Exits non-zero on a failure. `ui:focus`, `ui:file-picker` and `ui:fonts` are the companions; see `scripts/ui-check/` below
+- `npm run ui:audit` — the mechanical UI Checks (UI-1, UI-4, UI-5, UI-6) in every screen state at 1280 and 390 px, against a **running** app (`npm run dev` first; `APP=` to point elsewhere). Exits non-zero on a failure. `ui:focus`, `ui:file-picker`, `ui:fonts` and `ui:export-hash` are the companions; see `scripts/ui-check/` below
 
 ### How to run it
 
@@ -112,7 +126,12 @@ In all three failure cases the module never executes, so `main.ts`'s own error h
   - the tool-button rules are scoped `:is(.editor-controls, .zoom-controls)`, keeping the two-class specificity that beats the 640 px query's full-width `button`;
   - `--text-title` is a px value (56 / 37.333 px) because Jersey 10 is crisp only at multiples of its 18.67 px grid, while the rest of the type scale is rem.
   The `@font-face` rules load self-hosted Latin-subset `woff2` from `src/assets/fonts/` (Jersey 10 and Space Grotesk, each beside its OFL license). They are imported through Vite, so the build hashes them and a bad path fails the build.
-- `scripts/ui-check/` — M8's measurement harness, kept for M9: headless Chrome over the DevTools protocol, using nothing but Node 22's built-in `WebSocket`. `cdp.mjs` is the shared driver. `audit.mjs` measures overflow, select truncation, 44 px targets, WCAG contrast (placeholders included) and the focus ring on every Tab stop, in six screen states at both widths. `focus-shots.mjs` screenshots each control focused. `file-picker.mjs` checks the upload control's behaviour. `fonts.mjs` reports which face Chrome actually painted and captures the canvas codes after a generate and after a restore. Output goes to the git-ignored `scripts/ui-check/out/`.
+  M11 (D26) added the sky and the cursors, both still token-driven:
+  - **The sky** mixes `--sky-top` and `--sky-bottom` with `color-mix`. Its dithering is 18 `conic-gradient` layers, and its `background-size`/`-repeat` lists are written out in full, because a shorter list repeats cyclically.
+  - **The cursors** are `--cursor-default`, `--cursor-pointer`, `--cursor-grab` and `--cursor-grabbing`, each with the native keyword as fallback. Vite rewrites a `url()` inside a custom property, so they resolve in dev and in the build.
+  - **`label, select` get the arrow explicitly**, because the UA's `cursor: default` beats inheritance.
+- `src/assets/sky/`, `src/assets/cursors/` — M11's artwork as hand-drawn SVG: each file is `<rect>` runs on a pixel grid, and keeps that grid as ASCII in its comment, so edit the grid and regenerate rather than nudging rects. Cursors are 2 CSS px per art pixel; clouds 6 px (set by `background-size`).
+- `scripts/ui-check/` — M8's measurement harness, kept for M9: headless Chrome over the DevTools protocol, using nothing but Node 22's built-in `WebSocket`. `cdp.mjs` is the shared driver. `audit.mjs` measures overflow, select truncation, 44 px targets, WCAG contrast (placeholders included) and the focus ring on every Tab stop, in six screen states at both widths. `focus-shots.mjs` screenshots each control focused. `file-picker.mjs` checks the upload control's behaviour. `fonts.mjs` reports which face Chrome actually painted and captures the canvas codes after a generate and after a restore. `export-hash.mjs` (M11) prints the SHA-256 of two exports of `fixtures/art.png` at default settings: they must match each other (OUT-3) and the baseline recorded before a styling change. Output goes to the git-ignored `scripts/ui-check/out/`.
   Three traps the harness already handles, and a new script must too:
   - Chrome's full-page capture does not paint a nested scroll container outside the viewport (use `captureElement`);
   - after `blur()`, Tab resumes from the last focused element rather than the top (use `focusFromTop`);

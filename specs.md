@@ -542,9 +542,10 @@ stated as checkable facts so that it can be a [v1] box.
     buttons stay white. The token is a darker shade of `#6893cb`'s hue, at which white text on it,
     and it on white, both reach 4.5:1.
   - **Cursor.** Over page chrome, the default pointer is a pixel arrow and clickable controls show
-    a pixel hand. Both have a white fill, `#edf3f8` shading and a `#052048` outline, with the
-    hotspot on the tip. The canvas's paint, pan and crop cursors, the text I-beam and
-    `not-allowed` are unchanged.
+    a pixel pointing hand, with the hotspot on the arrow's tip and the fingertip. On the pattern
+    canvas in pan mode, the grab and grabbing cursors are a pixel open hand and fist. All four
+    have a white fill, `#edf3f8` shading and a `#052048` outline. The paint crosshair, the crop
+    cursors, the text I-beam and `not-allowed` are unchanged.
   - **Floor intact.** UI-1, UI-4, UI-5 and UI-6 still pass (`npm run ui:audit`), and two exports
     of one pattern are byte-identical to an export made before M11 (OUT-3).
   Dark mode is out of this requirement's scope. v1 has none, and a future dark mode gets a theme of
@@ -1343,10 +1344,16 @@ editor state would depend on M5. Do not fix screenshots of these states before t
     the large-text and non-text 3:1 rules. One accent, not two near-identical blues. The starting
     value is `#3d70b2`: 5.05:1 against white text, 4.59:1 on `--surface-sunken`. The final value is
     whatever M11 measures.
-  - **The cursor covers the default arrow and the clickable hand. Tool cursors stay native.**
-    Crosshair, grab and the crop-resize arrows each point at an exact cell or edge. A hand-drawn
-    replacement with a misplaced hotspot would paint the wrong bead. The text I-beam and
-    `not-allowed` stay native too. Custom cursors do nothing on touch, so phones are unaffected
+  - **The cursor covers the default arrow, the clickable hand, and the pan hands. The precise
+    tool cursors stay native.** The crosshair and the crop-resize arrows each point at an exact
+    cell or edge, and a hand-drawn replacement with a misplaced hotspot would paint the wrong
+    bead. The text I-beam and `not-allowed` stay native too. _[Revised the same day: this bullet
+    first kept grab native as well, but the reason does not reach it. A pan drag moves the whole
+    view and targets no cell, so its hotspot needs no precision. Left native, it would put the
+    system's smooth hand directly beside the pixel pointing hand, the most visible mismatch the
+    cursor work could leave. So grab and grabbing are drawn, as an open hand and a fist sharing
+    the pointing hand's art. The crop *move* cursor, set inline by `crop-view.ts`, also needs no
+    precision, but it is a different symbol and stays native to keep the scope where it is.]_ Custom cursors do nothing on touch, so phones are unaffected
     either way.
   - **The sky is fixed to the window**, and the card scrolls over it. It is drawn by a fixed
     layer, not `background-attachment: fixed`, which iOS Safari ignores.
@@ -1355,8 +1362,8 @@ editor state would depend on M5. Do not fix screenshots of these states before t
     Layout changes are made only where the background forces them. No motion, no icon redraw.
     D25's banner stays deferred. The artwork is self-hosted like D25's fonts, so the look never
     depends on a third-party request. If the timebox ends before UI-8 passes, the unfinished part
-    is cut from UI-8 by a note here, never left failing for M9. Cut the hand cursor first, then
-    the clouds' variety. The colours and the banded sky are the core and are done first.
+    is cut from UI-8 by a note here, never left failing for M9. Cut the pan hands first, then
+    the pointing hand, then the clouds' variety. The colours and the banded sky are the core and are done first.
   - **Light mode only.** v1 has no dark mode, and this entry does not create one. When a dark mode
     is built it gets a theme of its own, decided separately. UI-8 names light mode so that it is
     not read as requiring an inverted sky. M11 adds no `prefers-color-scheme` handling.

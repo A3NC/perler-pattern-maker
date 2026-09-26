@@ -39,8 +39,8 @@ outside the card, navy body text, one AA-passing blue accent, and a pixel arrow 
   the card and two scripts). So no text is measured against the sky. If a step puts text on the
   sky, it needs 4.5:1 against `#d3effe` as well as white.
 - **The canvas's own cursors live in two places.** `.painting` sets `crosshair` and the canvas sets
-  `grab`/`grabbing` in `styles.css`, and `crop-view.ts` writes an inline `style.cursor`. All
-  three stay native (D26).
+  `grab`/`grabbing` in `styles.css`, and `crop-view.ts` writes an inline `style.cursor`. The
+  crosshair and the crop cursors stay native (D26). Grab and grabbing are drawn in step 4b.
 
 ---
 
@@ -243,7 +243,7 @@ state. After the fix:
 arrow on screen needs one look by hand in the running app. `ui:audit` is green, the export hash
 is unchanged, and `npm run check` passes 211.
 
-### 4. The hand cursor (cut first if time runs out)
+### 4. The pointing hand (cut second if time runs out)
 
 `src/assets/cursors/hand.svg` in the same style, hotspot on the fingertip. Add
 `--cursor-pointer: url(...) x y, pointer;`, and replace the six `cursor: pointer` declarations:
@@ -253,6 +253,24 @@ Disabled controls keep `not-allowed`.
 **Done when:** every clickable control shows the hand, and disabled ones show `not-allowed`.
 
 If this step is cut, add a note to D26 and edit UI-8's Cursor bullet to say "arrow only".
+
+### 4b. The pan hands (cut first if time runs out)
+
+Added the same day by D26's revision: a pan targets no cell, so the hotspot-precision reason for
+keeping tool cursors native does not cover it. A native grab hand beside the pixel pointing hand
+would be the most visible mismatch left.
+
+- `src/assets/cursors/grab.svg`, an open hand, and `grabbing.svg`, a fist. Both are built from
+  the pointing hand's art (same palm, outline weight and shading), so the three read as one set.
+  The hotspot is the palm centre, since precision does not matter here.
+- Add `--cursor-grab` and `--cursor-grabbing` tokens with `grab` and `grabbing` as fallbacks,
+  and swap them into the canvas's two rules in `styles.css`.
+- Keep the same even-step rule for diagonals as the arrow's tail.
+
+**Done when:** the pan-mode canvas shows the open hand, and the fist while dragging. The paint
+crosshair and the crop cursors are still native.
+
+If this step is cut, add a note to D26 and restore "grab stays native" in UI-8.
 
 ### 5. Layout the background forces, then verify
 
@@ -292,7 +310,8 @@ Then:
 |---|---|
 | Dark-mode theme | A future decision of its own (D26). Not an inverted sky |
 | Banner replacing the title | Deferred by D25; still deferred |
-| Pixel crosshair, grab and resize cursors | Excluded by D26: a hotspot error paints the wrong bead |
+| Pixel crosshair and crop cursors | Excluded by D26: a hotspot error paints the wrong bead or edge |
+| Pixel crop *move* cursor | Needs no precision, but a different symbol; kept out to hold scope (D26, revised) |
 | Moving or animated clouds | No motion (D26) |
 | Recolouring the canvas, gridlines or export | Out of bounds; OUT-3 |
 | Generate enabled beside the size-limit error; the 500 px box under a short pattern | UI-7's v2 revisit (U4, U5) |

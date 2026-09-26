@@ -650,8 +650,9 @@ white.
   clouds sit on it. Clouds that fade into the white are
   intended. The canvas, inputs and
   panels inside the card keep their pre-M11 backgrounds.
-- **Cursor:** a pixel arrow for the page, and a pixel hand for clickable controls. Both have a
-  white fill, `#edf3f8` shading and a `#052048` outline. The canvas tool cursors stay native.
+- **Cursor:** a pixel arrow for the page, a pixel pointing hand for clickable controls, and a
+  pixel open hand and fist for panning the canvas. All have a white fill, `#edf3f8` shading and a
+  `#052048` outline. The precise tool cursors (paint crosshair, crop) stay native.
 - **Text:** body text `#06266d`. The title and button labels are exempt.
 - **Accent:** one accent that replaces the original indigo wherever indigo was used, and nowhere
   else: Generate's fill, the title, checkboxes, the outlined buttons' border and text, pressed
@@ -676,7 +677,8 @@ again by eye. *(UI-8. Re-verifies UI-1, UI-4, UI-5, UI-6, UI-7.)*
 **Bounds (D26):** Half a day. Page chrome only. Left unchanged:
 - the pattern canvas's drawing and colours;
 - the PNG export, so OUT-3 cannot drift;
-- the tool cursors: crosshair, grab, crop resize, the text I-beam, not-allowed;
+- the precise tool cursors: the paint crosshair, the crop cursors, the text I-beam, not-allowed.
+  Pan's grab and grabbing are drawn, since a pan targets no cell (D26, revised);
 - motion (none is added), and the banner, which stays deferred per D25.
 
 **Light mode only.** v1 has no dark mode, and a future dark mode gets a theme of its own rather

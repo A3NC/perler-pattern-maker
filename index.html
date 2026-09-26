@@ -99,8 +99,17 @@
         <div id="stats"></div>
 
         <div class="zoom-controls" id="zoomControls">
-            <button id="zoomOutBtn">- Zoom</button>
-            <button id="zoomInBtn">+ Zoom</button>
+            <!--
+                Icon buttons in the editor bar's idiom (same class, same swap
+                rules -- see the note above #editorControls). As text buttons
+                these two were what pushed this row past 390px (UI-1).
+            -->
+            <button type="button" id="zoomOutBtn" class="tool-button" aria-label="Zoom out" title="Zoom out">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M8 11h6"/></svg>
+            </button>
+            <button type="button" id="zoomInBtn" class="tool-button" aria-label="Zoom in" title="Zoom in">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M11 8v6"/><path d="M8 11h6"/></svg>
+            </button>
             <div class="view-toggle">
                 <input type="checkbox" id="toggleTextBtn" checked>
                 <label for="toggleTextBtn">Show Codes</label>
@@ -113,9 +122,9 @@
 
         <!--
             M5's editor bar. A sibling of .zoom-controls rather than more
-            controls inside it: that row is already tight at 390px and does not
-            wrap, and six 44px targets (UI-6) do not fit beside the zoom
-            buttons. Hidden until a pattern exists, the same way .zoom-controls
+            controls inside it: view settings and editing tools are different
+            things, and six 44px targets (UI-6) do not fit beside the zoom
+            row at 390px. Hidden until a pattern exists, the same way .zoom-controls
             is. Pan is the default tool, so nothing paints until the user picks
             a paint tool (EDIT-5).
         -->
@@ -180,7 +189,7 @@
         </div>
 
         <div class="output-container" id="outputContainer">
-            <div id="placeholderText" style="display: flex; justify-content: center; align-items: center; height: 100%; color: #6B7280;">
+            <div id="placeholderText">
                 Pattern will appear here
             </div>
         </div>
@@ -188,8 +197,7 @@
         <!--
             M6's export (OUT-1). Below the pattern rather than above it: the
             space over the canvas already holds the stats line, the zoom row and
-            the editor bar, and the zoom row overflows at 390 px (recorded under
-            M8). Hidden until a pattern exists. M8 owns the final placement.
+            the editor bar. Hidden until a pattern exists. M8 kept it here.
         -->
         <div class="export-controls" id="exportControls">
             <button type="button" id="exportBtn">Download PNG</button>
@@ -198,9 +206,16 @@
         <div id="beadCountsContainer">
             <div class="count-header">
                 <h3>Required Beads</h3>
+                <!--
+                    The options were "Sort by Largest Count" / "Sort by Color
+                    Name", and the prefix is what truncated the select at 390px
+                    (UI-1). It restated what the control is, which is the
+                    label's job -- hidden, as the picker filter's is.
+                -->
+                <label for="sortOption" class="sr-only">Sort beads by</label>
                 <select id="sortOption">
-                    <option value="count">Sort by Largest Count</option>
-                    <option value="name">Sort by Color Name</option>
+                    <option value="count">Largest count</option>
+                    <option value="name">Color name</option>
                 </select>
             </div>
             <div id="beadList" class="bead-list"></div>

@@ -26,7 +26,7 @@ Each answers one question, and they are kept deliberately separate so the strate
 | `plan-v1.md` | In what order, and why? | Whole project |
 | `plans/<milestone>.md` | How do I get through *this* milestone? | While it is in flight |
 
-**No tactical plan is open.** M2's was deleted at its close (2026-09-21), M5's and M4's at theirs (2026-09-22), and M6's and M7's at theirs (2026-09-24). Write `plans/m8-interface.md` the day M8 starts, and move this pointer to it.
+**The open tactical plan is `plans/m8-interface.md`** (written 2026-09-26). It adds a timeboxed styling pass after UI-1 … UI-6, to be recorded as D25 in its Step 0. M2's plan was deleted at its close (2026-09-21), M5's and M4's at theirs (2026-09-22), and M6's and M7's at theirs (2026-09-24).
 
 Only one tactical plan exists at a time. It is written the day the milestone starts (writing it earlier means guessing at work that later milestones will reshape), and at milestone close it is deleted and this pointer moves to the next one. Don't expand step-level detail into `plan-v1.md` — one screen per milestone is what keeps that file re-readable.
 

@@ -565,6 +565,10 @@ after M9 ticks the boxes, reopening them is a regression rather than a task.
 
 **Done when:** UI-1 … UI-6 pass their Checks at both 1280 px and 390 px. *(UI-1 … UI-6, NFR-5)*
 
+**Widened (2026-09-26, D25):** a timeboxed styling pass runs after UI-1 … UI-6 are committed —
+values and surfaces only, reviewed against U1–U5. UI-7 may be ticked by it but is not required for
+M9.
+
 **Watch for:** This is deliberately the *mechanical* half of appearance — consistency and
 breakage, not taste. The subjective half is UI-7 and is **[v2]**; if you find yourself choosing
 fonts or reworking the color story, you have crossed into the tuning loop D14 exists to prevent.
@@ -629,7 +633,7 @@ OUT-1, OUT-2, OUT-3 and GEN-5. M7 added D23 and ticked SAVE-1 and SAVE-2. It ser
 unchanged and widened the save to the source image. Recorded for M9 beside NFR-5: M6's export
 canvas budget and M7's IndexedDB behavior are both unmeasured on Safari and a phone.
 
-**No tactical plan is open.** Write `plans/m8-interface.md` the day M8 starts, not before.
+**The open tactical plan is `plans/m8-interface.md`** (2026-09-26).
 
 The two large items, **M1 and M2, are the project.** If time runs short, everything after them can
 be trimmed; neither of them can be.

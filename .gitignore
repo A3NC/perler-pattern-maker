@@ -12,5 +12,5 @@ scripts/ui-check/out/
 # macOS
 .DS_Store
 
-# personal working calendar; specs.md and plan-v1.md are authoritative
+# personal working calendar; SPEC.md and plan-v1.md are authoritative
 schedule.md

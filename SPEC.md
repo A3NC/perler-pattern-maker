@@ -1,6 +1,11 @@
 # Perler Pattern Generator — Specification
 
-_Last updated: 2026-09-21 · Status: v1 in progress_
+_Last updated: 2026-09-27 · Status: **v1 complete**. Every [v1] requirement below is ticked._
+
+**Contents:** [Purpose](#purpose) · [Core scenarios](#core-scenarios) · [Scope](#scope) ·
+[System architecture](#system-architecture) · [Requirements](#requirements) (IN, SET, PAL, GEN,
+VIEW, EDIT, OUT, SAVE, UI, NFR) · [Won't build](#wont-build) · [Done looks like](#done-looks-like) ·
+[Open questions](#open-questions) · [Decision log](#decision-log)
 
 ## Purpose
 
@@ -67,6 +72,61 @@ until D19 did the same.)_
 
 **Later, undated:** drawing from scratch (S4), user-facing algorithm selection, a multi-project
 library, printable multi-page PDF export.
+
+## System architecture
+
+A static single-page app: TypeScript built by Vite into plain HTML, CSS and JS. There is no
+server-side code. The palette is a JSON file served with the page, and all state lives in the
+browser (SAVE-2, NFR-1).
+
+```mermaid
+flowchart LR
+    F[Image file] --> G["Input gate<br/>lib/image-file.ts<br/>upload.ts"]
+    G --> C["Crop<br/>lib/crop.ts<br/>render/crop-view.ts"]
+    C --> R["rasterize.ts<br/>image → SourcePixels"]
+    P["public/colors_221.json<br/>palette.ts"] --> GEN
+    R --> GEN["Pipeline — pipeline/generate.ts<br/>downscale → OkLab match → reduce colors"]
+    GEN --> S[("state/pattern-state.ts<br/>the live Pattern + tallies")]
+    S --> V["render/canvas-view.ts<br/>zoom, pan, codes, grid"]
+    S --> I["render/inventory.ts<br/>bead list"]
+    S --> E["render/editor.ts<br/>brush, eraser, fill, undo"]
+    E -->|applyEdits| S
+    S --> A["state/autosave.ts<br/>IndexedDB"]
+    A -->|restore on load| S
+    S --> X["render/export-png.ts<br/>PNG download"]
+```
+
+**Layers.** The code is split by whether it touches the page:
+
+| Directory | Role | Tested |
+|---|---|---|
+| `src/lib/` | Pure logic: palette validation and dimensions, file-header sniffing, crop geometry, viewport math, gridline geometry, edits and undo history, flood fill, export layout, save format | Yes, in Node (NFR-4) |
+| `src/pipeline/` | The conversion (GEN-6 boundary): pixels in, `Pattern` out, with no DOM access | Yes, in Node |
+| `src/state/` | The single live pattern (`pattern-state.ts`) and IndexedDB autosave | Browser (e2e script) |
+| `src/render/` | Canvas view, editor pointer wiring, crop preview, bead list, PNG export | Browser (UI scripts) |
+| `src/main.ts` | Startup wiring: palette load, upload, settings readout, Generate | Browser |
+
+**Key design points.**
+
+- **`Pattern` (in `src/types.ts`) is the contract between modules.** The pipeline produces it; the
+  view renders it; the editor mutates it in place; the export draws it; the autosave serializes it.
+- **One owner of live state.** `pattern-state.ts` holds the pattern, its bead tallies and the
+  settings that produced it. The view, bead list, stats line, export button and autosave subscribe
+  to it rather than keeping copies, so an edit reaches all of them at once (EDIT-4).
+- **The pipeline is replaceable (GEN-6).** `generatePattern` runs downsample → match → tally →
+  reduce → remap. The matcher (OkLab or RGB) and the downsampler (box average or the lineart-aware
+  variant) are each chosen by one identifier (`ACTIVE_MATCHER`, `ACTIVE_DOWNSAMPLER`).
+- **One edit primitive.** Paint, erase, fill, undo and redo all go through `applyEdits` on
+  `{index, prev, next}` records (`lib/pattern-edit.ts`), with a bounded history
+  (`lib/edit-history.ts`).
+- **Input is checked from its bytes before decoding (D20)**, so each failure gets its own message
+  (IN-2 … IN-6).
+- **The canvas view is sized to its container, not the pattern (D1).** It draws only the visible
+  cells, so zoom and pan cost the same at any pattern size.
+- **The export is independent of the view (D22, OUT-3).** It is drawn on a detached canvas at a
+  fixed cell size in a named system font, so two exports of one pattern are byte-identical.
+- **Autosave (D23)** stores the pattern, its settings, and the source image with its crop in
+  IndexedDB, so a refresh restores everything and the pattern can still be regenerated.
 
 ## Requirements
 
@@ -269,7 +329,7 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
 - [x] **GEN-1 [v1]** Produce a grid of the computed dimensions in which every cell holds exactly
   one palette color, or is marked empty where the source is transparent.
   **Check:** For a source image with a transparent region, the corresponding cells render as empty
-  and are excluded from the bead count. _(Partially implemented.)_
+  and are excluded from the bead count.
   _(M9: R1 at 100 × 100 has 6,208 empty cells and 3,792 beads. The stats line, the inventory sum
   and SET-3's pre-generate readout all say 3,792, and the empty cells render as empty.)_
   Note: this already solves S1 for artwork saved with a transparent background. SET-7 exists for
@@ -355,10 +415,10 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
 - [x] **VIEW-2 [v1]** Zoom in and out, and pan when the pattern exceeds the viewport.
   **Check:** At maximum zoom individual cells and codes are comfortably readable; at minimum zoom
   the whole pattern fits the viewport. Zoom keeps the viewport center fixed.
-  _(Partially implemented via CSS scaling; replaced by VIEW-1.)_
+  _(Implemented at M1 on the canvas view (VIEW-1): zoom redraws, drag pans, centre stays fixed.)_
 - [x] **VIEW-3 [v1]** Color codes are drawn on each cell and can be toggled off.
   **Check:** Toggling off removes all code text and leaves colors unchanged; toggling on restores
-  it. _(Partially implemented.)_
+  it. _(Implemented at M1.)_
 - [x] **VIEW-4 [v1]** Code text is legible against its cell color.
   **Check:** Codes on the palette's darkest and lightest colors are both readable.
   _(Implemented via contrast-based text color.)_
@@ -474,7 +534,7 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
   limit. See D22.)_
 - [x] **OUT-4 [v1]** Show the bead inventory on screen: each required color's code, swatch, and
   count, plus the total bead count and the number of distinct colors. Sortable.
-  **Check:** Counts sum to the number of non-empty cells. _(Partially implemented.)_
+  **Check:** Counts sum to the number of non-empty cells.
   _(M9: the counts sum to the non-empty cells on R1 (3,792 = 3,792, and equal to SET-3's readout),
   and again after hand-erasing two cells (48 = 48, with the stats line following). Sorting by count
   and by name both reorder the list.)_
@@ -791,7 +851,8 @@ Additional pass conditions for all six: distinct color count is within the SET-4
 region of the source is broken into three or more colors that read as noise; no visible checkerboard
 or moiré artifacts.
 
-**Interface review (UI-7) — gates v2, not v1.** The same procedure as above, applied to the app's
+**Interface review (UI-7) — gates v2, not v1.** _(Passed early, at M8 under D25, and re-passed
+at M11 on D26's theme; see UI-7. The screen states below are final.)_ The same procedure as above, applied to the app's
 own appearance. v1 only has to pass the mechanical UI-1 … UI-6 Checks; this review is what "looks
 designed" means, and it is deliberately held to v2 so it cannot become an open-ended tuning loop
 inside v1 (D14). Walk these five fixed screen states at 1280 px, and U5 at 390 px.
@@ -810,8 +871,7 @@ clearly distinguishes headings, labels, and body text.
 
 **Stopping rule, as for R1–R6: when U1–U5 pass, stop, even if it feels improvable.**
 
-The state list is finalized once the UI surface is settled — U3 depends on M1's canvas view, and an
-editor state would depend on M5. Do not fix screenshots of these states before then.
+_(The state list was finalized at M8, once M1's canvas view and M5's editor existed.)_
 
 ## Constraints and hunches
 
@@ -1598,7 +1658,7 @@ editor state would depend on M5. Do not fix screenshots of these states before t
   logic lives in `src/`. And it split PAL-3's messaging across two places. The failure cases now
   leave the page on "Loading color palette..." with Generate disabled. Nothing generates against
   a missing palette, so PAL-3's intent holds, and PAL-3's own Check (a renamed palette file) is
-  reported by `main.ts`, which the guard never handled. `claude.md` and the README say what the
+  reported by `main.ts`, which the guard never handled. `CLAUDE.md` and the README say what the
   stuck line means. `window.__perlerBooted` went with it, and the UI-check harness now waits on
   the DOM state it was already checking.
 

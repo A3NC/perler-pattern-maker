@@ -1,6 +1,6 @@
 # Version 1 — Build Plan
 
-_Written 2026-09-07 · Scope defined by the **[v1]** requirements in `specs.md`_
+_Written 2026-09-07 · Scope defined by the **[v1]** requirements in `SPEC.md`_
 
 ## What v1 is
 
@@ -10,7 +10,7 @@ with a brush, eraser and fill, undoing mistakes → read the bead inventory → 
 codes on every cell.
 The current pattern autosaves locally.
 
-Everything else in `specs.md` is marked **[v2]** or **[later]** and is out of scope here.
+Everything else in `SPEC.md` is marked **[v2]** or **[later]** and is out of scope here.
 
 ## Starting point
 
@@ -129,7 +129,7 @@ properly, and it needs to come before the editor so the editor isn't compensatin
 has a real fix.
 
 **Done when:** Tests cover OkLab matching and color reduction; the pattern never exceeds the color
-limit; the same inputs always produce the same output; and the R1–R6 reference review in `specs.md`
+limit; the same inputs always produce the same output; and the R1–R6 reference review in `SPEC.md`
 passes. *(GEN-2, GEN-3, GEN-4, GEN-6, GEN-7, GEN-8, SET-4)*
 
 **Watch for:** This is a tuning task with no finish line and no error message. Timebox it. The
@@ -156,7 +156,7 @@ grid is fixed before any of it runs.
 **What the milestone cost that the plan did not predict:** the review found two defects *after*
 D18 shipped, each needing its own diagnosis — colour specks traced to reconstructing cells from
 single extreme pixels, and dark-region jaggedness traced to a threshold measured in the wrong
-space. Both are written up in `specs.md` D18. The transferable part is that both were confirmed by a
+space. Both are written up in `SPEC.md` D18. The transferable part is that both were confirmed by a
 cheap A/B before any code was written, the same way the `MERGE_FLOOR` diagnostic ruled out Phase A.
 
 **NFR-2 is over and stays over:** 65 ms at the design target, 315 ms at the hard limit, against
@@ -323,7 +323,7 @@ one pass.
 redo. Live bead-count updates. A pan mode that never paints by accident.
 
 **Scope change, 2026-09-21:** this milestone read "no undo, no fill" until D19 reversed D7. Its
-tactical plan, `plans/m5-editor.md`, was deleted at the milestone's close; D19 in `specs.md` is the
+tactical plan, `plans/m5-editor.md`, was deleted at the milestone's close; D19 in `SPEC.md` is the
 surviving record of why the scope moved.
 
 **Why here:** This is the safety net for M2. It needs canvas (M1) and a settled pipeline (M2).
@@ -387,7 +387,7 @@ recorded and not invented around: **no requirement covers the distinct-color cou
   color and with empty", and this is how the second half is reachable: the eraser is a tool, so
   without it there is no way to say *fill* with empty.
 
-**Q10 is answered: no mirror, no copy-region.** Written up in full at Q10 in `specs.md`. The short
+**Q10 is answered: no mirror, no copy-region.** Written up in full at Q10 in `SPEC.md`. The short
 version is that no M5 tool has a selection model — fill's region comes from the pattern — and both
 of those tools need one; and undo plus the eyedropper took most of the cost out of the symmetric
 case. Q10 stays open as a *generation* question, which is the only place it was ever reachable from.
@@ -571,7 +571,7 @@ values and surfaces only, reviewed against U1–U5. UI-7 may be ticked by it but
 M9.
 
 **Done (2026-09-26).** UI-1 … UI-6, NFR-5 and UI-7 are ticked, each with its measurements in
-`specs.md`. The floor came first:
+`SPEC.md`. The floor came first:
 - `styles.css` re-indented to four spaces, and 113 literals tokenized into `:root` scales;
 - icon zoom buttons, and the sort select without its "Sort by " prefix;
 - scroll lists inset so their rings are not clipped;
@@ -603,10 +603,10 @@ fonts or reworking the color story, you have crossed into the tuning loop D14 ex
 and at 390 px wide. Re-run the R1–R6 reference review. Walk the full **[v1]** requirement list —
 UI-1 … UI-6 included — and tick every Check.
 
-**Done when:** Every **[v1]** requirement in `specs.md` passes. *(OUT-4, NFR-5, UI-1 … UI-6,
+**Done when:** Every **[v1]** requirement in `SPEC.md` passes. *(OUT-4, NFR-5, UI-1 … UI-6,
 UI-8, "Done looks like")*
 
-**Delivered:** every **[v1]** box in `specs.md` is ticked (55). Four decisions settled what
+**Delivered:** every **[v1]** box in `SPEC.md` is ticked (55). Four decisions settled what
 verification alone could not:
 - **D27 (NFR-2):** quality over speed at every size. `SUPERSAMPLE` stays 8 and the buffer stays
   4M. The hard limit blocks ~300 ms in Chrome and ~195 ms in Safari, with correct output. Generate
@@ -730,7 +730,7 @@ rather than left failing, so M9 never inherits a box it cannot tick.
   sticky canvas.
 
 **Done (2026-09-26).** UI-8 is ticked, and UI-1, UI-4, UI-5, UI-6 and UI-7 re-pass on the themed
-page, each with its measurements in `specs.md`. What landed:
+page, each with its measurements in `SPEC.md`. What landed:
 - **Colours:** the accent `#3d70b2` replaces the indigo role for role; body text `#06266d` with
   navy-tinted secondary steps; a pink error variant. Form fields and selects now inherit the text
   colour instead of the browser's black.
@@ -794,7 +794,7 @@ _(Undo/redo and flood fill were on this list until D19 moved them into M5. Delib
 (UI-7) was on it until D25 admitted one bounded styling pass into M8, which passed U1–U5. D26 then
 added M11's light-mode sky theme as UI-8. **A dark mode is not in v1**; it will get its own theme.)_
 
-Reasons for each are in the `specs.md` decision log. Four worth restating:
+Reasons for each are in the `SPEC.md` decision log. Four worth restating:
 
 **Background removal is out of v1 but first in line for v2** (D13). It serves the majority input
 case, so this is the deferral most likely to bite. The v1 answer is crop plus eraser, and it is
@@ -821,8 +821,8 @@ finished rather than broken: UI-1 … UI-6 are **[v1]** and get built in M8 — 
 radius, and type scales, a working narrow layout, focus rings, AA contrast, real touch targets.
 What is deferred is UI-7, the part that needs taste: typography, a color story of its own, empty
 states, motion. That half has the same no-finish-line shape as M2's color tuning, so it gets the
-same treatment — the U1–U5 interface review in `specs.md`, with an explicit stopping rule — and it
+same treatment — the U1–U5 interface review in `SPEC.md`, with an explicit stopping rule — and it
 waits for v2 rather than running loose inside v1. NFR-5 and UI-1 stay unticked until M8 verifies
 them, but **the specific 390 px clipping they were written against is gone** — `src/styles.css` has
 carried an `@media (max-width: 640px)` block since M0, and a real 390 px viewport measures zero
-horizontal overflow with nothing clipped. See the correction on NFR-5 in `specs.md`.
+horizontal overflow with nothing clipped. See the correction on NFR-5 in `SPEC.md`.

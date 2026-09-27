@@ -749,6 +749,13 @@ editor state would depend on M5. Do not fix screenshots of these states before t
   outlining everything; too loose eats the subject's own light edges. Whether a single tolerance
   value can serve both clean PNG exports and re-compressed JPEGs is unknown. This is the part of
   SET-7 most likely to be harder than it looks.
+- **Q9 — Visual identity for the v2 redesign.** The current palette is Tailwind's defaults
+  (indigo-600, gray-50, gray-200) carried over from the original single-file build, and the type is
+  the bare system stack. Whether the v2 redesign keeps that and merely tightens it, or adopts an
+  identity of its own, is undecided — and it is the choice most likely to turn UI-7 into the tuning
+  loop D14 is trying to avoid.
+  _(**Answered for light mode, 2026-09-26.** D25 chose the type and D26 the colours and the sky.
+  A dark-mode identity is still open, and D26 says it will be a theme of its own.)_
 - **Q10 — Feature alignment against the bead grid. NEW (2026-09-21), from the M2 review.** On drawn
   characters, facial features do not survive the reduction as features: eyes come out asymmetrical
   and mouths distorted, because where a cell boundary happens to fall relative to an eye decides
@@ -775,19 +782,23 @@ editor state would depend on M5. Do not fix screenshots of these states before t
   a **generation** question — nothing in the editor makes the grid fall in a better place — and
   reopening it as a tool question needs a real report of the work being painful, not the
   anticipation of it.)_
-- **Q9 — Visual identity for the v2 redesign.** The current palette is Tailwind's defaults
-  (indigo-600, gray-50, gray-200) carried over from the original single-file build, and the type is
-  the bare system stack. Whether the v2 redesign keeps that and merely tightens it, or adopts an
-  identity of its own, is undecided — and it is the choice most likely to turn UI-7 into the tuning
-  loop D14 is trying to avoid.
-  _(**Answered for light mode, 2026-09-26.** D25 chose the type and D26 the colours and the sky.
-  A dark-mode identity is still open, and D26 says it will be a theme of its own.)_
-- **Q10 — Are D15's revised size numbers right?** They are reasoned from bead pitch and plausible
-  finished dimensions, not from real projects. Mini is where the hard limit is most likely to bind:
+- **Q11 — Are D15's revised size numbers right? RESOLVED (2026-09-26).** They are reasoned from
+  bead pitch and plausible finished dimensions, not from real projects. Mini is where the hard limit is most likely to bind:
   a 78 cm mural at 2.6 mm pitch is 300 beads per side and 90,000 cells, which D15 refuses on the
   cell count even though it passes the per-side limit. Decide before M9 ticks NFR-3 whether the
   50,000-cell limit should be higher for Mini specifically, or whether refusing that piece is the
   correct answer for v1.
+  _(**Renumbered 2026-09-26** from a second Q10, which it had shared with feature alignment since
+  2026-09-21; this entry is the older of the two, but the other is the one cited everywhere.)_
+  _(**Resolved 2026-09-26: keep 50,000 cells for both bead sizes.** The limit is on cells, not
+  centimetres: generation, render, undo, autosave and export all cost the same per cell whatever the
+  pitch. It does put Mini's ceiling at a 223 × 223 square, about 58 cm, and a 78 cm Mini mural is
+  refused. That is a rare edge case and not worth a v1 exception. Raising the limit for Mini would
+  also fail on its own terms: 90,000 cells at the 18 px export floor is ~29M pixels against
+  `EXPORT_MAX_PIXELS` (4096², ~16.8M), so the pattern could not be exported; NFR-2 is already over
+  at 50,000; and the 200,000-cell undo budget would hold about two whole-pattern fills. Larger pieces
+  wait for split-page export (OUT-6). NFR-3's numbers stand as written, and M9 ticks it on its
+  Check.)_
 
 ## Decision log
 

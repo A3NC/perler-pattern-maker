@@ -739,8 +739,7 @@ unchanged and widened the save to the source image. Recorded for M9 beside NFR-5
 canvas budget and M7's IndexedDB behavior are both unmeasured on Safari and a phone, as are M11's
 SVG cursors and the sky's `round()` and `color-mix()`.
 
-**No tactical plan is open.** M11's was deleted at its close (2026-09-26). Write
-`plans/m9-verification.md` the day M9 starts, not before.
+**M9 is in flight** (started 2026-09-26); its tactical plan is `plans/m9-verification.md`.
 
 The two large items, **M1 and M2, are the project.** If time runs short, everything after them can
 be trimmed; neither of them can be.

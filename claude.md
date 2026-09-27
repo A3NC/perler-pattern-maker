@@ -37,7 +37,7 @@ Four things worth knowing:
 - **The three hands share rows 8–15 exactly** (thumb, palm, wrist), so switching between them never moves the palm. Keep that if one is redrawn.
 - **Dark mode is out of scope**, and gets a theme of its own, not an inverted sky. Safari and a real phone are unmeasured for the cursors and the sky's `round()`/`color-mix()`, recorded for M9 beside NFR-5.
 
-**M9 is next, and last**.
+**M9 — final verification — is in flight, and last** (started 2026-09-26). Settled at its start: GEN-8's two failures move to v2 by decision (D27) rather than another tuning pass, `SUPERSAMPLE` stays 8, and the 50,000-cell limit holds for Mini too (Q11, renumbered from a duplicate Q10).
 
 Appearance is tracked as the **UI** requirement group, split by D14: UI-1 … UI-6 are **[v1]**
 mechanical Checks, while UI-7 — deliberate visual design — is **[v2]** and gated by the U1–U5
@@ -56,7 +56,7 @@ Each answers one question, and they are kept deliberately separate so the strate
 | `plan-v1.md` | In what order, and why? | Whole project |
 | `plans/<milestone>.md` | How do I get through *this* milestone? | While it is in flight |
 
-**No tactical plan is open.** M2's was deleted at its close (2026-09-21), M5's and M4's at theirs (2026-09-22), M6's and M7's at theirs (2026-09-24), and M8's and M11's at theirs (2026-09-26). Write `plans/m9-verification.md` the day M9 starts, and move this pointer to it.
+**The open tactical plan is `plans/m9-verification.md`** (M9 started 2026-09-26). M2's was deleted at its close (2026-09-21), M5's and M4's at theirs (2026-09-22), M6's and M7's at theirs (2026-09-24), and M8's and M11's at theirs (2026-09-26).
 
 Only one tactical plan exists at a time. It is written the day the milestone starts (writing it earlier means guessing at work that later milestones will reshape), and at milestone close it is deleted and this pointer moves to the next one. Don't expand step-level detail into `plan-v1.md` — one screen per milestone is what keeps that file re-readable.
 

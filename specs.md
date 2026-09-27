@@ -720,6 +720,17 @@ stated as checkable facts so that it can be a [v1] box.
   `round()` (Safari 15.4+) and `color-mix()` (16.2+). If either is unsupported, the whole sky
   layer drops out and leaves `html`'s white, which fails gracefully but should be seen on a
   device.)_
+  _(**M9 (2026-09-26): phone verification moves to v2, as NFR-7.** Checked in Chrome's device
+  emulation only. The user's own phone use found two things emulation could not: the export font
+  (OUT-1, fixed) and controls out of reach while painting (UI-9 [v2]). That makes an unscripted
+  real-device pass the wrong tool for the rest. NFR-5 stays ticked on its emulated Check.)_
+- [ ] **NFR-7 [v2]** Verified on phones, not only in emulation: iOS Safari and Android Chrome, on a
+  simulator or a device.
+  **Check:** A systematic retest of every [v1] Check that touches the page, at phone width, plus
+  the items M6, M7, M8 and M11 recorded for a phone: the export's canvas budget and code legibility
+  (OUT-1, Menlo at 7 px), IndexedDB `Blob` storage and a HEIC round trip (SAVE-1), the sky's
+  `round()`/`color-mix()` (UI-8), touch paint versus pan (EDIT-1), and a large export's download.
+  _(Planned by the user, with a phone simulator.)_
 
 ## Won't build
 

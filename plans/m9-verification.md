@@ -130,19 +130,19 @@ step 3's rule.
 
 ### 5. Safari and a phone
 
-These were recorded for M9 by M6, M7, M8 and M11, and measured in headless Chrome only:
-- M6's `EXPORT_MAX_PIXELS` budget, at the hard-limit export (desktop Safari and an iPhone);
-- M7's IndexedDB `Blob` storage, including a HEIC upload → refresh → restore round trip in Safari;
-- M11's SVG cursors, and the sky's `round()` and `color-mix()`;
-- NFR-5 on a physical phone at ~390 px: every v1 control reachable, touch paint and pan;
-- two tabs on one save: last write wins, as D23 says. This was reasoned about but never driven.
+**Phones moved to v2 (2026-09-26), as NFR-7**: a systematic retest on a simulator, planned by the
+user. The user's phone use at M9 found:
+- **Export codes unreadable on a phone.** Traced to the font: Safari's generic `monospace` is
+  Courier. Fixed by naming Menlo (see OUT-1). Confirming it on a phone is part of NFR-7.
+- **Controls out of reach while painting**, recorded as UI-9 [v2].
 
-**Needs the user:** Safari's Develop → "Allow Remote Automation" if this is driven through
-WebDriver, and a phone by hand. A failure here is fixed only if it's one constant (as M6 predicted
-for the export budget). Otherwise it's recorded against NFR-5 as a known limitation.
+**Desktop Safari is still open.** It needs "Allow Remote Automation" enabled by the user, and then:
+- M6's `EXPORT_MAX_PIXELS` budget at the hard-limit export;
+- M7's IndexedDB `Blob` save and restore, including a HEIC upload → reload;
+- M11's SVG cursors and the sky's `round()`/`color-mix()`;
+- two tabs on one save (D23's last-write-wins).
 
-**Done when:** each item has a measured result, or has an explicit "not measured" note that the
-user agreed to.
+Whatever is not run gets a "not measured, by agreement" note rather than a tick.
 
 ### 6. Close
 
@@ -228,3 +228,9 @@ all 19 checks at both 1280 and 390 px: crop → readout, generate = readout, cro
 eraser, undo ×2, redo, eyedropper (no edit, sets the colour), fill as one undoable stroke, export,
 reload-restore of the edited pattern, regenerate at a new size with the kept crop, a rejected file
 leaving the pattern and file name alone, and no horizontal overflow. Nothing regressed.
+
+**Step 5, export font (2026-09-26).** The user's 203 × 203 phone export was 1.3 MB and blurry.
+Chrome's is the same size at full resolution (3931 × 3905), so the file was not downscaled. A
+probe in Safari 18.6 showed that generic `monospace` = Courier there, against Menlo in Chrome.
+Courier and Menlo rendered side by side in Safari at 7 px: `out/safari-export-fonts.png`. Fixed
+in `export-png.ts`. The Chrome export hash is unchanged.

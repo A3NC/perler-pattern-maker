@@ -191,8 +191,8 @@ and cleared Undo. Edited + width changed: no question. After a reload (restore):
 
 **Step 2, R1–R6 at the design target** (width 100, Standard, limit 30, default crop). The clean
 renders are `scripts/ui-check/out/review-R*.png`: pattern on the left, one flat square per bead,
-with the source beside it. **These are Claude's draft verdicts, awaiting the user's review;
-GEN-8 is a human review.**
+with the source beside it. **The user accepted these verdicts (2026-09-26)** and ticked GEN-8 at
+"good, fixable in the editor" under D30. The original bars moved to GEN-9 [v2].
 - R1 (excellent required): silhouette, transparency and face read well. The torso (shirt, shorts,
   braids) is mottled with dark specks, against "flat regions stay single-colored". Draft: **fails
   the flat-region clause**.

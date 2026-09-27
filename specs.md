@@ -300,7 +300,7 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
   **Check:** Generate twice without changing settings; bead counts and every cell match.
   _(M2: every argmin in `reduce.ts` tie-breaks on ascending palette index, and a test asserts it
   rather than trusting map iteration order.)_
-- [ ] **GEN-8 [v1]** The pattern is recognizable and reads as intentional pixel art. Verified by
+- [x] **GEN-8 [v1]** The pattern is recognizable and reads as intentional pixel art. Verified by
   human review against the fixed reference set in "Done looks like," not by automated test.
   **Check:** See the reference-image review procedure below.
   _(**Deliberately unticked at M2 close (2026-09-21).** M2 shipped its whole scope and every other
@@ -313,6 +313,21 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
   features of drawn characters distort — see Q10, which is not M2's to fix. The three tuning
   constants are in `DEFAULT_CONTRAST_TUNING`, `src/pipeline/downscale.ts`, and are meant to be moved
   by eye.)_
+  _(**Ticked at M9 (2026-09-26) under D30, at v1's bar: "good, fixable in the editor."** Every
+  pattern in the set is recognizable and reads as pixel art, and every defect below is one the
+  editor fixes by hand. R1–R6 re-run at the design target. **R5 and R6 pass as written.** **R1**
+  fails "flat regions stay single-colored", with dark specks mottling the shirt, shorts and
+  braids. **R2** passes its canvas clause, one uniform white, but its brown outline comes out
+  dashed in places. **R3** fails the shading clause, as M2 found. **R4** is marginal on "eyes
+  intact": the blue irises sit beside large dark pupils and are nearly lost at a bead per cell.
+  Small deliberate details (a necklace, a belt's detailing) blend into neighbouring beads rather
+  than surviving as details. The table's original bars move to GEN-9 [v2].)_
+- [ ] **GEN-9 [v2]** Generation preserves the detail a drawing is made of: flat regions stay one
+  colour, outlines stay continuous, shading resolves into clean bands, and small deliberate
+  features (eyes, jewellery, a belt's detailing) survive as features rather than blending into
+  their neighbours. Expected to need a redesigned pipeline, not a retune of M2's. See D30.
+  **Check:** The R1–R6 review in "Done looks like" passes at its original bars: R1–R3 excellent,
+  R4–R5 acceptable, R6 no worse than the source.
 
 ### Pattern view — VIEW
 
@@ -668,8 +683,9 @@ stated as checkable facts so that it can be a [v1] box.
 
 ## Done looks like
 
-**v1 ships when** every requirement marked **[v1]** passes its Check, and the reference-image
-review below passes.
+**v1 ships when** every requirement marked **[v1]** passes its Check. The reference-image review
+below is held at v1 to D30's bar ("good, fixable in the editor"); its original bars, as written in
+the table, are GEN-9's Check for v2.
 
 **Reference-image review (GEN-8).** Keep six fixed test images in the repo and re-run this review
 after any pipeline change. The set is weighted toward artwork because artwork is the majority input
@@ -1034,7 +1050,7 @@ editor state would depend on M5. Do not fix screenshots of these states before t
 
   **Not closed.** Lines outscore shading by only ~1.35× at the same tone and the bands overlap
   across tones, so the three constants in `DEFAULT_CONTRAST_TUNING` are a real tuning surface, not
-  settled values. GEN-8 stays unticked for this. GEN-6's `ACTIVE_DOWNSAMPLER` is what makes a
+  settled values. GEN-8 stays unticked for this _(ticked at M9 under D30; the work moves to GEN-9 [v2])_. GEN-6's `ACTIVE_DOWNSAMPLER` is what makes a
   better downsampler cheap to try later — a two-pass estimator was swapped in mid-milestone through
   exactly that seam, with no edit outside the module.
 
@@ -1499,3 +1515,31 @@ editor state would depend on M5. Do not fix screenshots of these states before t
   reported by `main.ts`, which the guard never handled. `claude.md` and the README say what the
   stuck line means. `window.__perlerBooted` went with it, and the UI-check harness now waits on
   the DOM state it was already checking.
+
+- **D30 (2026-09-26) — GEN-8 is ticked at v1's bar: good, and fixable in the editor. Redesigning
+  the generator is v2 (GEN-9).** M9 re-ran R1–R6 at the design target. By the table's own bars
+  the review does not pass. R1's torso is mottled, R2's outline is dashed in places, R3's shading
+  is speckled, and R4's eyes are nearly lost. Only R5 and R6 pass as written. Per-row verdicts are
+  at GEN-8.
+  - **Why tick it anyway, and why this is not the decorative tick M2 refused.** M2 refused to
+    tick while tuning was still the plan, which would have made the gate decorative. This is the
+    opposite: the bar is lowered openly, with the evidence written here. Every pattern in the set
+    is recognizable and reads as pixel art. Every defect found is a handful of beads that the M5
+    editor fixes: brush, fill, eyedropper, undo. That was D9's premise ("good enough conversion
+    plus the ability to fix it"), and M5 made it real. The user judged it an accurate
+    description of v1 and decently useful as it stands.
+  - **Why not tune further.** M2 already spent its timebox, and these defects are not a threshold
+    away. Two are structural. Where a cell boundary falls decides what a small feature becomes
+    (Q10), and nothing downstream of a fixed grid can see that two cells belong to one eye. A
+    one-bead detail, like a necklace, a belt's detailing, or a blue iris beside a large dark pupil,
+    has no single averaged colour that is both true to the area and visible as the feature. The
+    lines-versus-shading overlap D18 measured (~1.35×) is the same problem seen from the
+    classifier. So the fix is a more complex generator, especially for drawings, and that is a
+    redesign.
+  - **What moves.** GEN-9 [v2] carries the table's original bars as its Check. Q10 stays open as
+    part of that work. `DEFAULT_CONTRAST_TUNING` and `MERGE_FLOOR` stay where they are, frozen
+    for v1. GEN-6's two switches are the seam the redesign plugs into.
+  - **What does not move.** The shared pass conditions are still met for all six: within the
+    SET-4 limit, and no checkerboard or moiré. R2's canvas is one uniform white. R6 is faithful
+    apart from the palette's gamut (no vivid violet) and grid misalignment, which is SET-9's.
+    The renders come from `npm run ui:review`, which GEN-9 should re-run.

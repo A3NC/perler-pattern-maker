@@ -136,13 +136,13 @@ user. The user's phone use at M9 found:
   Courier. Fixed by naming Menlo (see OUT-1). Confirming it on a phone is part of NFR-7.
 - **Controls out of reach while painting**, recorded as UI-9 [v2].
 
-**Desktop Safari is still open.** It needs "Allow Remote Automation" enabled by the user, and then:
+**Desktop Safari: done (2026-09-26)**, over WebDriver once the user enabled remote automation:
 - M6's `EXPORT_MAX_PIXELS` budget at the hard-limit export;
 - M7's IndexedDB `Blob` save and restore, including a HEIC upload → reload;
 - M11's SVG cursors and the sky's `round()`/`color-mix()`;
 - two tabs on one save (D23's last-write-wins).
 
-Whatever is not run gets a "not measured, by agreement" note rather than a tick.
+All four passed. The results are in NFR-5's and SAVE-1's notes.
 
 ### 6. Close
 
@@ -234,3 +234,12 @@ Chrome's is the same size at full resolution (3931 × 3905), so the file was not
 probe in Safari 18.6 showed that generic `monospace` = Courier there, against Menlo in Chrome.
 Courier and Menlo rendered side by side in Safari at 7 px: `out/safari-export-fonts.png`. Fixed
 in `export-png.ts`. The Chrome export hash is unchanged.
+
+**Step 5, desktop Safari 18.6 (WebDriver; images handed to the page as `File`s from a local CORS
+server, since Safari's driver cannot type a path into a file input).**
+- Hard-limit export: 3548 × 4674, 2.59 MB, with Menlo codes.
+- Save and restore: PNG and HEIC, `Blob` stored, restored, then regenerated.
+- Sky: `round()`/`color-mix()` supported, and it paints.
+- Cursors: all three SVGs load.
+- Two tabs: last write wins, and a torn pair drops the image.
+- Generate at the hard limit: ~195 ms.

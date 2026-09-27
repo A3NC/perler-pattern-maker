@@ -493,6 +493,14 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
   cell with matching stats, inventory and generate-time settings; regenerating from the restored
   image and crop reproduces the original pattern exactly, for a PNG and for an orientation-6
   JPEG.)_
+  _(**M9, desktop Safari 18.6 over WebDriver (2026-09-26):** passes. The image is stored as a real
+  `Blob`, and generate → edit → reload restores the pattern with identical stats and the file name,
+  for a PNG and for a **HEIC** (`R4` converted with `sips`), after which a regenerate at a new
+  size works from the restored image. That closes M7's Safari gap. **Two tabs:** as D23 designed,
+  last write wins. Tab B's generate, then tab A's edit, left A's pattern beside B's image with
+  mismatched generation ids. The restore treated that as a torn save and dropped the image with
+  its message, never pairing the pattern with the wrong image. B's pattern is lost, which is the
+  accepted cost of one slot.)_
 - [x] **SAVE-2 [v1]** Nothing is uploaded anywhere. All storage is browser-local.
   **Check:** With the network disabled after first load, upload, generate, edit, and export all
   work. No outbound requests appear in the network log during those actions.
@@ -724,6 +732,15 @@ stated as checkable facts so that it can be a [v1] box.
   emulation only. The user's own phone use found two things emulation could not: the export font
   (OUT-1, fixed) and controls out of reach while painting (UI-9 [v2]). That makes an unscripted
   real-device pass the wrong tool for the rest. NFR-5 stays ticked on its emulated Check.)_
+  _(**Desktop Safari, M9 (2026-09-26), Safari 18.6 over WebDriver:** passes everything recorded
+  for it. **Export (M6):** the hard limit, R5 at 193 × 257, encodes at 3548 × 4674 (16.6M px,
+  inside `EXPORT_MAX_PIXELS`), and its codes now draw in Menlo and read clearly. **Save (M7):**
+  see SAVE-1, HEIC included. **Theme (M11):** `round()` and `color-mix()` are supported, the fixed
+  sky layer and the clouds paint, and a screenshot matches Chrome's page. The only visible
+  difference is Safari's native select styling. **Cursors (M11):** the arrow, pointing-hand and
+  grab SVGs all load, with their keyword fallbacks declared, and brush mode keeps the native
+  crosshair per D26. Generation at the hard limit took ~195 ms. Safari was driven with synthetic
+  events, so a real cursor's look was not seen, as with Chrome at M11.)_
 - [ ] **NFR-7 [v2]** Verified on phones, not only in emulation: iOS Safari and Android Chrome, on a
   simulator or a device.
   **Check:** A systematic retest of every [v1] Check that touches the page, at phone width, plus

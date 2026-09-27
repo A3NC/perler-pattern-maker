@@ -246,9 +246,11 @@ const paletteSettled = loadPalette()
         syncControls();
         // Name the actual failure (PAL-3). If this code is running, the page
         // was served and the module loaded; what failed is the palette itself.
+        // Validation messages are sentences and end in a period; fetch and JSON
+        // errors do not. Trim it, so the join below never reads "..".
+        const reason = ((error as Error).message || 'unknown error').replace(/\.$/, '');
         showStatus(
-            `Unable to load the color palette: ${(error as Error).message || 'unknown error'}. `
-            + 'Generation is disabled.',
+            `Unable to load the color palette: ${reason}. Generation is disabled.`,
             'error'
         );
     });

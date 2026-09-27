@@ -207,3 +207,17 @@ with the source beside it. **The user accepted these verdicts (2026-09-26)** and
 - R6 (regression guard): the structure is faithful. The violet outline shifts to blue, which is the
   palette's gamut and not the pipeline. There are fringe cells where the art's pixel grid doesn't
   line up with the bead grid, which is SET-9 [v2]. Draft: **passes**.
+
+**Step 3 (2026-09-26, headless Chrome).** All ten rows are ticked, with each result in the
+requirement's note:
+- PAL-1: no palette-editing control.
+- PAL-2: "221 colors" on a fresh load.
+- PAL-3: a 404, malformed JSON and invalid entries were each named, with Generate disabled.
+  **Fixed** a doubled ".." after validation messages.
+- PAL-4: the Check's filename was corrected, and **a test was added** for missing names and
+  out-of-range channels (217 tests).
+- GEN-1 and OUT-4: R1 has 3,792 beads by every count, and 48 = 48 after edits. Both sorts work.
+- VIEW-4: H7 and H2 codes are both readable.
+- NFR-1: `dist/` works from `python3 -m http.server`, with an identical export hash.
+- NFR-2: D27.
+- NFR-3: both limits were refused with SET-5's message, and 221 × 221 was accepted.

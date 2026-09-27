@@ -212,20 +212,34 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
 
 ### Palettes — PAL
 
-- [ ] **PAL-1 [v1]** Palettes are fixed, official Perler color sets shipped with the app. Users
+- [x] **PAL-1 [v1]** Palettes are fixed, official Perler color sets shipped with the app. Users
   select among them; they never define, edit, or extend a palette.
   **Check:** No UI exists for adding, editing, or removing a color.
-- [ ] **PAL-2 [v1]** The 221-color set is the default and loads automatically on startup.
+  _(M9, 2026-09-26: every control on the page was enumerated in headless Chrome. None adds, edits
+  or removes a palette colour. The picker's colour input and filter choose among the palette's
+  colours; they never extend it.)_
+- [x] **PAL-2 [v1]** The 221-color set is the default and loads automatically on startup.
   **Check:** On a fresh page load with no interaction, the app reports the 221-color palette as
   active. _(Implemented — loads `colors_221.json`.)_
-- [ ] **PAL-3 [v1]** If the palette file fails to load or fails validation, show a readable error
+  _(M9: a fresh load with storage cleared reports "Default palette loaded (221 colors).")_
+- [x] **PAL-3 [v1]** If the palette file fails to load or fails validation, show a readable error
   and disable generation rather than generating against a broken palette.
   **Check:** Rename the palette file and reload: an error names the palette load failure and
   Generate stays disabled. _(Implemented.)_
-- [ ] **PAL-4 [v1]** Every palette entry has a unique color code/name and a valid RGB triple;
+  _(M9: the palette fetch was failed three ways through the DevTools protocol, not by renaming the
+  file: a 404, malformed JSON, and a file that fails validation. Each named its failure in the
+  status line, set Generate to "Palette unavailable", and kept it disabled, even with an image
+  uploaded. That run found and fixed a doubled period ("..") after a validation message. The boot
+  guard's cases (`file://`, serving the source) no longer report, per D29, and still leave
+  Generate disabled.)_
+- [x] **PAL-4 [v1]** Every palette entry has a unique color code/name and a valid RGB triple;
   invalid palette data is reported as a validation error listing the bad entries.
-  **Check:** `pattern-utils.test.mjs` covers duplicate names, missing names, and out-of-range RGB.
+  **Check:** `pattern-utils.test.ts` covers duplicate names, missing names, and out-of-range RGB.
   _(Implemented and tested.)_
+  _(M9: the Check named the pre-M0 `.mjs` file; corrected. Duplicates were covered, but missing
+  names and out-of-range channels were not. M9 added a test for both: a missing or blank name, a
+  channel above 255, below 0, and non-integer. The shipped `colors_221.json` passes, since PAL-2
+  loads it.)_
 - [ ] **PAL-5 [v2]** User switches among the shipped palettes from a dropdown. Fewer than ten sets
   are expected; known sizes are 144, 221 (default), and 291.
   **Check:** Selecting a different palette and regenerating produces bead codes drawn only from
@@ -252,10 +266,12 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
 
 ### Generation — GEN
 
-- [ ] **GEN-1 [v1]** Produce a grid of the computed dimensions in which every cell holds exactly
+- [x] **GEN-1 [v1]** Produce a grid of the computed dimensions in which every cell holds exactly
   one palette color, or is marked empty where the source is transparent.
   **Check:** For a source image with a transparent region, the corresponding cells render as empty
   and are excluded from the bead count. _(Partially implemented.)_
+  _(M9: R1 at 100 × 100 has 6,208 empty cells and 3,792 beads. The stats line, the inventory sum
+  and SET-3's pre-generate readout all say 3,792, and the empty cells render as empty.)_
   Note: this already solves S1 for artwork saved with a transparent background. SET-7 exists for
   artwork flattened onto an opaque canvas, which is the more common export.
 - [x] **GEN-2 [v1]** Color matching uses a perceptual color space (OkLab), not raw RGB distance.
@@ -343,9 +359,11 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
 - [x] **VIEW-3 [v1]** Color codes are drawn on each cell and can be toggled off.
   **Check:** Toggling off removes all code text and leaves colors unchanged; toggling on restores
   it. _(Partially implemented.)_
-- [ ] **VIEW-4 [v1]** Code text is legible against its cell color.
+- [x] **VIEW-4 [v1]** Code text is legible against its cell color.
   **Check:** Codes on the palette's darkest and lightest colors are both readable.
   _(Implemented via contrast-based text color.)_
+  _(M9: a pattern of the palette's darkest (H7, #000000) and lightest (H2, #FFFFFF) colours, at
+  a zoom where codes show, draws white codes on H7 and black on H2. Both are readable.)_
 - [x] **VIEW-5 [v1]** When cells are too small to fit code text, hide the text automatically rather
   than drawing unreadable overlapping glyphs.
   **Check:** Zoom out until cells are under the legibility threshold; text disappears and colors
@@ -434,9 +452,12 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
   across separate runs. "Fixed" means fixed per pattern: the cell size is a function of the
   pattern's width and height only — 32 px, stepping down to fit a pixel budget, 18 px at the hard
   limit. See D22.)_
-- [ ] **OUT-4 [v1]** Show the bead inventory on screen: each required color's code, swatch, and
+- [x] **OUT-4 [v1]** Show the bead inventory on screen: each required color's code, swatch, and
   count, plus the total bead count and the number of distinct colors. Sortable.
   **Check:** Counts sum to the number of non-empty cells. _(Partially implemented.)_
+  _(M9: the counts sum to the non-empty cells on R1 (3,792 = 3,792, and equal to SET-3's readout),
+  and again after hand-erasing two cells (48 = 48, with the stats line following). Sorting by count
+  and by name both reorder the list.)_
 - [ ] **OUT-5 [v2]** Include a color legend and the grid dimensions in the exported image.
   **Check:** The exported PNG is self-sufficient — a reader who did not use the app can identify
   every code and the finished size.
@@ -611,9 +632,12 @@ stated as checkable facts so that it can be a [v1] box.
 
 ### Non-functional — NFR
 
-- [ ] **NFR-1 [v1]** Free to run and free to host: a static site with no backend and no paid
+- [x] **NFR-1 [v1]** Free to run and free to host: a static site with no backend and no paid
   services.
   **Check:** The built app runs correctly when served as plain static files.
+  _(M9: `npm run build`, then `python3 -m http.server --directory dist`. The palette loads, and
+  upload, generate, export and a reload-restore all work. The export is byte-identical to the
+  dev-server baseline (88,021 bytes), and no request leaves the origin.)_
 - [x] **NFR-2 [v1]** Generation completes without freezing the page.
   **Check:** At NFR-3's hard limit, the page stays responsive; if generation exceeds ~150 ms of
   blocking, move the pipeline off the main thread. See Decision log D8.
@@ -633,7 +657,7 @@ stated as checkable facts so that it can be a [v1] box.
   hard limit with no change to the output.
   **Check:** At the hard limit, no long task over ~50 ms while generating, and the pattern is
   cell-for-cell identical to the main-thread result. See D27.
-- [ ] **NFR-3 [v1]** Two size numbers, deliberately different. See Decision log D15.
+- [x] **NFR-3 [v1]** Two size numbers, deliberately different. See Decision log D15.
   - **Design target — 10,000 cells (100 × 100).** What the app is tuned and tested against: M1's
     render and pan performance, M2's generation time, and the R1–R6 review all use a pattern of
     this size. At Standard 5 mm that is a 50 cm piece; at Mini 2.6 mm, 26 cm.
@@ -644,6 +668,10 @@ stated as checkable facts so that it can be a [v1] box.
   **Check:** Settings above the hard limit are refused with the message required by SET-5; a
   pattern at the design target meets the performance Checks in VIEW-1 and NFR-2.
   _(Enforced in `src/lib/pattern-utils.ts`.)_
+  _(M9, 2026-09-26: R1 at 70 in reads "355 × 355 beads exceeds the limit of 300 beads per side";
+  at 50 in, "254 × 254 is 64,516 beads, over the limit of 50,000". Both suggest a smaller width
+  or larger bead, both in the readout and again on Generate, and 43.5 in (221 × 221) is accepted.
+  The design target meets VIEW-1 and NFR-2 (65 ms). The numbers stand for Mini too; see Q11.)_
 - [x] **NFR-4 [v1]** Deterministic logic is covered by automated tests that run without a browser.
   **Check:** The test suite covers palette validation, dimension calculation, OkLab matching, color
   reduction, and inventory tallying, and passes from a single command.

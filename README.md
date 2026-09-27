@@ -8,19 +8,6 @@ the bead code on each cell and a shopping list of how many beads of each color y
 Everything runs in your browser. There is no backend and no account, and your image is never
 uploaded anywhere.
 
-## For graders: where everything is
-
-| Submission element | Where |
-|---|---|
-| Project description | [What it does](#what-it-does), below |
-| Setup, run, test | [Setup](#setup) · [Running it](#running-it) · [Testing](#testing) |
-| Where the implementation falls short of the spec | [Known issues](#known-issues-against-the-spec) |
-| Specification and system architecture | [`SPEC.md`](SPEC.md). See [System architecture](SPEC.md#system-architecture) and [Requirements](SPEC.md#requirements) |
-| Requirement-by-requirement checklist | [Requirements checklist](#requirements-checklist), below |
-| Dev environment config | `package.json`, `package-lock.json`, `.nvmrc`, `tsconfig.json`, `vite.config.ts`, `pixi.toml`, `.gitignore`, `.gitattributes` (see [Setup](#setup)) |
-| Implementation code | `src/`, `index.html`, `public/colors_221.json` |
-| Testing code | `src/**/*.test.ts`: **217 unit tests in 18 files**. Browser checks in `scripts/ui-check/` |
-
 ## What it does
 
 1. **Upload an image**: PNG, JPEG, GIF, WebP or BMP. A file the app can't use is turned away with

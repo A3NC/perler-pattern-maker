@@ -188,3 +188,22 @@ and cleared Undo. Edited + width changed: no question. After a reload (restore):
 `python3 -m http.server` stays on "Loading color palette..." with Generate disabled, as documented.
 `ui:audit`, `ui:fonts` and `ui:file-picker` pass on the harness's new DOM-state waits.
 `npm run check`: 216.
+
+**Step 2, R1–R6 at the design target** (width 100, Standard, limit 30, default crop). The clean
+renders are `scripts/ui-check/out/review-R*.png`: pattern on the left, one flat square per bead,
+with the source beside it. **These are Claude's draft verdicts, awaiting the user's review;
+GEN-8 is a human review.**
+- R1 (excellent required): silhouette, transparency and face read well. The torso (shirt, shorts,
+  braids) is mottled with dark specks, against "flat regions stay single-colored". Draft: **fails
+  the flat-region clause**.
+- R2 (excellent): the canvas is one uniform white, which passes the key clause. The brown outline
+  comes out dashed in places. Draft: **passes the canvas clause, marginal on outlines**.
+- R3 (excellent): dark outlines are continuous. The shading bands mostly, with some speckle in the
+  hair, and the irises go muddy. Draft: **fails "shading resolves into a few clean bands"**, the
+  known M2 item.
+- R4 (acceptable): the dog is identifiable, but the blue eyes are nearly lost. The grey backdrop
+  bands into several tones with pink and green tints. Draft: **marginal on "eyes intact"**.
+- R5 (acceptable): the silhouette and face read. Draft: **passes**.
+- R6 (regression guard): the structure is faithful. The violet outline shifts to blue, which is the
+  palette's gamut and not the pipeline. There are fringe cells where the art's pixel grid doesn't
+  line up with the bead grid, which is SET-9 [v2]. Draft: **passes**.

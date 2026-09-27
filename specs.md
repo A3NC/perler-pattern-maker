@@ -397,6 +397,13 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
 - [x] **EDIT-3 [v1]** Color picker: select the active color from the loaded palette, showing each
   color's swatch and code.
   **Check:** The selected color is visibly indicated, and painting uses it.
+  _(**Changed after M9 (2026-09-26), at the user's request:** moving the picker's colour input now
+  selects the nearest Perler colour to it. That is the list's top result, within whatever the text
+  filter allows. Before, the input only re-ranked the list, and a result still had to be clicked,
+  which read as the picker ignoring the input. It snaps to a real palette entry, never a raw hex,
+  and the "new" badge still shows when that adds a colour to the bead order. Opening the picker or
+  eyedropping sets the input without re-selecting, and a filter that matches nothing leaves the
+  active colour alone. Verified in headless Chrome.)_
 - [x] **EDIT-4 [v1]** Edits update the bead count list immediately.
   **Check:** Painting one cell from color A to color B decrements A by 1 and increments B by 1.
 - [x] **EDIT-5 [v1]** Pan works while the editor is active without painting accidentally.

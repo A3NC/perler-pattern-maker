@@ -79,7 +79,8 @@ test, and anything that touches the page stays out of those folders.
 
 ## Status
 
-**v1 is nearly done: 11 of 12 milestones are complete.** Only final verification (M9) remains.
+**v1 is complete** (2026-09-26): all 12 milestones are done, and every v1 requirement in
+`specs.md` passes its check.
 
 | Milestone | What it added |
 |---|---|
@@ -92,15 +93,21 @@ test, and anything that touches the page stays out of those folders.
 | M6 | PNG export |
 | M7 | Autosave |
 | M8 | Accessibility and layout pass, plus fonts and styling |
+| M9 | Final verification, in Chrome and desktop Safari |
 | M10 | Gridlines and edge rulers |
 | M11 | Pixel sky theme and custom cursors |
-| **M9** | **Final verification: next** |
 
-Known gaps, all recorded for M9 or later:
+Known limits of v1, each recorded in `specs.md` as v2 work:
 
-- **Conversion quality** isn't fully signed off. Dark, shaded areas band more than they should, and
-  small facial features on drawn characters can distort. The editor is the fix for now.
-- **Speed:** generating the largest allowed pattern takes about 315 ms, against a ~150 ms target.
-- **Devices:** everything has been tested in Chrome, including its phone emulation. Safari and a
-  real phone haven't been checked yet.
-- **Regenerating** a pattern you've edited by hand replaces your edits without warning.
+- **Conversion quality is "good, and fixable in the editor."** Flat areas can pick up stray
+  specks, thin outlines can break up, shading can be noisy, and small details (eyes, jewellery, a
+  belt) tend to blend into their neighbours. Doing better needs a redesigned generator (GEN-9).
+- **Speed:** the largest allowed pattern freezes the page for about 0.3 s while it generates. The
+  output is exact; running generation in the background is v2 (NFR-6).
+- **Phones** were tested only in Chrome's phone emulation. A systematic retest on real or simulated
+  phones is v2 (NFR-7). On a phone, the editing tools also sit far above the canvas while you
+  paint (UI-9).
+- **Large exports** use small codes. They are readable on a desktop screen; splitting big patterns
+  into several full-size files is deferred (OUT-6).
+- **Regenerating** asks before discarding hand edits only when nothing has changed. Change a
+  setting and Generate replaces the pattern, edits included.

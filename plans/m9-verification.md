@@ -221,3 +221,10 @@ requirement's note:
 - NFR-1: `dist/` works from `python3 -m http.server`, with an identical export hash.
 - NFR-2: D27.
 - NFR-3: both limits were refused with SET-5's message, and 221 × 221 was accepted.
+
+**Step 4 (2026-09-26).** Gates: `npm run check` 217, `ui:audit` green (122 stops), `ui:focus`
+36 stops at each width, export hash unchanged. The end-to-end walk, now `npm run ui:e2e`, passes
+all 19 checks at both 1280 and 390 px: crop → readout, generate = readout, crop hidden, brush,
+eraser, undo ×2, redo, eyedropper (no edit, sets the colour), fill as one undoable stroke, export,
+reload-restore of the edited pattern, regenerate at a new size with the kept crop, a rejected file
+leaving the pattern and file name alone, and no horizontal overflow. Nothing regressed.

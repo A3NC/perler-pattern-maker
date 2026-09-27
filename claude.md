@@ -70,7 +70,7 @@ Requires Node >= 22. `npm install` first.
 - `npm test` — Vitest, browser-free (`npm run test:watch` to iterate)
 - `npm run typecheck` — `tsc --noEmit`; Vite strips types without checking them, so this is the only thing that enforces them
 - `npm run check` — typecheck + tests, the full gate
-- `npm run ui:audit` — the mechanical UI Checks (UI-1, UI-4, UI-5, UI-6) in every screen state at 1280 and 390 px, against a **running** app (`npm run dev` first; `APP=` to point elsewhere). Exits non-zero on a failure. `ui:focus`, `ui:file-picker`, `ui:fonts`, `ui:export-hash` and `ui:review` (M9: the R1–R6 renders for GEN-8/GEN-9, judged by a person) are the companions; see `scripts/ui-check/` below
+- `npm run ui:audit` — the mechanical UI Checks (UI-1, UI-4, UI-5, UI-6) in every screen state at 1280 and 390 px, against a **running** app (`npm run dev` first; `APP=` to point elsewhere). Exits non-zero on a failure. `ui:focus`, `ui:file-picker`, `ui:fonts`, `ui:export-hash`, `ui:review` (M9: the R1–R6 renders for GEN-8/GEN-9, judged by a person) and `ui:e2e` (M9: the full upload → edit → export → restore → regenerate walk at both widths) are the companions; see `scripts/ui-check/` below
 
 ### How to run it
 

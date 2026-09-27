@@ -629,6 +629,15 @@ stated as checkable facts so that it can be a [v1] box.
     `ui:fonts` pass. The export hash `42ac415b…93d85` (88,021 bytes) is identical to the pre-M11
     baseline from `npm run ui:export-hash`.
   - **Not yet measured:** Safari and a physical phone. They are recorded for M9 beside NFR-5.)_
+- [ ] **UI-9 [v2]** On a phone, the editor's tools and active colour stay within reach while
+  painting.
+  **Check:** At 390 px with a pattern taller than the screen, switch tool and change colour
+  mid-edit without scrolling the page.
+  _(Found by the user on a real phone at M9 (2026-09-26). The controls above the canvas (stats,
+  zoom row, editor bar) take enough height that painting a cell further down means scrolling back
+  up to change brush or colour. NFR-5 and UI-1 still pass, since everything is reachable, so this
+  is v2 work, not a v1 failure. Likely shapes: a compact or sticky editor bar at narrow widths,
+  or tools that dock beside the canvas. Either one reopens UI-1 and UI-6 for that width.)_
 
 ### Non-functional — NFR
 

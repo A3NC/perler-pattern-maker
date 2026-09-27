@@ -585,7 +585,7 @@ Then D25's pass:
 - Generate is the one filled button.
 - An empty state that says what to do.
 - The pattern canvas draws codes and rulers in the body face. The export stays monospace for
-  OUT-3.
+  OUT-3. _(M9: now Menlo named first, since Safari's generic monospace is Courier.)_
 - A styled file picker that names the loaded image. U2 failed until this: M3's input clearing
   left "No file chosen" beside a loaded image.
 

@@ -437,6 +437,19 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
   magnified. `file` reports both as valid PNGs. The Check's wording asks for more than D22
   promises at the hard limit, so it is annotated here rather than quietly tested against something
   else.)_
+  _(**M9 (2026-09-26): unreadable on a phone, and the cause was the font, not the file.** The user
+  exported 203 × 203 on a phone: 1.3 MB, codes too blurry to read. Chrome's export of the same size
+  is 3931 × 3905 at 19 px cells and 1.1–1.4 MB, so the file size was consistent with a
+  full-resolution image. What differed was the face. The export asked for generic `monospace`,
+  which Chrome on a Mac draws as Menlo and desktop Safari draws as **Courier**. That was probed in
+  Safari 18.6 on this Mac. WebKit's iOS default is the same, and every iOS browser is WebKit. At
+  the 7 px floor, Courier's thin serifs blur "F17" toward "P17" and "H7" toward "II7", while Menlo
+  stays clean. Rendered side by side in Safari itself, in
+  `scripts/ui-check/out/safari-export-fonts.png`. **Fixed:** the export names
+  `Menlo, Consolas, monospace`. The Chrome export hash is unchanged (`42ac415b…`). **Still to
+  confirm on a real phone**, and 7 px is small on a phone even in Menlo. Both go to the v2 phone
+  retest recorded at NFR-5. Splitting large exports into full-size files (OUT-6's first step) is
+  the fix if Menlo at 7 px proves not enough.)_
 - [x] **OUT-2 [v1]** The export reflects the current state of the pattern, including manual edits.
   **Check:** Paint a cell, export, and confirm the exported PNG shows the edited color and code.
   _(M6: one cell painted E9 through the real brush. The exported pixels at that cell are exactly
@@ -1413,7 +1426,8 @@ editor state would depend on M5. Do not fix screenshots of these states before t
     glyphs, and Space Grotesk can. A second face on the codes was left doing nothing but looking
     different from the text around it. The pattern canvas and the PNG export still draw codes in
     `monospace`, since they are out of this pass's bounds and set their own font on the canvas
-    context. The pixel character now lives in Jersey 10 alone: the title and the empty-state
+    context. _(M9: the export now names `Menlo, Consolas, monospace`, because Safari's generic
+    monospace is Courier; see OUT-1.)_ The pixel character now lives in Jersey 10 alone: the title and the empty-state
     heading. That is the usual pairing in game-styled interfaces, a display face for character and
     a plain face for anything read closely. The rest of the entry stands: self-hosted Latin-subset
     variable `woff2` with its OFL license, Jersey 10 the only px-sized face. Two consequences

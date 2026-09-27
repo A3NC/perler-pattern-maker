@@ -4,6 +4,7 @@ import { createEditHistory } from '../lib/edit-history';
 import { floodFillRegion } from '../lib/flood-fill';
 import { srgbToOklab } from '../lib/oklab';
 import { DEFAULT_CANDIDATE_COUNT, filterPalette, nearestPaletteColors } from '../lib/palette-query';
+import type { PaletteCandidate } from '../lib/palette-query';
 import { applyEdits, createStrokeRecorder } from '../lib/pattern-edit';
 import type { Stroke, StrokeRecorder } from '../lib/pattern-edit';
 import { parseHexColor } from '../lib/pattern-utils';
@@ -281,8 +282,8 @@ function pickerSwatch(
  * GEN-3 exist to prevent. Making it visible is v1's answer; capping the distinct
  * count *after* editing is a spec gap for M9, not something to invent here.
  */
-function renderPickerResults(): void {
-    if (palette.length === 0) return;
+function renderPickerResults(): PaletteCandidate | null {
+    if (palette.length === 0) return null;
 
     const tallies = getPatternState()?.tallies ?? {};
     const filterText = pickerFilterInput.value;
@@ -308,7 +309,7 @@ function renderPickerResults(): void {
         message.className = 'picker-empty';
         message.textContent = `No palette color matches "${filterText.trim()}".`;
         pickerResults.appendChild(message);
-        return;
+        return null;
     }
 
     for (const candidate of ranked) {
@@ -320,6 +321,21 @@ function renderPickerResults(): void {
             count > 0
         ));
     }
+    return ranked[0];
+}
+
+/**
+ * Moving the colour input selects the nearest Perler colour to it -- the top
+ * result, the same one the list ranks first, within whatever the filter allows
+ * (M9, EDIT-3). Before this, the input only re-ranked the list and the user had
+ * to click a result as well, which read as the picker ignoring them. It snaps to
+ * a real palette entry rather than holding the raw hex, because the picker is a
+ * query: nothing downstream consumes a continuous colour. A "new" badge still
+ * says when the snap would add a colour to the bead order.
+ */
+function followColorInput(): void {
+    const nearest = renderPickerResults();
+    if (nearest) setActiveColor(nearest.color);
 }
 
 function setPickerOpen(open: boolean): void {
@@ -396,7 +412,7 @@ export function initEditorControls(): void {
     activeColorBtn.addEventListener('click', () => {
         setPickerOpen(!colorPicker.classList.contains('is-open'));
     });
-    pickerColorInput.addEventListener('input', renderPickerResults);
+    pickerColorInput.addEventListener('input', followColorInput);
     pickerFilterInput.addEventListener('input', renderPickerResults);
 
     // Tier 1: the inventory is the picker. Clicking a row adopts a color that is

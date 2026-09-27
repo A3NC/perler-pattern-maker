@@ -47,6 +47,24 @@ test('validatePalette reports duplicates and malformed colors', () => {
     ]);
 });
 
+test('validatePalette reports missing names and out-of-range RGB channels (PAL-4)', () => {
+    const palette = [
+        { rgb: [0, 0, 0] },
+        { name: '   ', rgb: [0, 0, 0] },
+        { name: 'high', rgb: [0, 0, 256] },
+        { name: 'low', rgb: [-1, 0, 0] },
+        { name: 'fraction', rgb: [0, 127.5, 0] },
+        { name: 'ok', rgb: [255, 255, 255] }
+    ];
+    assert.deepEqual(validatePalette(palette), [
+        'Palette entry 1 is missing a color code/name.',
+        'Palette entry 2 is missing a color code/name.',
+        'Palette entry 3 (high) has invalid RGB values.',
+        'Palette entry 4 (low) has invalid RGB values.',
+        'Palette entry 5 (fraction) has invalid RGB values.'
+    ]);
+});
+
 test('calculateDimensions preserves aspect ratio', () => {
     assert.deepEqual(calculateDimensions(10, 0.197, 2, 1), {
         pixelWidth: 51,

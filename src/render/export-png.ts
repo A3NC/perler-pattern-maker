@@ -38,8 +38,19 @@ export class ExportError extends Error {
     }
 }
 
+/**
+ * Menlo named first, not left to the generic. Safari -- desktop and every iOS
+ * browser, since all of them are WebKit -- resolves bare `monospace` to
+ * Courier, whose thin serifs turn to mush at the 7 px floor (M9: "F17" read as
+ * "P17" on a phone). Menlo ships on macOS and iOS and is what Chrome on a Mac
+ * already picked, so the file there is byte-identical to before. Consolas is
+ * Windows' equivalent. Only system faces: a web font may not have loaded, which
+ * would break OUT-3.
+ */
+const CODE_FONT_FAMILY = 'Menlo, Consolas, monospace';
+
 function codeFont(px: number): string {
-    return `bold ${px}px monospace`;
+    return `bold ${px}px ${CODE_FONT_FAMILY}`;
 }
 
 function widestCodeIn(pattern: Pattern): string {

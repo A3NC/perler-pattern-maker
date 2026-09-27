@@ -22,18 +22,12 @@ import { initAutosave, loadSavedSession } from './state/autosave';
 import { ExportError, exportPatternPng } from './render/export-png';
 import { initInventoryControls } from './render/inventory';
 import { clearPatternState, getPatternState, onPatternChange, setPattern } from './state/pattern-state';
+import { REGENERATE_CONFIRM_MESSAGE, regenerateNeedsConfirm } from './lib/regenerate';
 import { showStatus } from './status';
 import { UploadError, readImageFile } from './upload';
 import { exportFileName } from './lib/export-layout';
 import type { CropRect } from './lib/crop';
 import type { Palette } from './types';
-
-declare global {
-    interface Window {
-        /** Set at the end of startup; read by the boot guard in index.html. */
-        __perlerBooted?: boolean;
-    }
-}
 
 const imageUpload = requireElement<HTMLInputElement>('imageUpload');
 const fileName = requireElement('fileName');
@@ -226,13 +220,6 @@ onCropChange(refreshDimensions);
 // A generate hides the line and a cleared pattern brings it back (D24).
 onPatternChange(() => refreshDimensions());
 
-// Startup wiring succeeded, so the boot guard in index.html can stand down and
-// leave the status line to us. Deliberately set here rather than at the top of
-// the file: if an import or a requireElement lookup above throws, the flag
-// stays unset and the guard reports the failure that would otherwise be
-// invisible. The palette load below reports itself through showStatus.
-window.__perlerBooted = true;
-
 // Load and validate the default palette before enabling generation (PAL-2, PAL-3).
 // The restore waits for it to settle either way: the editor resolves its
 // opening color and the inventory's picks through the loaded palette, and the
@@ -257,12 +244,13 @@ const paletteSettled = loadPalette()
         paletteReady = false;
         generateBtn.textContent = 'Palette unavailable';
         syncControls();
-        // Name the actual failure (PAL-3). "Serve it over HTTP" is no longer the
-        // right advice here: if the page were not served, the boot guard in
-        // index.html would have caught it and this code would never have run.
+        // Name the actual failure (PAL-3). If this code is running, the page
+        // was served and the module loaded; what failed is the palette itself.
+        // Validation messages are sentences and end in a period; fetch and JSON
+        // errors do not. Trim it, so the join below never reads "..".
+        const reason = ((error as Error).message || 'unknown error').replace(/\.$/, '');
         showStatus(
-            `Unable to load the color palette: ${(error as Error).message || 'unknown error'}. `
-            + 'Generation is disabled.',
+            `Unable to load the color palette: ${reason}. Generation is disabled.`,
             'error'
         );
     });
@@ -350,7 +338,7 @@ imageUpload.addEventListener('change', async (event) => {
     );
 });
 
-generateBtn.addEventListener('click', () => {
+generateBtn.addEventListener('click', async () => {
     if (!uploadedImage) {
         showStatus('Upload an image before generating a pattern.', 'error');
         return;
@@ -390,8 +378,28 @@ generateBtn.addEventListener('click', () => {
         return;
     }
 
+    // A Generate that could only erase hand edits asks first (see regenerate.ts).
+    // Asked after every validation above, so a settings error is never hidden
+    // behind a question about edits.
+    if (regenerateNeedsConfirm(getPatternState(), settings) && !confirm(REGENERATE_CONFIRM_MESSAGE)) {
+        return;
+    }
+
+    // Let "Processing..." paint before the pipeline runs. It is synchronous, and
+    // at the hard limit it blocks for ~300 ms (NFR-2, D27): without this frame
+    // the browser never repaints in between, so Generate looks dead. Quality is
+    // not traded for the time, and a worker is v2.
+    const image = uploadedImage;
+    showProcessing();
+    showStatus('Generating pattern...', 'info');
+    await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
+    // An upload that landed during that frame has already cleared the pattern
+    // and reopened the crop for its own image; generating the old one now would
+    // put a stale pattern over it. A rejected upload leaves the image as it was.
+    if (uploadedImage !== image) return;
+
     try {
-        buildPattern(uploadedImage, crop, dimensions.pixelWidth, dimensions.pixelHeight, settings);
+        buildPattern(image, crop, dimensions.pixelWidth, dimensions.pixelHeight, settings);
         // D21, and only on the path where a pattern actually exists: the crop is
         // settled for this image. The size and colour settings stay live, so the
         // pattern can be regenerated at a different size without re-uploading;
@@ -413,8 +421,6 @@ function buildPattern(
     pixelHeight: number,
     settings: SavedSettings
 ): void {
-    showProcessing();
-
     const source = imageToPixels(image, pixelWidth, pixelHeight, crop);
     const { pattern, tallies } = generatePattern(source, perlerColors, {
         gridWidth: pixelWidth,
@@ -442,7 +448,7 @@ function buildPattern(
  * read (and drops an image that failed), rather than deleting a good image
  * because it had not finished decoding yet.
  *
- * Never throws: `__perlerBooted` is already set, so nothing above would report it.
+ * Never throws: nothing above it would report the error.
  */
 async function restoreSavedSession(): Promise<void> {
     // Claims a token like an upload does, so an upload started while a large
@@ -485,7 +491,7 @@ async function restoreSavedSession(): Promise<void> {
 
         clearPattern();
         renderPattern(session.pattern);
-        setPattern(session.pattern, tallyPattern(session.pattern), session.settings);
+        setPattern(session.pattern, tallyPattern(session.pattern), session.settings, true);
         syncControls();
 
         const { width, height } = session.pattern;

@@ -31,6 +31,13 @@ export interface PatternState {
      * pattern's settings, and a second holder would have to be kept in step.
      */
     settings: SavedSettings;
+    /**
+     * Whether the pattern has been hand-edited since it was generated (M9), so
+     * an unchanged Generate can ask before erasing the edits. Set by any edit
+     * and never cleared by an undo: a false "edited" costs one question, a
+     * false "unedited" costs the work.
+     */
+    edited: boolean;
 }
 
 /**
@@ -61,13 +68,18 @@ function notify(reason: PatternChangeReason): void {
     for (const listener of listeners) listener(current, reason);
 }
 
-/** Install a freshly generated pattern, discarding whatever was here. */
+/**
+ * Install a pattern, discarding whatever was here. `edited` is false for a
+ * fresh generate. A restored pattern passes true, because undo history is not
+ * saved (D23), so whether it carries hand edits cannot be known.
+ */
 export function setPattern(
     pattern: Pattern,
     tallies: Record<string, ColorTally>,
-    settings: SavedSettings
+    settings: SavedSettings,
+    edited = false
 ): void {
-    current = { pattern, tallies, beadCount: beadCountOf(tallies), settings };
+    current = { pattern, tallies, beadCount: beadCountOf(tallies), settings, edited };
     notify('set');
 }
 
@@ -90,5 +102,6 @@ export function patternEdited(): void {
     if (!current) return;
     current.tallies = tallyPattern(current.pattern);
     current.beadCount = beadCountOf(current.tallies);
+    current.edited = true;
     notify('edited');
 }

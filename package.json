@@ -15,7 +15,9 @@
     "ui:focus": "node scripts/ui-check/focus-shots.mjs",
     "ui:file-picker": "node scripts/ui-check/file-picker.mjs",
     "ui:fonts": "node scripts/ui-check/fonts.mjs",
-    "ui:export-hash": "node scripts/ui-check/export-hash.mjs"
+    "ui:export-hash": "node scripts/ui-check/export-hash.mjs",
+    "ui:review": "node scripts/ui-check/review.mjs",
+    "ui:e2e": "node scripts/ui-check/e2e.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.5.0",

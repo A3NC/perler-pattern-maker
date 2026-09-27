@@ -45,7 +45,7 @@ await b.captureElement('#outputContainer', 'canvas-generated.png', { maxHeight: 
 
 await sleep(500); // let the autosave write land
 await b.send('Page.reload', { ignoreCache: true }); await sleep(300);
-await b.waitFor(`window.__perlerBooted && document.getElementById('beadList').children.length > 0`, 10000);
+await b.waitFor(`document.getElementById('beadList').children.length > 0`, 10000);
 await b.evaluate('document.fonts.ready.then(() => true)'); await sleep(300);
 await zoomIn();
 await b.captureElement('#outputContainer', 'canvas-restored.png', { maxHeight: 520 });

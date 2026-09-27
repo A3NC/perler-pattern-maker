@@ -92,7 +92,7 @@ export async function launch() {
             await send('Storage.clearDataForOrigin', { origin: new URL(APP).origin, storageTypes: 'all' });
             await send('Page.navigate', { url: APP });
             await sleep(300);
-            await waitFor(`window.__perlerBooted && !document.getElementById('generateBtn').textContent.includes('Loading')`);
+            await waitFor(`!document.getElementById('generateBtn').textContent.includes('Loading')`);
             // Measuring mid font-swap would measure the fallback face.
             await evaluate('document.fonts.ready.then(() => true)');
             await sleep(200);

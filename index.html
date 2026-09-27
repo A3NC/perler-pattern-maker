@@ -250,68 +250,6 @@
     <canvas id="canvas" style="display: none;"></canvas>
     </div>
 
-    <!--
-        Boot guard (PAL-3). The module below cannot report its own failure to
-        start: opened as a file:// URL the browser blocks module scripts
-        outright, and served by a plain static file server src/main.ts comes
-        back with a non-JS MIME type the browser refuses to execute. In both
-        cases no app code runs at all, main.ts's own .catch() never fires, and
-        the page sits on "Loading color palette..." forever with no error. This
-        is a classic script, so it always runs, and it is what turns that dead
-        end into an instruction. Keep it inline and non-module.
-    -->
-    <script>
-        (function () {
-            var BOOT_TIMEOUT_MS = 4000;
-            var scriptBlocked = false;
-            var runtimeError = '';
-
-            function fail(message) {
-                var button = document.getElementById('generateBtn');
-                var status = document.getElementById('statusMessage');
-                if (button) {
-                    button.disabled = true;
-                    button.textContent = 'App failed to start';
-                }
-                if (status) {
-                    status.textContent = message;
-                    status.className = 'status-message error';
-                }
-            }
-
-            if (location.protocol === 'file:') {
-                fail('This page was opened directly from disk, so the browser blocked the app from '
-                    + 'starting. It has to be served over HTTP: run "npm run dev" and open the URL it prints.');
-                return;
-            }
-
-            // Fires when a script fails to load or is rejected for its MIME
-            // type; capture phase, because resource errors do not bubble.
-            window.addEventListener('error', function (event) {
-                if (event.target && event.target !== window && event.target.tagName === 'SCRIPT') {
-                    scriptBlocked = true;
-                } else if (event.message) {
-                    runtimeError = event.message;
-                }
-            }, true);
-
-            window.addEventListener('load', function () {
-                setTimeout(function () {
-                    if (window.__perlerBooted) return;
-
-                    if (scriptBlocked) {
-                        fail('The browser refused to run the app\'s script. Serve the project through '
-                            + 'Vite -- run "npm run dev" and open the URL it prints -- rather than through a '
-                            + 'plain static file server, which cannot compile TypeScript.');
-                    } else {
-                        fail('The app failed to start'
-                            + (runtimeError ? ' (' + runtimeError + ')' : '')
-                            + '. Check the browser console for details.');
-                    }
-                }, BOOT_TIMEOUT_MS);
-            });
-        })();
-    </script>
     <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

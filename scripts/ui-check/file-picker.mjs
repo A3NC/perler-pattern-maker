@@ -63,7 +63,7 @@ for (const w of WIDTHS) {
     await b.generate();
     await sleep(500); // let the autosave write land
     await b.send('Page.reload', {}); await sleep(300);
-    await b.waitFor(`window.__perlerBooted && document.getElementById('beadList').children.length > 0`, 10000);
+    await b.waitFor(`document.getElementById('beadList').children.length > 0`, 10000);
     check('an autosave restore names the file again', (await shownName()) === 'art.png');
 }
 b.close();

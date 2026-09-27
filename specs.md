@@ -163,6 +163,12 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
   range 2 to the palette size.
   **Check:** With the limit set to 12, the generated pattern's bead list contains at most 12
   distinct colors. See Decision log D3.
+  _(**The limit binds the generated pattern, not the edited one: settled at M9 (2026-09-26).**
+  M5 found that no requirement covers the distinct-colour count after hand edits, since a
+  correction can add a colour the generator never used. v1's answer is the picker's badge: a
+  candidate already in the pattern shows its count ("P17 · 302 in pattern"), and one that is not
+  shows "new". So adding a colour to the bead order is always visible, never silent. That is
+  judged enough. No requirement is added, and the editor does not enforce the limit.)_
 - [x] **SET-5 [v1]** Reject dimension settings that exceed the limits in NFR-3, with a message
   saying which limit was hit and what to change.
   **Check:** A setting that would produce more than NFR-3's hard limit shows an error naming the
@@ -206,20 +212,34 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
 
 ### Palettes — PAL
 
-- [ ] **PAL-1 [v1]** Palettes are fixed, official Perler color sets shipped with the app. Users
+- [x] **PAL-1 [v1]** Palettes are fixed, official Perler color sets shipped with the app. Users
   select among them; they never define, edit, or extend a palette.
   **Check:** No UI exists for adding, editing, or removing a color.
-- [ ] **PAL-2 [v1]** The 221-color set is the default and loads automatically on startup.
+  _(M9, 2026-09-26: every control on the page was enumerated in headless Chrome. None adds, edits
+  or removes a palette colour. The picker's colour input and filter choose among the palette's
+  colours; they never extend it.)_
+- [x] **PAL-2 [v1]** The 221-color set is the default and loads automatically on startup.
   **Check:** On a fresh page load with no interaction, the app reports the 221-color palette as
   active. _(Implemented — loads `colors_221.json`.)_
-- [ ] **PAL-3 [v1]** If the palette file fails to load or fails validation, show a readable error
+  _(M9: a fresh load with storage cleared reports "Default palette loaded (221 colors).")_
+- [x] **PAL-3 [v1]** If the palette file fails to load or fails validation, show a readable error
   and disable generation rather than generating against a broken palette.
   **Check:** Rename the palette file and reload: an error names the palette load failure and
   Generate stays disabled. _(Implemented.)_
-- [ ] **PAL-4 [v1]** Every palette entry has a unique color code/name and a valid RGB triple;
+  _(M9: the palette fetch was failed three ways through the DevTools protocol, not by renaming the
+  file: a 404, malformed JSON, and a file that fails validation. Each named its failure in the
+  status line, set Generate to "Palette unavailable", and kept it disabled, even with an image
+  uploaded. That run found and fixed a doubled period ("..") after a validation message. The boot
+  guard's cases (`file://`, serving the source) no longer report, per D29, and still leave
+  Generate disabled.)_
+- [x] **PAL-4 [v1]** Every palette entry has a unique color code/name and a valid RGB triple;
   invalid palette data is reported as a validation error listing the bad entries.
-  **Check:** `pattern-utils.test.mjs` covers duplicate names, missing names, and out-of-range RGB.
+  **Check:** `pattern-utils.test.ts` covers duplicate names, missing names, and out-of-range RGB.
   _(Implemented and tested.)_
+  _(M9: the Check named the pre-M0 `.mjs` file; corrected. Duplicates were covered, but missing
+  names and out-of-range channels were not. M9 added a test for both: a missing or blank name, a
+  channel above 255, below 0, and non-integer. The shipped `colors_221.json` passes, since PAL-2
+  loads it.)_
 - [ ] **PAL-5 [v2]** User switches among the shipped palettes from a dropdown. Fewer than ten sets
   are expected; known sizes are 144, 221 (default), and 291.
   **Check:** Selecting a different palette and regenerating produces bead codes drawn only from
@@ -239,13 +259,19 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
   about the awkward one. Only the crop is one-shot now, so changing a setting and pressing Generate
   still discards hand edits silently. Whether v1 wants PAL-7's confirmation extended to the settings
   is M9's call.)_
+  _(**M9's call, 2026-09-26 (D28):** v1 asks only when Generate is pressed with nothing changed
+  and the pattern has edits, because then erasing the edits is all it can do. A Generate with a
+  changed setting still replaces the pattern without asking, by choice. This requirement stays
+  [v2] and palette-only.)_
 
 ### Generation — GEN
 
-- [ ] **GEN-1 [v1]** Produce a grid of the computed dimensions in which every cell holds exactly
+- [x] **GEN-1 [v1]** Produce a grid of the computed dimensions in which every cell holds exactly
   one palette color, or is marked empty where the source is transparent.
   **Check:** For a source image with a transparent region, the corresponding cells render as empty
   and are excluded from the bead count. _(Partially implemented.)_
+  _(M9: R1 at 100 × 100 has 6,208 empty cells and 3,792 beads. The stats line, the inventory sum
+  and SET-3's pre-generate readout all say 3,792, and the empty cells render as empty.)_
   Note: this already solves S1 for artwork saved with a transparent background. SET-7 exists for
   artwork flattened onto an opaque canvas, which is the more common export.
 - [x] **GEN-2 [v1]** Color matching uses a perceptual color space (OkLab), not raw RGB distance.
@@ -290,7 +316,7 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
   **Check:** Generate twice without changing settings; bead counts and every cell match.
   _(M2: every argmin in `reduce.ts` tie-breaks on ascending palette index, and a test asserts it
   rather than trusting map iteration order.)_
-- [ ] **GEN-8 [v1]** The pattern is recognizable and reads as intentional pixel art. Verified by
+- [x] **GEN-8 [v1]** The pattern is recognizable and reads as intentional pixel art. Verified by
   human review against the fixed reference set in "Done looks like," not by automated test.
   **Check:** See the reference-image review procedure below.
   _(**Deliberately unticked at M2 close (2026-09-21).** M2 shipped its whole scope and every other
@@ -303,6 +329,21 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
   features of drawn characters distort — see Q10, which is not M2's to fix. The three tuning
   constants are in `DEFAULT_CONTRAST_TUNING`, `src/pipeline/downscale.ts`, and are meant to be moved
   by eye.)_
+  _(**Ticked at M9 (2026-09-26) under D30, at v1's bar: "good, fixable in the editor."** Every
+  pattern in the set is recognizable and reads as pixel art, and every defect below is one the
+  editor fixes by hand. R1–R6 re-run at the design target. **R5 and R6 pass as written.** **R1**
+  fails "flat regions stay single-colored", with dark specks mottling the shirt, shorts and
+  braids. **R2** passes its canvas clause, one uniform white, but its brown outline comes out
+  dashed in places. **R3** fails the shading clause, as M2 found. **R4** is marginal on "eyes
+  intact": the blue irises sit beside large dark pupils and are nearly lost at a bead per cell.
+  Small deliberate details (a necklace, a belt's detailing) blend into neighbouring beads rather
+  than surviving as details. The table's original bars move to GEN-9 [v2].)_
+- [ ] **GEN-9 [v2]** Generation preserves the detail a drawing is made of: flat regions stay one
+  colour, outlines stay continuous, shading resolves into clean bands, and small deliberate
+  features (eyes, jewellery, a belt's detailing) survive as features rather than blending into
+  their neighbours. Expected to need a redesigned pipeline, not a retune of M2's. See D30.
+  **Check:** The R1–R6 review in "Done looks like" passes at its original bars: R1–R3 excellent,
+  R4–R5 acceptable, R6 no worse than the source.
 
 ### Pattern view — VIEW
 
@@ -318,9 +359,11 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
 - [x] **VIEW-3 [v1]** Color codes are drawn on each cell and can be toggled off.
   **Check:** Toggling off removes all code text and leaves colors unchanged; toggling on restores
   it. _(Partially implemented.)_
-- [ ] **VIEW-4 [v1]** Code text is legible against its cell color.
+- [x] **VIEW-4 [v1]** Code text is legible against its cell color.
   **Check:** Codes on the palette's darkest and lightest colors are both readable.
   _(Implemented via contrast-based text color.)_
+  _(M9: a pattern of the palette's darkest (H7, #000000) and lightest (H2, #FFFFFF) colours, at
+  a zoom where codes show, draws white codes on H7 and black on H2. Both are readable.)_
 - [x] **VIEW-5 [v1]** When cells are too small to fit code text, hide the text automatically rather
   than drawing unreadable overlapping glyphs.
   **Check:** Zoom out until cells are under the legibility threshold; text disappears and colors
@@ -354,6 +397,13 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
 - [x] **EDIT-3 [v1]** Color picker: select the active color from the loaded palette, showing each
   color's swatch and code.
   **Check:** The selected color is visibly indicated, and painting uses it.
+  _(**Changed after M9 (2026-09-26), at the user's request:** moving the picker's colour input now
+  selects the nearest Perler colour to it. That is the list's top result, within whatever the text
+  filter allows. Before, the input only re-ranked the list, and a result still had to be clicked,
+  which read as the picker ignoring the input. It snaps to a real palette entry, never a raw hex,
+  and the "new" badge still shows when that adds a colour to the bead order. Opening the picker or
+  eyedropping sets the input without re-selecting, and a filter that matches nothing leaves the
+  active colour alone. Verified in headless Chrome.)_
 - [x] **EDIT-4 [v1]** Edits update the bead count list immediately.
   **Check:** Painting one cell from color A to color B decrements A by 1 and increments B by 1.
 - [x] **EDIT-5 [v1]** Pan works while the editor is active without painting accidentally.
@@ -394,6 +444,19 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
   magnified. `file` reports both as valid PNGs. The Check's wording asks for more than D22
   promises at the hard limit, so it is annotated here rather than quietly tested against something
   else.)_
+  _(**M9 (2026-09-26): unreadable on a phone, and the cause was the font, not the file.** The user
+  exported 203 × 203 on a phone: 1.3 MB, codes too blurry to read. Chrome's export of the same size
+  is 3931 × 3905 at 19 px cells and 1.1–1.4 MB, so the file size was consistent with a
+  full-resolution image. What differed was the face. The export asked for generic `monospace`,
+  which Chrome on a Mac draws as Menlo and desktop Safari draws as **Courier**. That was probed in
+  Safari 18.6 on this Mac. WebKit's iOS default is the same, and every iOS browser is WebKit. At
+  the 7 px floor, Courier's thin serifs blur "F17" toward "P17" and "H7" toward "II7", while Menlo
+  stays clean. Rendered side by side in Safari itself, in
+  `scripts/ui-check/out/safari-export-fonts.png`. **Fixed:** the export names
+  `Menlo, Consolas, monospace`. The Chrome export hash is unchanged (`42ac415b…`). **Still to
+  confirm on a real phone**, and 7 px is small on a phone even in Menlo. Both go to the v2 phone
+  retest recorded at NFR-5. Splitting large exports into full-size files (OUT-6's first step) is
+  the fix if Menlo at 7 px proves not enough.)_
 - [x] **OUT-2 [v1]** The export reflects the current state of the pattern, including manual edits.
   **Check:** Paint a cell, export, and confirm the exported PNG shows the edited color and code.
   _(M6: one cell painted E9 through the real brush. The exported pixels at that cell are exactly
@@ -409,9 +472,12 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
   across separate runs. "Fixed" means fixed per pattern: the cell size is a function of the
   pattern's width and height only — 32 px, stepping down to fit a pixel budget, 18 px at the hard
   limit. See D22.)_
-- [ ] **OUT-4 [v1]** Show the bead inventory on screen: each required color's code, swatch, and
+- [x] **OUT-4 [v1]** Show the bead inventory on screen: each required color's code, swatch, and
   count, plus the total bead count and the number of distinct colors. Sortable.
   **Check:** Counts sum to the number of non-empty cells. _(Partially implemented.)_
+  _(M9: the counts sum to the non-empty cells on R1 (3,792 = 3,792, and equal to SET-3's readout),
+  and again after hand-erasing two cells (48 = 48, with the stats line following). Sorting by count
+  and by name both reorder the list.)_
 - [ ] **OUT-5 [v2]** Include a color legend and the grid dimensions in the exported image.
   **Check:** The exported PNG is self-sufficient — a reader who did not use the app can identify
   every code and the finished size.
@@ -434,6 +500,14 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
   cell with matching stats, inventory and generate-time settings; regenerating from the restored
   image and crop reproduces the original pattern exactly, for a PNG and for an orientation-6
   JPEG.)_
+  _(**M9, desktop Safari 18.6 over WebDriver (2026-09-26):** passes. The image is stored as a real
+  `Blob`, and generate → edit → reload restores the pattern with identical stats and the file name,
+  for a PNG and for a **HEIC** (`R4` converted with `sips`), after which a regenerate at a new
+  size works from the restored image. That closes M7's Safari gap. **Two tabs:** as D23 designed,
+  last write wins. Tab B's generate, then tab A's edit, left A's pattern beside B's image with
+  mismatched generation ids. The restore treated that as a torn save and dropped the image with
+  its message, never pairing the pattern with the wrong image. B's pattern is lost, which is the
+  accepted cost of one slot.)_
 - [x] **SAVE-2 [v1]** Nothing is uploaded anywhere. All storage is browser-local.
   **Check:** With the network disabled after first load, upload, generate, edit, and export all
   work. No outbound requests appear in the network log during those actions.
@@ -583,13 +657,25 @@ stated as checkable facts so that it can be a [v1] box.
     `ui:fonts` pass. The export hash `42ac415b…93d85` (88,021 bytes) is identical to the pre-M11
     baseline from `npm run ui:export-hash`.
   - **Not yet measured:** Safari and a physical phone. They are recorded for M9 beside NFR-5.)_
+- [ ] **UI-9 [v2]** On a phone, the editor's tools and active colour stay within reach while
+  painting.
+  **Check:** At 390 px with a pattern taller than the screen, switch tool and change colour
+  mid-edit without scrolling the page.
+  _(Found by the user on a real phone at M9 (2026-09-26). The controls above the canvas (stats,
+  zoom row, editor bar) take enough height that painting a cell further down means scrolling back
+  up to change brush or colour. NFR-5 and UI-1 still pass, since everything is reachable, so this
+  is v2 work, not a v1 failure. Likely shapes: a compact or sticky editor bar at narrow widths,
+  or tools that dock beside the canvas. Either one reopens UI-1 and UI-6 for that width.)_
 
 ### Non-functional — NFR
 
-- [ ] **NFR-1 [v1]** Free to run and free to host: a static site with no backend and no paid
+- [x] **NFR-1 [v1]** Free to run and free to host: a static site with no backend and no paid
   services.
   **Check:** The built app runs correctly when served as plain static files.
-- [ ] **NFR-2 [v1]** Generation completes without freezing the page.
+  _(M9: `npm run build`, then `python3 -m http.server --directory dist`. The palette loads, and
+  upload, generate, export and a reload-restore all work. The export is byte-identical to the
+  dev-server baseline (88,021 bytes), and no request leaves the origin.)_
+- [x] **NFR-2 [v1]** Generation completes without freezing the page.
   **Check:** At NFR-3's hard limit, the page stays responsive; if generation exceeds ~150 ms of
   blocking, move the pipeline off the main thread. See Decision log D8.
   _(**Measured at M2 close, and it is over.** Node timings excluding decode and canvas, 221-color
@@ -599,7 +685,16 @@ stated as checkable facts so that it can be a [v1] box.
   revisit only on evidence, and this is the evidence, for M9 to weigh. The cheapest lever is
   `SUPERSAMPLE` 8 → 4 in `src/rasterize.ts`, which quarters the intermediate buffer; a worker is the
   bigger move.)_
-- [ ] **NFR-3 [v1]** Two size numbers, deliberately different. See Decision log D15.
+  _(**Ticked at M9 (2026-09-26) under D27, with the hard-limit clause moved to [v2] as NFR-6.**
+  The design target passes: 65 ms. At the hard limit, headless Chrome blocks for 261–303 ms
+  (R5 at 193 × 257), and the output is correct every time. Quality is not traded for the time,
+  `SUPERSAMPLE` stays 8, and "Generating pattern..." now paints before the pipeline runs. The
+  "dominated by the downscale" line above is corrected there: the match is the other half.)_
+- [ ] **NFR-6 [v2]** Generation runs off the main thread, so the page stays responsive at NFR-3's
+  hard limit with no change to the output.
+  **Check:** At the hard limit, no long task over ~50 ms while generating, and the pattern is
+  cell-for-cell identical to the main-thread result. See D27.
+- [x] **NFR-3 [v1]** Two size numbers, deliberately different. See Decision log D15.
   - **Design target — 10,000 cells (100 × 100).** What the app is tuned and tested against: M1's
     render and pan performance, M2's generation time, and the R1–R6 review all use a pattern of
     this size. At Standard 5 mm that is a 50 cm piece; at Mini 2.6 mm, 26 cm.
@@ -610,6 +705,10 @@ stated as checkable facts so that it can be a [v1] box.
   **Check:** Settings above the hard limit are refused with the message required by SET-5; a
   pattern at the design target meets the performance Checks in VIEW-1 and NFR-2.
   _(Enforced in `src/lib/pattern-utils.ts`.)_
+  _(M9, 2026-09-26: R1 at 70 in reads "355 × 355 beads exceeds the limit of 300 beads per side";
+  at 50 in, "254 × 254 is 64,516 beads, over the limit of 50,000". Both suggest a smaller width
+  or larger bead, both in the readout and again on Generate, and 43.5 in (221 × 221) is accepted.
+  The design target meets VIEW-1 and NFR-2 (65 ms). The numbers stand for Mini too; see Q11.)_
 - [x] **NFR-4 [v1]** Deterministic logic is covered by automated tests that run without a browser.
   **Check:** The test suite covers palette validation, dimension calculation, OkLab matching, color
   reduction, and inventory tallying, and passes from a single command.
@@ -636,6 +735,26 @@ stated as checkable facts so that it can be a [v1] box.
   `round()` (Safari 15.4+) and `color-mix()` (16.2+). If either is unsupported, the whole sky
   layer drops out and leaves `html`'s white, which fails gracefully but should be seen on a
   device.)_
+  _(**M9 (2026-09-26): phone verification moves to v2, as NFR-7.** Checked in Chrome's device
+  emulation only. The user's own phone use found two things emulation could not: the export font
+  (OUT-1, fixed) and controls out of reach while painting (UI-9 [v2]). That makes an unscripted
+  real-device pass the wrong tool for the rest. NFR-5 stays ticked on its emulated Check.)_
+  _(**Desktop Safari, M9 (2026-09-26), Safari 18.6 over WebDriver:** passes everything recorded
+  for it. **Export (M6):** the hard limit, R5 at 193 × 257, encodes at 3548 × 4674 (16.6M px,
+  inside `EXPORT_MAX_PIXELS`), and its codes now draw in Menlo and read clearly. **Save (M7):**
+  see SAVE-1, HEIC included. **Theme (M11):** `round()` and `color-mix()` are supported, the fixed
+  sky layer and the clouds paint, and a screenshot matches Chrome's page. The only visible
+  difference is Safari's native select styling. **Cursors (M11):** the arrow, pointing-hand and
+  grab SVGs all load, with their keyword fallbacks declared, and brush mode keeps the native
+  crosshair per D26. Generation at the hard limit took ~195 ms. Safari was driven with synthetic
+  events, so a real cursor's look was not seen, as with Chrome at M11.)_
+- [ ] **NFR-7 [v2]** Verified on phones, not only in emulation: iOS Safari and Android Chrome, on a
+  simulator or a device.
+  **Check:** A systematic retest of every [v1] Check that touches the page, at phone width, plus
+  the items M6, M7, M8 and M11 recorded for a phone: the export's canvas budget and code legibility
+  (OUT-1, Menlo at 7 px), IndexedDB `Blob` storage and a HEIC round trip (SAVE-1), the sky's
+  `round()`/`color-mix()` (UI-8), touch paint versus pan (EDIT-1), and a large export's download.
+  _(Planned by the user, with a phone simulator.)_
 
 ## Won't build
 
@@ -649,8 +768,9 @@ stated as checkable facts so that it can be a [v1] box.
 
 ## Done looks like
 
-**v1 ships when** every requirement marked **[v1]** passes its Check, and the reference-image
-review below passes.
+**v1 ships when** every requirement marked **[v1]** passes its Check. The reference-image review
+below is held at v1 to D30's bar ("good, fixable in the editor"); its original bars, as written in
+the table, are GEN-9's Check for v2.
 
 **Reference-image review (GEN-8).** Keep six fixed test images in the repo and re-run this review
 after any pipeline change. The set is weighted toward artwork because artwork is the majority input
@@ -749,6 +869,13 @@ editor state would depend on M5. Do not fix screenshots of these states before t
   outlining everything; too loose eats the subject's own light edges. Whether a single tolerance
   value can serve both clean PNG exports and re-compressed JPEGs is unknown. This is the part of
   SET-7 most likely to be harder than it looks.
+- **Q9 — Visual identity for the v2 redesign.** The current palette is Tailwind's defaults
+  (indigo-600, gray-50, gray-200) carried over from the original single-file build, and the type is
+  the bare system stack. Whether the v2 redesign keeps that and merely tightens it, or adopts an
+  identity of its own, is undecided — and it is the choice most likely to turn UI-7 into the tuning
+  loop D14 is trying to avoid.
+  _(**Answered for light mode, 2026-09-26.** D25 chose the type and D26 the colours and the sky.
+  A dark-mode identity is still open, and D26 says it will be a theme of its own.)_
 - **Q10 — Feature alignment against the bead grid. NEW (2026-09-21), from the M2 review.** On drawn
   characters, facial features do not survive the reduction as features: eyes come out asymmetrical
   and mouths distorted, because where a cell boundary happens to fall relative to an eye decides
@@ -775,19 +902,23 @@ editor state would depend on M5. Do not fix screenshots of these states before t
   a **generation** question — nothing in the editor makes the grid fall in a better place — and
   reopening it as a tool question needs a real report of the work being painful, not the
   anticipation of it.)_
-- **Q9 — Visual identity for the v2 redesign.** The current palette is Tailwind's defaults
-  (indigo-600, gray-50, gray-200) carried over from the original single-file build, and the type is
-  the bare system stack. Whether the v2 redesign keeps that and merely tightens it, or adopts an
-  identity of its own, is undecided — and it is the choice most likely to turn UI-7 into the tuning
-  loop D14 is trying to avoid.
-  _(**Answered for light mode, 2026-09-26.** D25 chose the type and D26 the colours and the sky.
-  A dark-mode identity is still open, and D26 says it will be a theme of its own.)_
-- **Q10 — Are D15's revised size numbers right?** They are reasoned from bead pitch and plausible
-  finished dimensions, not from real projects. Mini is where the hard limit is most likely to bind:
+- **Q11 — Are D15's revised size numbers right? RESOLVED (2026-09-26).** They are reasoned from
+  bead pitch and plausible finished dimensions, not from real projects. Mini is where the hard limit is most likely to bind:
   a 78 cm mural at 2.6 mm pitch is 300 beads per side and 90,000 cells, which D15 refuses on the
   cell count even though it passes the per-side limit. Decide before M9 ticks NFR-3 whether the
   50,000-cell limit should be higher for Mini specifically, or whether refusing that piece is the
   correct answer for v1.
+  _(**Renumbered 2026-09-26** from a second Q10, which it had shared with feature alignment since
+  2026-09-21; this entry is the older of the two, but the other is the one cited everywhere.)_
+  _(**Resolved 2026-09-26: keep 50,000 cells for both bead sizes.** The limit is on cells, not
+  centimetres: generation, render, undo, autosave and export all cost the same per cell whatever the
+  pitch. It does put Mini's ceiling at a 223 × 223 square, about 58 cm, and a 78 cm Mini mural is
+  refused. That is a rare edge case and not worth a v1 exception. Raising the limit for Mini would
+  also fail on its own terms: 90,000 cells at the 18 px export floor is ~29M pixels against
+  `EXPORT_MAX_PIXELS` (4096², ~16.8M), so the pattern could not be exported; NFR-2 is already over
+  at 50,000; and the 200,000-cell undo budget would hold about two whole-pattern fills. Larger pieces
+  wait for split-page export (OUT-6). NFR-3's numbers stand as written, and M9 ticks it on its
+  Check.)_
 
 ## Decision log
 
@@ -1004,7 +1135,7 @@ editor state would depend on M5. Do not fix screenshots of these states before t
 
   **Not closed.** Lines outscore shading by only ~1.35× at the same tone and the bands overlap
   across tones, so the three constants in `DEFAULT_CONTRAST_TUNING` are a real tuning surface, not
-  settled values. GEN-8 stays unticked for this. GEN-6's `ACTIVE_DOWNSAMPLER` is what makes a
+  settled values. GEN-8 stays unticked for this _(ticked at M9 under D30; the work moves to GEN-9 [v2])_. GEN-6's `ACTIVE_DOWNSAMPLER` is what makes a
   better downsampler cheap to try later — a two-pass estimator was swapped in mid-milestone through
   exactly that seam, with no edit outside the module.
 
@@ -1330,7 +1461,8 @@ editor state would depend on M5. Do not fix screenshots of these states before t
     glyphs, and Space Grotesk can. A second face on the codes was left doing nothing but looking
     different from the text around it. The pattern canvas and the PNG export still draw codes in
     `monospace`, since they are out of this pass's bounds and set their own font on the canvas
-    context. The pixel character now lives in Jersey 10 alone: the title and the empty-state
+    context. _(M9: the export now names `Menlo, Consolas, monospace`, because Safari's generic
+    monospace is Courier; see OUT-1.)_ The pixel character now lives in Jersey 10 alone: the title and the empty-state
     heading. That is the usual pairing in game-styled interfaces, a display face for character and
     a plain face for anything read closely. The rest of the entry stands: self-hosted Latin-subset
     variable `woff2` with its OFL license, Jersey 10 the only px-sized face. Two consequences
@@ -1404,3 +1536,96 @@ editor state would depend on M5. Do not fix screenshots of these states before t
   - **Light mode only.** v1 has no dark mode, and this entry does not create one. When a dark mode
     is built it gets a theme of its own, decided separately. UI-8 names light mode so that it is
     not read as requiring an inverted sky. M11 adds no `prefers-color-scheme` handling.
+
+- **D27 (2026-09-26) — Generation stays on the main thread at full quality. NFR-2's hard-limit
+  clause moves to [v2].** NFR-2's Check says that past ~150 ms of blocking, the pipeline moves off
+  the main thread. M9 measured it, decided not to, and records why.
+  - **Measured.** Headless Chrome, `test_img/R5.JPG` at 193 × 257 (49,601 beads, the hard limit),
+    221 colours, limit 30: one long task of **261–303 ms** per Generate, and the correct pattern
+    every time. `test_img/R1.PNG` at 221 × 221 (18,463 beads): 75–114 ms. The design target is
+    65 ms in Node. Nothing crashes. Memory is bounded by `MAX_INTERMEDIATE_PIXELS` (4M px,
+    ~16 MB), which no allowed pattern reaches, since 50,000 cells × 64 is 3.2M.
+  - **Quality is not traded for time, at any size.** Someone placing 50,000 beads by hand values
+    an accurate pattern far above a third of a second. `SUPERSAMPLE` stays 8, and
+    `MAX_INTERMEDIATE_PIXELS` stays 4M. Lowering either costs linear-light averaging and D18's line
+    detection on exactly the patterns that take the most work to build. Lowering the buffer alone
+    could not have met the threshold anyway: 1M px still took 236 ms in Node.
+  - **M2's note on NFR-2 was half right.** The downscale is only about half the cost at the hard
+    limit (156 ms). The brute-force OkLab match, 221 distances per cell, is the other half
+    (~135 ms), and it does not depend on buffer size. A lightness-sorted, pruned nearest search
+    returned the identical index on all 49,729 cells of a synthetic test, in 17 ms against 137 ms.
+    It is not shipped, because M9 is verification-only and nothing requires it. It is the first
+    lever if speed is revisited, since it cannot change output.
+  - **What v1 does instead: the freeze is announced.** Generate used to call `showProcessing()` and
+    then run the pipeline in the same task, so the browser never painted "Processing..." and the
+    button looked dead for the whole stretch. Now it paints "Processing..." and
+    "Generating pattern..." first, then waits one frame, as the export already did. An upload that
+    lands during that frame wins, compared by image identity: a rejected upload leaves the image
+    as it was, so it does not cancel the generate.
+  - **v2:** NFR-6, generation in a Web Worker. It keeps output byte-identical and removes the
+    freeze. That is the fix NFR-2's Check always named.
+
+- **D28 (2026-09-26) — A Generate that could only erase hand edits asks first. Any other
+  Generate replaces the pattern without asking.** D21 left this open: a second Generate replaces
+  the `Pattern` that M5 mutates in place, silently. M9 was to decide it.
+  - **When it asks.** Only when the pattern has hand edits **and** the target width, bead size and
+    colour limit all equal the settings that produced it. The image and the crop need no
+    comparison: a new upload already clears the pattern, and the crop is fixed while a pattern
+    exists (D21). With nothing changed, GEN-7 says the Generate reproduces the untouched pattern
+    exactly, so erasing the edits is the only thing it can do. The question makes that either a
+    caught slip or a deliberate "revert to generated".
+  - **Why it does not ask on a change.** A changed setting is the user asking for a different
+    pattern. Asking every time would put a dialog in front of the ordinary case (regenerate at a
+    new width) to guard the rare one, which is the trade D21's narrowing refused. So that path
+    still discards edits without warning, by choice. PAL-7 records it.
+  - **"Edited" errs toward asking.** `pattern-state.ts` sets it on any edit and never clears it on
+    undo. A restored pattern counts as edited, because undo history is not saved (D23) and so
+    whether it carries edits cannot be known. A false "edited" costs one question; a false
+    "unedited" costs the work.
+  - **A native `confirm()`, not an in-page dialog.** It is browser chrome, so it is accessible and
+    keyboard-operable for free, and it adds nothing to the themed page that UI-1 … UI-8 would have
+    to re-verify. Declining changes nothing: the pattern, its edits and undo history all stay.
+  - The rule is `regenerateNeedsConfirm` in `src/lib/regenerate.ts`, with tests. Verified in
+    headless Chrome: unedited → no question; edited and unchanged → asks, and declining keeps the
+    edits and undo; accepting regenerates; edited with the width changed → no question; after a
+    reload → asks.
+
+- **D29 (2026-09-26) — The inline boot guard is removed.** M0 added a classic script to
+  `index.html` that reported the three ways the module never runs: a `file://` open, a plain
+  static server handing out the TypeScript source, and a throw during startup. It carried a note
+  to revisit it at M9. It has stopped earning its keep. It was kept mainly for M1's rewrite of
+  the DOM contract, which is long done. It put logic in `index.html` against the convention that
+  logic lives in `src/`. And it split PAL-3's messaging across two places. The failure cases now
+  leave the page on "Loading color palette..." with Generate disabled. Nothing generates against
+  a missing palette, so PAL-3's intent holds, and PAL-3's own Check (a renamed palette file) is
+  reported by `main.ts`, which the guard never handled. `claude.md` and the README say what the
+  stuck line means. `window.__perlerBooted` went with it, and the UI-check harness now waits on
+  the DOM state it was already checking.
+
+- **D30 (2026-09-26) — GEN-8 is ticked at v1's bar: good, and fixable in the editor. Redesigning
+  the generator is v2 (GEN-9).** M9 re-ran R1–R6 at the design target. By the table's own bars
+  the review does not pass. R1's torso is mottled, R2's outline is dashed in places, R3's shading
+  is speckled, and R4's eyes are nearly lost. Only R5 and R6 pass as written. Per-row verdicts are
+  at GEN-8.
+  - **Why tick it anyway, and why this is not the decorative tick M2 refused.** M2 refused to
+    tick while tuning was still the plan, which would have made the gate decorative. This is the
+    opposite: the bar is lowered openly, with the evidence written here. Every pattern in the set
+    is recognizable and reads as pixel art. Every defect found is a handful of beads that the M5
+    editor fixes: brush, fill, eyedropper, undo. That was D9's premise ("good enough conversion
+    plus the ability to fix it"), and M5 made it real. The user judged it an accurate
+    description of v1 and decently useful as it stands.
+  - **Why not tune further.** M2 already spent its timebox, and these defects are not a threshold
+    away. Two are structural. Where a cell boundary falls decides what a small feature becomes
+    (Q10), and nothing downstream of a fixed grid can see that two cells belong to one eye. A
+    one-bead detail, like a necklace, a belt's detailing, or a blue iris beside a large dark pupil,
+    has no single averaged colour that is both true to the area and visible as the feature. The
+    lines-versus-shading overlap D18 measured (~1.35×) is the same problem seen from the
+    classifier. So the fix is a more complex generator, especially for drawings, and that is a
+    redesign.
+  - **What moves.** GEN-9 [v2] carries the table's original bars as its Check. Q10 stays open as
+    part of that work. `DEFAULT_CONTRAST_TUNING` and `MERGE_FLOOR` stay where they are, frozen
+    for v1. GEN-6's two switches are the seam the redesign plugs into.
+  - **What does not move.** The shared pass conditions are still met for all six: within the
+    SET-4 limit, and no checkerboard or moiré. R2's canvas is one uniform white. R6 is faithful
+    apart from the palette's gamut (no vivid violet) and grid misalignment, which is SET-9's.
+    The renders come from `npm run ui:review`, which GEN-9 should re-run.

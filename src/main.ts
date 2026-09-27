@@ -350,7 +350,7 @@ imageUpload.addEventListener('change', async (event) => {
     );
 });
 
-generateBtn.addEventListener('click', () => {
+generateBtn.addEventListener('click', async () => {
     if (!uploadedImage) {
         showStatus('Upload an image before generating a pattern.', 'error');
         return;
@@ -390,8 +390,21 @@ generateBtn.addEventListener('click', () => {
         return;
     }
 
+    // Let "Processing..." paint before the pipeline runs. It is synchronous, and
+    // at the hard limit it blocks for ~300 ms (NFR-2, D27): without this frame
+    // the browser never repaints in between, so Generate looks dead. Quality is
+    // not traded for the time, and a worker is v2.
+    const image = uploadedImage;
+    showProcessing();
+    showStatus('Generating pattern...', 'info');
+    await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
+    // An upload that landed during that frame has already cleared the pattern
+    // and reopened the crop for its own image; generating the old one now would
+    // put a stale pattern over it. A rejected upload leaves the image as it was.
+    if (uploadedImage !== image) return;
+
     try {
-        buildPattern(uploadedImage, crop, dimensions.pixelWidth, dimensions.pixelHeight, settings);
+        buildPattern(image, crop, dimensions.pixelWidth, dimensions.pixelHeight, settings);
         // D21, and only on the path where a pattern actually exists: the crop is
         // settled for this image. The size and colour settings stay live, so the
         // pattern can be regenerated at a different size without re-uploading;
@@ -413,8 +426,6 @@ function buildPattern(
     pixelHeight: number,
     settings: SavedSettings
 ): void {
-    showProcessing();
-
     const source = imageToPixels(image, pixelWidth, pixelHeight, crop);
     const { pattern, tallies } = generatePattern(source, perlerColors, {
         gridWidth: pixelWidth,

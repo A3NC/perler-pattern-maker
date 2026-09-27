@@ -589,7 +589,7 @@ stated as checkable facts so that it can be a [v1] box.
 - [ ] **NFR-1 [v1]** Free to run and free to host: a static site with no backend and no paid
   services.
   **Check:** The built app runs correctly when served as plain static files.
-- [ ] **NFR-2 [v1]** Generation completes without freezing the page.
+- [x] **NFR-2 [v1]** Generation completes without freezing the page.
   **Check:** At NFR-3's hard limit, the page stays responsive; if generation exceeds ~150 ms of
   blocking, move the pipeline off the main thread. See Decision log D8.
   _(**Measured at M2 close, and it is over.** Node timings excluding decode and canvas, 221-color
@@ -599,6 +599,15 @@ stated as checkable facts so that it can be a [v1] box.
   revisit only on evidence, and this is the evidence, for M9 to weigh. The cheapest lever is
   `SUPERSAMPLE` 8 → 4 in `src/rasterize.ts`, which quarters the intermediate buffer; a worker is the
   bigger move.)_
+  _(**Ticked at M9 (2026-09-26) under D27, with the hard-limit clause moved to [v2] as NFR-6.**
+  The design target passes: 65 ms. At the hard limit, headless Chrome blocks for 261–303 ms
+  (R5 at 193 × 257), and the output is correct every time. Quality is not traded for the time,
+  `SUPERSAMPLE` stays 8, and "Generating pattern..." now paints before the pipeline runs. The
+  "dominated by the downscale" line above is corrected there: the match is the other half.)_
+- [ ] **NFR-6 [v2]** Generation runs off the main thread, so the page stays responsive at NFR-3's
+  hard limit with no change to the output.
+  **Check:** At the hard limit, no long task over ~50 ms while generating, and the pattern is
+  cell-for-cell identical to the main-thread result. See D27.
 - [ ] **NFR-3 [v1]** Two size numbers, deliberately different. See Decision log D15.
   - **Design target — 10,000 cells (100 × 100).** What the app is tuned and tested against: M1's
     render and pan performance, M2's generation time, and the R1–R6 review all use a pattern of
@@ -1415,3 +1424,31 @@ editor state would depend on M5. Do not fix screenshots of these states before t
   - **Light mode only.** v1 has no dark mode, and this entry does not create one. When a dark mode
     is built it gets a theme of its own, decided separately. UI-8 names light mode so that it is
     not read as requiring an inverted sky. M11 adds no `prefers-color-scheme` handling.
+
+- **D27 (2026-09-26) — Generation stays on the main thread at full quality. NFR-2's hard-limit
+  clause moves to [v2].** NFR-2's Check says that past ~150 ms of blocking, the pipeline moves off
+  the main thread. M9 measured it, decided not to, and records why.
+  - **Measured.** Headless Chrome, `test_img/R5.JPG` at 193 × 257 (49,601 beads, the hard limit),
+    221 colours, limit 30: one long task of **261–303 ms** per Generate, and the correct pattern
+    every time. `test_img/R1.PNG` at 221 × 221 (18,463 beads): 75–114 ms. The design target is
+    65 ms in Node. Nothing crashes. Memory is bounded by `MAX_INTERMEDIATE_PIXELS` (4M px,
+    ~16 MB), which no allowed pattern reaches, since 50,000 cells × 64 is 3.2M.
+  - **Quality is not traded for time, at any size.** Someone placing 50,000 beads by hand values
+    an accurate pattern far above a third of a second. `SUPERSAMPLE` stays 8, and
+    `MAX_INTERMEDIATE_PIXELS` stays 4M. Lowering either costs linear-light averaging and D18's line
+    detection on exactly the patterns that take the most work to build. Lowering the buffer alone
+    could not have met the threshold anyway: 1M px still took 236 ms in Node.
+  - **M2's note on NFR-2 was half right.** The downscale is only about half the cost at the hard
+    limit (156 ms). The brute-force OkLab match, 221 distances per cell, is the other half
+    (~135 ms), and it does not depend on buffer size. A lightness-sorted, pruned nearest search
+    returned the identical index on all 49,729 cells of a synthetic test, in 17 ms against 137 ms.
+    It is not shipped, because M9 is verification-only and nothing requires it. It is the first
+    lever if speed is revisited, since it cannot change output.
+  - **What v1 does instead: the freeze is announced.** Generate used to call `showProcessing()` and
+    then run the pipeline in the same task, so the browser never painted "Processing..." and the
+    button looked dead for the whole stretch. Now it paints "Processing..." and
+    "Generating pattern..." first, then waits one frame, as the export already did. An upload that
+    lands during that frame wins, compared by image identity: a rejected upload leaves the image
+    as it was, so it does not cancel the generate.
+  - **v2:** NFR-6, generation in a Web Worker. It keeps output byte-identical and removes the
+    freeze. That is the fix NFR-2's Check always named.

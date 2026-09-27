@@ -18,7 +18,7 @@ v1 by a logged decision. *(OUT-4, NFR-5, UI-1 … UI-6, UI-8, "Done looks like")
 ## Ground rules
 
 - **This is verification, not development.** Don't change the pipeline. `SUPERSAMPLE` stays 8,
-  `MAX_INTERMEDIATE_PIXELS` stays 4M unless step 1 decides otherwise, and `DEFAULT_CONTRAST_TUNING`
+  `MAX_INTERMEDIATE_PIXELS` stays 4M (D27), and `DEFAULT_CONTRAST_TUNING`
   and `MERGE_FLOOR` are frozen. That's what makes the R1–R6 review in step 2 final rather than one
   more round of tuning.
 - **A failing Check gets one of two answers.** Either a small, mechanical fix, meaning a wrong
@@ -33,7 +33,7 @@ v1 by a logged decision. *(OUT-4, NFR-5, UI-1 … UI-6, UI-8, "Done looks like")
 ## Already decided (2026-09-26)
 
 - **GEN-8's two failures move to v2** instead of getting another tuning pass. M2 already spent its
-  timebox. Step 2 writes this up as D27.
+  timebox. Step 2 writes this up as the GEN-8 decision.
 - **Q11 (formerly the second Q10) is resolved: 50,000 cells for both bead sizes.** A 58 cm Mini
   piece is a rare edge case, not a v1 exception. NFR-3 is ticked on its Check as written.
 - **`SUPERSAMPLE` stays 8.** Going to 4 would trade linear-light averaging and lineart detection
@@ -58,17 +58,11 @@ Before any change, record:
 
 ### 1. Open decisions: settle them first, because each one changes what gets verified
 
-1. **NFR-2 — decided (2026-09-26): lower `MAX_INTERMEDIATE_PIXELS` from 4M to ~1M.**
-   `SUPERSAMPLE` stays 8, so every pattern up to ~15,600 cells produces the same output as today,
-   including the design target and all of R1–R6. Only larger patterns lose supersampling, and
-   gradually. To do:
-   - measure generation at the hard limit, as M2 did, and pick the value that brings it under
-     ~150 ms;
-   - look at one large pattern by eye;
-   - re-run `ui:export-hash`, since the fixture is under the threshold and the hash must not move;
-   - update `rasterize.ts`'s comment, which says the sRGB first reduction is "confined to the
-     innermost 8x8", because above the threshold that no longer holds;
-   - add a log entry and tick NFR-2 with the measured timing.
+1. **NFR-2: done (2026-09-26), under D27.** This reversed the first call to lower
+   `MAX_INTERMEDIATE_PIXELS`: measured, the buffer barely moved the time (see Results), and quality
+   wins at every size. The buffer stays at 4M, `SUPERSAMPLE` stays 8, and the pruned matcher is
+   not shipped. Generate now paints "Generating pattern..." one frame before the synchronous run.
+   NFR-2 is ticked, and the hard-limit clause is NFR-6 [v2] (a worker).
 2. **Regenerate over hand edits: decided in principle, needs sign-off on the design below.** Warn
    only when Generate is pressed with **nothing changed**: the same target width, bead size and
    colour limit as the pattern's own settings (already in `pattern-state.ts`), the same image and
@@ -92,28 +86,28 @@ Before any change, record:
    hanging on "Loading color palette…", and the docs must say so. Check PAL-3 afterwards: its
    Check (a renamed palette file) is handled by `main.ts`, not the guard, so it should still pass.
 
-**Done when:** each one has a recorded answer. Log entries are D28 onward, since D27 is step 2's.
+**Done when:** each one has a recorded answer. Log entries take the next free D-number in the order they are written: NFR-2 became D27.
 
-### 2. R1–R6 review, then D27
+### 2. R1–R6 review, then the GEN-8 decision
 
 Generate each of `test_img/R1`–`R6` at the design target (100 wide, default colour limit). Judge
 each strictly against its row in "Done looks like" and the three shared pass conditions: within
 the SET-4 limit, no flat region broken into noise, no checkerboard or moiré. Save the outputs to
 the git-ignored `scripts/ui-check/out/` so the verdicts can be checked.
 
-Then write **D27**:
+Then write the **GEN-8 decision** (next free D-number):
 - **GEN-8 is ticked against the rows that pass**, with the verdict for each row.
 - **R3's shading clause becomes a new [v2] requirement** (GEN-9). Its evidence is already in
   D18: lines outscore shading by only ~1.35× at the same tone, the bands overlap across tones,
   and `DEFAULT_CONTRAST_TUNING` is where the work continues.
 - **Facial-feature distortion stays Q10**, open as a v2 generation question. It isn't a GEN-8
   failure unless a row's own criterion names it. R4's "eyes intact" is the one to watch, and if
-  it fails, it goes into D27 on the same terms.
-- **Any other row that fails** is listed in D27 the same way, never passed over in silence.
+  it fails, it goes into the decision on the same terms.
+- **Any other row that fails** is listed in the decision the same way, never passed over in silence.
 - Amend "Done looks like"'s "v1 ships when … and the reference-image review below passes" so it
-  points at D27. Otherwise it contradicts the tick.
+  points at the decision. Otherwise it contradicts the tick.
 
-**Done when:** GEN-8 is ticked with a D27 note, GEN-9 [v2] exists, and nothing in "Done looks like"
+**Done when:** GEN-8 is ticked with a note citing the decision, GEN-9 [v2] exists, and nothing in "Done looks like"
 contradicts either.
 
 ### 3. Walk the unticked [v1] Checks
@@ -175,3 +169,25 @@ user agreed to.
 ## Results
 
 _Filled in as the steps run._
+
+**Step 0 (2026-09-26).**
+- `npm run check`: green, 211 tests.
+- `npm run build`: clean.
+- `ui:audit`: green, 122 Tab stops. Lowest contrast is 5.05:1 (`#3d70b2` on white). The only
+  "verify" lines are the known auto-width over-report on `#sortOption`.
+- `ui:export-hash`: `42ac415b…93d85`, 88,021 bytes, twice. This matches M11's baseline.
+
+**Step 1.1, NFR-2 measurement (Node, 221 colours, 223 × 223 = 49,729 cells, synthetic gradient
+with lines).**
+- Total generate by buffer size: 3.18M px (8×/cell, today) 318 ms; 2M 291 ms; 1.5M 263 ms;
+  1M 236 ms; 0.75M 222 ms. **Lowering the buffer alone cannot reach ~150 ms.**
+- By stage, at today's buffer: downsample 156 ms, match 133 ms. At 1M: downsample 75 ms, match
+  147 ms. The M2 note that the downscale dominates is only half right: the brute-force OkLab match
+  (221 distances per cell) is a floor of ~140 ms that does not depend on buffer size.
+- A lightness-sorted, pruned nearest search returned the identical index on all 49,729 cells
+  (ties broken on ascending palette index) in **17 ms against 137 ms**.
+- **Browser, after the one-frame yield** (headless Chrome, 1280 px): R5 at 193 × 257 (49,601
+  beads) gave one long task of 261–303 ms over 3 runs. R1 at 221 × 221 (18,463 beads) gave
+  75–114 ms. "Generating pattern..." was set before the long task every time. `npm run check`
+  passed (211), `ui:audit` is green, and the export hash is unchanged.
+

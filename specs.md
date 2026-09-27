@@ -239,6 +239,10 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
   about the awkward one. Only the crop is one-shot now, so changing a setting and pressing Generate
   still discards hand edits silently. Whether v1 wants PAL-7's confirmation extended to the settings
   is M9's call.)_
+  _(**M9's call, 2026-09-26 (D28):** v1 asks only when Generate is pressed with nothing changed
+  and the pattern has edits, because then erasing the edits is all it can do. A Generate with a
+  changed setting still replaces the pattern without asking, by choice. This requirement stays
+  [v2] and palette-only.)_
 
 ### Generation — GEN
 
@@ -1452,3 +1456,28 @@ editor state would depend on M5. Do not fix screenshots of these states before t
     as it was, so it does not cancel the generate.
   - **v2:** NFR-6, generation in a Web Worker. It keeps output byte-identical and removes the
     freeze. That is the fix NFR-2's Check always named.
+
+- **D28 (2026-09-26) — A Generate that could only erase hand edits asks first. Any other
+  Generate replaces the pattern without asking.** D21 left this open: a second Generate replaces
+  the `Pattern` that M5 mutates in place, silently. M9 was to decide it.
+  - **When it asks.** Only when the pattern has hand edits **and** the target width, bead size and
+    colour limit all equal the settings that produced it. The image and the crop need no
+    comparison: a new upload already clears the pattern, and the crop is fixed while a pattern
+    exists (D21). With nothing changed, GEN-7 says the Generate reproduces the untouched pattern
+    exactly, so erasing the edits is the only thing it can do. The question makes that either a
+    caught slip or a deliberate "revert to generated".
+  - **Why it does not ask on a change.** A changed setting is the user asking for a different
+    pattern. Asking every time would put a dialog in front of the ordinary case (regenerate at a
+    new width) to guard the rare one, which is the trade D21's narrowing refused. So that path
+    still discards edits without warning, by choice. PAL-7 records it.
+  - **"Edited" errs toward asking.** `pattern-state.ts` sets it on any edit and never clears it on
+    undo. A restored pattern counts as edited, because undo history is not saved (D23) and so
+    whether it carries edits cannot be known. A false "edited" costs one question; a false
+    "unedited" costs the work.
+  - **A native `confirm()`, not an in-page dialog.** It is browser chrome, so it is accessible and
+    keyboard-operable for free, and it adds nothing to the themed page that UI-1 … UI-8 would have
+    to re-verify. Declining changes nothing: the pattern, its edits and undo history all stay.
+  - The rule is `regenerateNeedsConfirm` in `src/lib/regenerate.ts`, with tests. Verified in
+    headless Chrome: unedited → no question; edited and unchanged → asks, and declining keeps the
+    edits and undo; accepting regenerates; edited with the width changed → no question; after a
+    reload → asks.

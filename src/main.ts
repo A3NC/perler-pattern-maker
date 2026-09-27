@@ -22,6 +22,7 @@ import { initAutosave, loadSavedSession } from './state/autosave';
 import { ExportError, exportPatternPng } from './render/export-png';
 import { initInventoryControls } from './render/inventory';
 import { clearPatternState, getPatternState, onPatternChange, setPattern } from './state/pattern-state';
+import { REGENERATE_CONFIRM_MESSAGE, regenerateNeedsConfirm } from './lib/regenerate';
 import { showStatus } from './status';
 import { UploadError, readImageFile } from './upload';
 import { exportFileName } from './lib/export-layout';
@@ -390,6 +391,13 @@ generateBtn.addEventListener('click', async () => {
         return;
     }
 
+    // A Generate that could only erase hand edits asks first (see regenerate.ts).
+    // Asked after every validation above, so a settings error is never hidden
+    // behind a question about edits.
+    if (regenerateNeedsConfirm(getPatternState(), settings) && !confirm(REGENERATE_CONFIRM_MESSAGE)) {
+        return;
+    }
+
     // Let "Processing..." paint before the pipeline runs. It is synchronous, and
     // at the hard limit it blocks for ~300 ms (NFR-2, D27): without this frame
     // the browser never repaints in between, so Generate looks dead. Quality is
@@ -496,7 +504,7 @@ async function restoreSavedSession(): Promise<void> {
 
         clearPattern();
         renderPattern(session.pattern);
-        setPattern(session.pattern, tallyPattern(session.pattern), session.settings);
+        setPattern(session.pattern, tallyPattern(session.pattern), session.settings, true);
         syncControls();
 
         const { width, height } = session.pattern;

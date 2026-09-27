@@ -63,21 +63,11 @@ Before any change, record:
    wins at every size. The buffer stays at 4M, `SUPERSAMPLE` stays 8, and the pruned matcher is
    not shipped. Generate now paints "Generating pattern..." one frame before the synchronous run.
    NFR-2 is ticked, and the hard-limit clause is NFR-6 [v2] (a worker).
-2. **Regenerate over hand edits: decided in principle, needs sign-off on the design below.** Warn
-   only when Generate is pressed with **nothing changed**: the same target width, bead size and
-   colour limit as the pattern's own settings (already in `pattern-state.ts`), the same image and
-   the same crop. Nothing else is needed for the image and crop, because a new upload already
-   clears the pattern and the crop is locked after a generate (D21). By GEN-7, an unchanged
-   Generate reproduces the untouched pattern exactly, so the only thing it does is erase edits.
-   Warning there turns it into a deliberate "revert to generated". A Generate with changed
-   settings is taken as intent and replaces the pattern without asking, as today.
-   - Warn only when edits exist. `pattern-state.ts` gains an "edited since generate" flag, set by
-     `patternEdited()` and cleared by `setPattern()`. Without edits, Generate simply runs.
-   - After an autosave restore, the flag is unknown (history isn't saved, D23), so it's assumed
-     set. A false warning there is harmless; a missing one isn't.
-   - The "nothing changed" comparison is a pure function in `src/lib/` with a test.
-   - Record in PAL-7's note that changed-settings regenerates still discard edits silently, by
-     choice.
+2. **Regenerate over hand edits: done (2026-09-26), under D28.** Built as designed:
+   `src/lib/regenerate.ts` plus 5 tests, `PatternState.edited`, and a native `confirm()` in
+   `main.ts`, asked after validation and before the paint frame. PAL-7's note records that
+   changed-settings regenerates still discard edits, by choice. Verified in headless Chrome (see
+   Results).
 3. **Distinct-colour count after editing — decided: the "in pattern / new" badge is enough.**
    Record it at SET-4 and in M5's note. No requirement is added.
 4. **Boot guard — decided: remove it.** Delete the inline classic script from `index.html` and
@@ -191,3 +181,7 @@ with lines).**
   75–114 ms. "Generating pattern..." was set before the long task every time. `npm run check`
   passed (211), `ui:audit` is green, and the export hash is unchanged.
 
+**Step 1.2 (headless Chrome, `fixtures/art.png`).** Unedited + same settings: no question.
+Erased one cell + same settings: asked. Declining kept the edit and Undo. Accepting regenerated
+and cleared Undo. Edited + width changed: no question. After a reload (restore): asked.
+`npm run check`: 216 tests.

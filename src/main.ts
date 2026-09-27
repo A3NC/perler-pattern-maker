@@ -29,13 +29,6 @@ import { exportFileName } from './lib/export-layout';
 import type { CropRect } from './lib/crop';
 import type { Palette } from './types';
 
-declare global {
-    interface Window {
-        /** Set at the end of startup; read by the boot guard in index.html. */
-        __perlerBooted?: boolean;
-    }
-}
-
 const imageUpload = requireElement<HTMLInputElement>('imageUpload');
 const fileName = requireElement('fileName');
 const generateBtn = requireElement<HTMLButtonElement>('generateBtn');
@@ -227,13 +220,6 @@ onCropChange(refreshDimensions);
 // A generate hides the line and a cleared pattern brings it back (D24).
 onPatternChange(() => refreshDimensions());
 
-// Startup wiring succeeded, so the boot guard in index.html can stand down and
-// leave the status line to us. Deliberately set here rather than at the top of
-// the file: if an import or a requireElement lookup above throws, the flag
-// stays unset and the guard reports the failure that would otherwise be
-// invisible. The palette load below reports itself through showStatus.
-window.__perlerBooted = true;
-
 // Load and validate the default palette before enabling generation (PAL-2, PAL-3).
 // The restore waits for it to settle either way: the editor resolves its
 // opening color and the inventory's picks through the loaded palette, and the
@@ -258,9 +244,8 @@ const paletteSettled = loadPalette()
         paletteReady = false;
         generateBtn.textContent = 'Palette unavailable';
         syncControls();
-        // Name the actual failure (PAL-3). "Serve it over HTTP" is no longer the
-        // right advice here: if the page were not served, the boot guard in
-        // index.html would have caught it and this code would never have run.
+        // Name the actual failure (PAL-3). If this code is running, the page
+        // was served and the module loaded; what failed is the palette itself.
         showStatus(
             `Unable to load the color palette: ${(error as Error).message || 'unknown error'}. `
             + 'Generation is disabled.',
@@ -461,7 +446,7 @@ function buildPattern(
  * read (and drops an image that failed), rather than deleting a good image
  * because it had not finished decoding yet.
  *
- * Never throws: `__perlerBooted` is already set, so nothing above would report it.
+ * Never throws: nothing above it would report the error.
  */
 async function restoreSavedSession(): Promise<void> {
     // Claims a token like an upload does, so an upload started while a large

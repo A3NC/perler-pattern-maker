@@ -163,6 +163,12 @@ Markers: **[v1]** = required for first release · **[v2]** = next release · **[
   range 2 to the palette size.
   **Check:** With the limit set to 12, the generated pattern's bead list contains at most 12
   distinct colors. See Decision log D3.
+  _(**The limit binds the generated pattern, not the edited one: settled at M9 (2026-09-26).**
+  M5 found that no requirement covers the distinct-colour count after hand edits, since a
+  correction can add a colour the generator never used. v1's answer is the picker's badge: a
+  candidate already in the pattern shows its count ("P17 · 302 in pattern"), and one that is not
+  shows "new". So adding a colour to the bead order is always visible, never silent. That is
+  judged enough. No requirement is added, and the editor does not enforce the limit.)_
 - [x] **SET-5 [v1]** Reject dimension settings that exceed the limits in NFR-3, with a message
   saying which limit was hit and what to change.
   **Check:** A setting that would produce more than NFR-3's hard limit shows an error naming the
@@ -1481,3 +1487,15 @@ editor state would depend on M5. Do not fix screenshots of these states before t
     headless Chrome: unedited → no question; edited and unchanged → asks, and declining keeps the
     edits and undo; accepting regenerates; edited with the width changed → no question; after a
     reload → asks.
+
+- **D29 (2026-09-26) — The inline boot guard is removed.** M0 added a classic script to
+  `index.html` that reported the three ways the module never runs: a `file://` open, a plain
+  static server handing out the TypeScript source, and a throw during startup. It carried a note
+  to revisit it at M9. It has stopped earning its keep. It was kept mainly for M1's rewrite of
+  the DOM contract, which is long done. It put logic in `index.html` against the convention that
+  logic lives in `src/`. And it split PAL-3's messaging across two places. The failure cases now
+  leave the page on "Loading color palette..." with Generate disabled. Nothing generates against
+  a missing palette, so PAL-3's intent holds, and PAL-3's own Check (a renamed palette file) is
+  reported by `main.ts`, which the guard never handled. `claude.md` and the README say what the
+  stuck line means. `window.__perlerBooted` went with it, and the UI-check harness now waits on
+  the DOM state it was already checking.

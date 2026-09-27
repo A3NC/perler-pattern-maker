@@ -68,13 +68,11 @@ Before any change, record:
    `main.ts`, asked after validation and before the paint frame. PAL-7's note records that
    changed-settings regenerates still discard edits, by choice. Verified in headless Chrome (see
    Results).
-3. **Distinct-colour count after editing — decided: the "in pattern / new" badge is enough.**
-   Record it at SET-4 and in M5's note. No requirement is added.
-4. **Boot guard — decided: remove it.** Delete the inline classic script from `index.html` and
-   `window.__perlerBooted` from `main.ts`. Update `claude.md`'s "How to run it" and `README.md`.
-   The failure cases (`file://`, serving the source over plain HTTP, a startup throw) go back to
-   hanging on "Loading color palette…", and the docs must say so. Check PAL-3 afterwards: its
-   Check (a renamed palette file) is handled by `main.ts`, not the guard, so it should still pass.
+3. **Distinct-colour count after editing: done (2026-09-26).** The "in pattern / new" badge is
+   enough. Recorded at SET-4 and in M5's note in `plan-v1.md`. No requirement is added.
+4. **Boot guard: done (2026-09-26), under D29.** Removed from `index.html`, along with
+   `window.__perlerBooted` in `main.ts`, and the harness waits on DOM state instead. The docs say
+   what a page stuck on "Loading color palette..." means. PAL-3 is re-checked in step 3.
 
 **Done when:** each one has a recorded answer. Log entries take the next free D-number in the order they are written: NFR-2 became D27.
 
@@ -185,3 +183,8 @@ with lines).**
 Erased one cell + same settings: asked. Declining kept the edit and Undo. Accepting regenerated
 and cleared Undo. Edited + width changed: no question. After a reload (restore): asked.
 `npm run check`: 216 tests.
+
+**Step 1.3–1.4.** The SET-4 note is recorded. With the boot guard removed, the source served by
+`python3 -m http.server` stays on "Loading color palette..." with Generate disabled, as documented.
+`ui:audit`, `ui:fonts` and `ui:file-picker` pass on the harness's new DOM-state waits.
+`npm run check`: 216.

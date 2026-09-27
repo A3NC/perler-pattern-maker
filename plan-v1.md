@@ -76,6 +76,7 @@ path; the working path is untouched. Cost: PAL-3 messaging now lives in two plac
 in `index.html` against the convention that logic lives in `src/`. Kept mainly for **M1** — that
 milestone rewrites the DOM contract this app depends on, which is exactly when the silent-hang
 failure recurs. Revisit at M9 and delete it if it has stopped earning its keep.
+_(**Removed at M9, 2026-09-26 (D29).**)_
 
 ---
 
@@ -377,7 +378,7 @@ a native `<input type="color">`, a text filter over code and hex, and ~12 candid
 ("P17 · 302 in pattern" beside "P19 · new") — ranking has to keep meaning nearest, and the badge is
 what stops a correction silently adding a color to the bead order. That exposes a real spec gap,
 recorded and not invented around: **no requirement covers the distinct-color count *after* editing**
-— SET-4's Check says the *generated* pattern. The badge is v1's answer; M9 decides if it is enough.
+— SET-4's Check says the *generated* pattern. The badge is v1's answer. _(M9, 2026-09-26: it is enough, recorded at SET-4.)_
 
 **Two things shipped that no ID names**, both recorded here rather than given requirements:
 - **The eyedropper.** Alt-click adopts a cell's color. It is an input method for EDIT-3, live in

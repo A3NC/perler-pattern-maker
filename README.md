@@ -53,8 +53,9 @@ npm run dev     # then open the URL it prints
 | `npm run ui:audit` | Automated interface checks (layout, contrast, focus, touch targets) in headless Chrome, against a running dev server |
 
 Use `npm run dev`. Opening `index.html` directly, or serving the project folder with a plain file
-server, won't work, because the source is TypeScript. To use your own server, run `npm run build`
-and serve `dist/`.
+server, won't work, because the source is TypeScript. The page then stays on "Loading color
+palette..." with Generate disabled, and the browser console says why. To use your own server, run
+`npm run build` and serve `dist/`.
 
 ## How the code is organized
 
